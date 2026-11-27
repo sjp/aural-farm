@@ -24,6 +24,8 @@ import { FULL_MIX_HINT, layerNameId, levelBrightness, mixSummary } from "./mixer
 import type { PanelLayout } from "./sheet";
 import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
+import { SleepTimer, type SleepTimerControls } from "./SleepTimer";
+import { formatCountdown } from "../lib/sleep-timer";
 import { Slider } from "./Slider";
 
 /** The preference holding collapsed sections: "<sound>" for a layer, "<sound>/<section>" inside one. */
@@ -303,6 +305,8 @@ interface ControlPanelProps {
   /** Whether the bottom sheet is expanded. The sound picker expands it too. */
   sheetOpen?: boolean | undefined;
   onSheetOpenChange?: ((open: boolean) => void) | undefined;
+  /** The sleep timer; its clock button shows only when it is given. */
+  sleep?: SleepTimerControls | undefined;
 }
 
 /** The Display section: how the backdrop looks on this device. Starts collapsed. */
@@ -467,6 +471,21 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
       onToggle={props.onTogglePlay}
     />
   );
+  const sleepTimer = (showTime: boolean) =>
+    props.sleep && (
+      <SleepTimer
+        {...props.sleep}
+        hover={hover}
+        showTime={showTime}
+        onOpen={
+          sheet
+            ? () => {
+                props.onSheetOpenChange?.(true);
+              }
+            : undefined
+        }
+      />
+    );
   const toolbar = (
     <div className="panel-toolbar">
       <button
@@ -530,6 +549,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
             {!sheet && (
               <div className="panel-header-row">
                 {playButton}
+                {sleepTimer(true)}
                 <h1 className="panel-title">Aural Farm</h1>
                 {toolbar}
               </div>
@@ -648,7 +668,11 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
         bar={
           <div className="peek-bar">
             {playButton}
+            {sleepTimer(false)}
             <p className="peek-summary">{mixSummary(mix.layers, catalogue)}</p>
+            {props.sleep?.remaining !== undefined && (
+              <span className="peek-countdown">{formatCountdown(props.sleep.remaining)}</span>
+            )}
             {expanded ? (
               toolbar
             ) : (

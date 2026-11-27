@@ -20,6 +20,9 @@ export const LinkIcon = () => (
   <Icon d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
 );
 export const FullscreenIcon = () => <Icon d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />;
+export const ClockIcon = () => (
+  <Icon d="M12 7.5V12l3 2M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0z" />
+);
 export const HideIcon = () => <Icon d="M9 6l6 6-6 6" />;
 export const SlidersIcon = () => (
   <Icon d="M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6" size={20} />

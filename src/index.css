@@ -654,6 +654,106 @@ select:focus-visible,
   text-decoration: underline;
 }
 
+/* Sleep timer: a clock button beside Play, and its menu */
+
+.sleep-timer {
+  position: relative;
+  flex: none;
+}
+
+.sleep-button[data-running="true"] {
+  color: var(--accent);
+}
+
+.sleep-button[data-time="true"] {
+  display: flex;
+  gap: 4px;
+  width: auto;
+  padding: 0 8px 0 6px;
+}
+
+.sleep-countdown,
+.peek-countdown {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.peek-countdown {
+  flex: none;
+  margin-right: 4px;
+  color: var(--accent);
+}
+
+.sleep-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: -34px;
+  z-index: 2;
+  display: grid;
+  gap: 12px;
+  width: 266px;
+  padding: 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-solid);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 50%);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.sleep-popover[hidden] {
+  display: none;
+}
+
+.sleep-legend {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sleep-group .segmented {
+  margin-top: 0;
+}
+
+.sleep-lengths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sleep-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.sleep-custom input {
+  width: 72px;
+  padding: 5px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+  font: inherit;
+}
+
+.sleep-custom input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.sleep-range {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* In the bottom sheet the menu opens over the sheet's content, which opening it expands. */
+.peek-bar .sleep-popover {
+  left: -8px;
+  width: min(320px, 100vw - 32px - var(--safe-left) - var(--safe-right));
+}
+
 /* Footer and shortcuts */
 
 .footer-actions {

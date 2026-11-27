@@ -11,6 +11,7 @@ import { ControlPanel, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
 import { FULL_MIX_HINT } from "./mixer";
 import { LOADING_DELAY_MS } from "./LayerSection";
 import type { PanelLayout } from "./sheet";
+import type { SleepTimerControls } from "./SleepTimer";
 
 type PanelOptions = {
   mix?: Mix;
@@ -29,6 +30,7 @@ type PanelOptions = {
   levelsActive?: boolean;
   layout?: PanelLayout;
   sheetOpen?: boolean;
+  sleep?: SleepTimerControls;
 };
 
 function renderPanel(initial: PanelOptions = {}) {
@@ -71,6 +73,7 @@ function renderPanel(initial: PanelOptions = {}) {
       onToggleFavourite={options.onToggleFavourite}
       layout={options.layout}
       sheetOpen={options.sheetOpen}
+      sleep={options.sleep}
       {...handlers}
     />
   );
@@ -798,5 +801,45 @@ describe("Drawer", () => {
     expect(document.querySelector<HTMLElement>(".panel")?.dataset.layout).toBe("drawer");
     expect(document.querySelector(".peek-bar")).toBeNull();
     expect(screen.getByRole("heading", { name: "Aural Farm" })).toBeTruthy();
+  });
+});
+
+describe("Sleep timer", () => {
+  const sleep = (change: Partial<SleepTimerControls> = {}): SleepTimerControls => ({
+    minutes: undefined,
+    remaining: undefined,
+    settings: { lastMinutes: undefined, fadeOut: 300, fadeIn: 3 },
+    onChoose: vi.fn<SleepTimerControls["onChoose"]>(),
+    onSettingsChange: vi.fn<SleepTimerControls["onSettingsChange"]>(),
+    ...change,
+  });
+
+  it("shows no clock button unless given a timer", () => {
+    renderPanel();
+    expect(screen.queryByRole("button", { name: /Sleep timer/ })).toBeNull();
+  });
+
+  it("puts the clock next to Play in the card, showing the time left", () => {
+    renderPanel({ sleep: sleep({ minutes: 60, remaining: 42 * 60 }) });
+    const button = screen.getByRole("button", { name: "Sleep timer, 42:00 left" });
+    expect(button.textContent).toBe("42:00");
+    expect(button.closest(".panel-header-row")).not.toBeNull();
+    const before = button.closest(".sleep-timer")?.previousElementSibling;
+    expect(before?.getAttribute("aria-label")).toBe("Play");
+  });
+
+  it("puts the clock next to the peek bar's Play, and the time after the summary", () => {
+    renderPanel({ layout: "sheet", sleep: sleep({ minutes: 90, remaining: 3725 }) });
+    const button = screen.getByRole("button", { name: "Sleep timer, 1:03:00 left" });
+    expect(button.closest(".peek-bar")).not.toBeNull();
+    expect(button.textContent).toBe("");
+    expect(document.querySelector(".peek-summary + .peek-countdown")?.textContent).toBe("1:03:00");
+  });
+
+  it("expands the sheet as its menu opens", () => {
+    const { onSheetOpenChange } = renderPanel({ layout: "sheet", sleep: sleep() });
+    fireEvent.click(screen.getByRole("button", { name: "Sleep timer" }));
+    expect(onSheetOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.getByRole("dialog", { name: "Sleep timer" }).hidden).toBe(false);
   });
 });
