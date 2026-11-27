@@ -463,6 +463,18 @@ between them. **Tubes** sets how many hang in the set (3 to 8; a tube taken away
 of the open air you hear, and **Variation** crossfades to a different run of gusts and a
 slightly different set of tubes.
 
+**Singing Bowls** are metal standing bowls in a quiet room. Every so often one is struck
+softly with a padded mallet; its tone blooms and then hangs in the air for half a minute,
+wavering slowly as two nearly equal partials beat against each other, so a new strike often
+lands on the tail of the last. The bowls are tuned a fifth, an octave, a ninth and a twelfth
+above the deepest, so any overlap is consonant. **Key** picks the deepest bowl's note (C to
+B, crossfading slowly), **Bowls** how many are in the set (1 to 5; a bowl taken away rings
+out), **Strike every** the average time between strikes (10 to 60 s; a shorter time brings
+the next strike within one new interval), **Rim singing** adds one bowl rubbed around its rim,
+singing continuously underneath and swelling and receding over half a minute or so (fading in
+or out over a few seconds), **Space** how much of the room you hear, and **Variation**
+crossfades to a different run of strikes and slightly different bowls.
+
 **Distant Thunder** is a storm some miles away: mostly quiet, then now and again a long, low
 rumble that swells in over a second or two, rolls through a few overlapping peaks and dies
 away over many seconds, felt as much as heard. Nothing about it is sudden. The first rumble
