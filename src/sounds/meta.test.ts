@@ -71,6 +71,13 @@ describe.each(sounds.map((s) => [s.id, s] as const))("%s metadata", (_, sound) =
     expect(sound.description.trim()).not.toBe("");
   });
 
+  it("keeps its hint, if any, short and without a full stop", () => {
+    const hint = sound.hint ?? "Short";
+    expect(hint.trim()).not.toBe("");
+    expect(hint.length).toBeLessThanOrEqual(32);
+    expect(hint).not.toMatch(/\.$/);
+  });
+
   it.each(Object.entries(sound.params))(
     "labels param %s and names its group, if any",
     (_key, def) => {

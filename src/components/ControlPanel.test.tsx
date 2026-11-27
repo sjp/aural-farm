@@ -231,6 +231,12 @@ describe("Mixer rows", () => {
     }
   });
 
+  it("shows nothing under the name of a sound without a hint", () => {
+    renderPanel({ mix: mixOf("alpha"), sounds: catalogue });
+    expect(screen.getByRole("heading", { name: "Alpha" })).toBeTruthy();
+    expect(document.querySelector(".layer-hint")).toBeNull();
+  });
+
   it("puts the layer's shortcuts in the Solo and Mute tooltips", () => {
     renderPanel({ mix: mixOf("alpha", "bravo"), sounds: catalogue });
     expect(screen.getByRole("button", { name: "Mute Bravo" }).title).toBe("Mute (2)");
