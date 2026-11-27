@@ -8,6 +8,7 @@ import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
+import { fanMeta } from "./fan/fan.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { insectsMeta } from "./insects/insects.meta";
@@ -36,6 +37,7 @@ export const sounds: readonly SoundEntry[] = [
     ...lifeSupportMeta,
     load: () => import("./life-support/life-support").then((m) => m.lifeSupport),
   },
+  { ...fanMeta, load: () => import("./fan/fan").then((m) => m.fan) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },

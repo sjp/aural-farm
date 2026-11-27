@@ -135,6 +135,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { flow: 100, pump: 100, hum: 100, valves: "often", pumpCycle },
     })),
   },
+  fan: {
+    // Every fan flat out, brightest, loudest motor, oscillating where it can.
+    extraSets: (["desk", "ceiling", "box", "air-conditioner"] as const).map((type) => ({
+      name: `${type}, everything up, oscillating`,
+      params: { type, speed: 100, tone: 100, motor: 100, oscillate: true },
+    })),
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
