@@ -109,3 +109,25 @@ test("lays the panel out as a drawer in landscape", async ({ page }) => {
   await expect(page.getByRole("slider", { name: "Master volume" })).toBeInViewport();
   expect(errors).toEqual([]);
 });
+
+test("picks a preset from the sheet, and the peek bar shows its name", async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto("/#layers=engine-core");
+  const panel = page.locator(".panel");
+  await page.getByRole("button", { name: "Expand mixer" }).tap();
+  await expect(panel).toHaveAttribute("data-sheet", "expanded");
+
+  await page.getByRole("button", { name: "Mixes" }).tap();
+  await expect(panel).toHaveAttribute("data-picker", "true");
+  await page
+    .getByRole("group", { name: "Presets" })
+    .getByRole("button", { name: /^Soft Pink/ })
+    .tap();
+  await expect(page.locator(".peek-summary")).toHaveText("Soft Pink");
+
+  // Collapsing the sheet closes the Mixes view.
+  await page.getByRole("button", { name: "Collapse mixer" }).tap();
+  await expect(panel).toHaveAttribute("data-sheet", "collapsed");
+  await expect(panel).toHaveAttribute("data-picker", "false");
+  expect(errors).toEqual([]);
+});
