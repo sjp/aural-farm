@@ -58,13 +58,15 @@ plays it, to `renders/mix-<sounds>.wav`. Listen on headphones and on laptop spea
 
 The page starts playing as soon as it opens. If the browser blocks sound until you interact
 with the page, the Play button turns into **Tap to play**, and the first tap, click or key
-press anywhere starts it. Playback carries on in a background tab. Pausing fades the sound
-out and then suspends the audio, so nothing runs while paused.
+press anywhere starts it. Playback carries on in a background tab. Play fades the sound in
+(over 3 s unless set otherwise, see below), so a mix never bursts in at full volume. Pausing
+fades it out and then suspends the audio, so nothing runs while paused.
 
 The control panel sits in the top-right corner and fades out, with the cursor, after a few
 seconds without input. It is a mixer for up to eight sounds, played at once.
 
-The header has **Play/Pause**, **Copy link**, **Fullscreen** and **Hide**, and under them the
+The header has **Play/Pause**, the **sleep timer**, **Copy link**, **Fullscreen** and
+**Hide**, and under them the
 **master volume**, with a speaker button that mutes everything. Each layer of the mix is a
 row with:
 
@@ -111,10 +113,30 @@ cursor hidden.
 **Copy link** copies a link that spells out every setting, defaults included, plus
 `panel=hidden`, so the mix sounds the same even if a default changes later.
 
+### Sleep timer
+
+The clock button next to Play opens the sleep timer, for falling asleep to a mix: choose
+**Off**, **15 min**, **30 min**, **45 min**, **1 h**, **1 h 30**, **2 h** or **Custom** (1–480
+minutes). While a timer runs, the button shows the time left, to the minute and then to the
+second in the last minute. Over the last part of the timer, set by **Fade out over** (10 s,
+1 min, 5 min or 15 min, never longer than the timer), the mix fades out evenly; then it
+pauses, and the timer goes back to Off.
+
+The timer counts playing time: pausing pauses it, and playing again carries on. Changing
+the mix leaves it running, choosing a new length starts it again, and turning it Off during
+the fade brings the sound back over 2 seconds. Stop on the lock screen turns it off too. The
+fade runs on the audio clock, so it stays smooth in a background tab or on a locked phone.
+
+The same menu sets **Fade in on Play**: **Instant**, **3 s** (the default), **10 s** or
+**30 s**. The last timer length, the fade-out and the fade-in are remembered in the browser,
+and the menu offers the last length first, but a timer always starts Off when the page
+opens, and it is never part of a link.
+
 ### Phones and tablets
 
 On a narrow screen (a phone held upright) the panel is a **bottom sheet**. Collapsed, it
-shows a peek bar with Play/Pause, the mix's sounds, **Add sound** and an expand button.
+shows a peek bar with Play/Pause, the sleep timer, the mix's sounds (and the time left on a
+running timer), **Add sound** and an expand button.
 Drag the handle up (or tap the bar) to expand it to about two thirds of the screen, with the
 master volume at the top and **Copy link**, **Fullscreen** and **Hide** in the bar; drag it
 down, flick it, or tap the backdrop to collapse it. The sound picker fills the expanded
@@ -180,19 +202,20 @@ steady) and **Variation**, which crossfades to a different take on the same nois
 
 ### Keyboard shortcuts
 
-| Key                 | Action                           |
-| ------------------- | -------------------------------- |
-| `Space`             | Play or pause                    |
-| `/`                 | Add a sound (opens the picker)   |
-| `S`                 | Star or unstar the focused layer |
-| `1`–`8`             | Mute or unmute layer N           |
-| `Shift+1`–`Shift+8` | Solo or unsolo layer N           |
-| `M`                 | Mute or unmute everything        |
-| `↑` / `↓`           | Master volume up or down by 5    |
-| `H`                 | Hide or show the control panel   |
-| `F`                 | Toggle fullscreen                |
-| `D`                 | Backdrop: Glow, Night or Off     |
-| `?`                 | Show the keyboard shortcuts      |
+| Key                 | Action                                 |
+| ------------------- | -------------------------------------- |
+| `Space`             | Play or pause                          |
+| `/`                 | Add a sound (opens the picker)         |
+| `S`                 | Star or unstar the focused layer       |
+| `1`–`8`             | Mute or unmute layer N                 |
+| `Shift+1`–`Shift+8` | Solo or unsolo layer N                 |
+| `M`                 | Mute or unmute everything              |
+| `↑` / `↓`           | Master volume up or down by 5          |
+| `H`                 | Hide or show the control panel         |
+| `F`                 | Toggle fullscreen                      |
+| `D`                 | Backdrop: Glow, Night or Off           |
+| `T`                 | Sleep timer: Off, 15, 30, 60 or 90 min |
+| `?`                 | Show the keyboard shortcuts            |
 
 Shortcuts are ignored while a form field has focus (`Space` still works on a slider, but
 on a focused button it presses the button). `↑` and `↓` change the master volume only when
