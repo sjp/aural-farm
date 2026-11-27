@@ -135,6 +135,16 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     },
   },
+  fireplace: {
+    // The biggest, busiest fire of each wood, close up and far back.
+    extraSets: (["hardwood", "softwood"] as const).flatMap((wood) => [
+      { name: `${wood}, biggest and busiest`, params: { wood, size: 100, crackle: 100 } },
+      {
+        name: `${wood}, biggest and busiest, far back`,
+        params: { wood, size: 100, crackle: 100, room: 100 },
+      },
+    ]),
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },

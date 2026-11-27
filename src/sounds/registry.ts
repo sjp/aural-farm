@@ -6,6 +6,7 @@
 import type { SoundDefinition, SoundMeta } from "./types";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
+import { fireplaceMeta } from "./fireplace/fireplace.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
@@ -23,6 +24,10 @@ export const sounds: readonly SoundEntry[] = [
   },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
+  {
+    ...fireplaceMeta,
+    load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
+  },
   {
     ...brownNoiseMeta,
     load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),
