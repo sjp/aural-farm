@@ -12,6 +12,7 @@ import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
 import { rainMeta } from "./rain/rain.meta";
 import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
+import { windMeta } from "./wind/wind.meta";
 
 export interface SoundEntry extends SoundMeta {
   load: () => Promise<SoundDefinition>;
@@ -28,6 +29,7 @@ export const sounds: readonly SoundEntry[] = [
     ...fireplaceMeta,
     load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
   },
+  { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
   {
     ...brownNoiseMeta,
     load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),

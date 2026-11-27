@@ -145,6 +145,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     ]),
   },
+  wind: {
+    // A gale at its gustiest, whistling fully, in each setting.
+    extraSets: (["field", "trees", "house"] as const).map((setting) => ({
+      name: `${setting}, strongest, gustiest, full whistle`,
+      params: { setting, strength: 100, gustiness: 100, whistle: 100 },
+    })),
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
