@@ -112,6 +112,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       { name: "highest pitch, full power", params: { pitch: 72, power: 100, pulseDepth: 100 } },
     ],
   },
+  rain: {
+    // A downpour on each surface, close up, every drop plinking where the surface lets it.
+    extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
+      name: `${surface}, heaviest and closest`,
+      params: { surface, intensity: 100, distance: 0, bubbles: 100 },
+    })),
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },

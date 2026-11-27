@@ -8,6 +8,7 @@ import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
+import { rainMeta } from "./rain/rain.meta";
 import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
 
 export interface SoundEntry extends SoundMeta {
@@ -19,6 +20,7 @@ export const sounds: readonly SoundEntry[] = [
     ...engineCoreMeta,
     load: () => import("./engine-core/engine-core").then((m) => m.engineCore),
   },
+  { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   {
     ...brownNoiseMeta,
     load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),
