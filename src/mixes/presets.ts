@@ -8,7 +8,6 @@
  * checks). Planned presets still waiting for their sounds, each to be added here
  * along with the last of its sounds:
  *
- *   Café Study        Coffee Shop, Rain (light)
  *   Deep Focus        Pink Noise, Binaural Beats, Drone Pad
  *   Meditation        Singing Bowls, Wind Chimes, Drone Pad
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
@@ -147,6 +146,17 @@ export const presets: readonly Preset[] = [
       "&city.signals=off&city.space=55&city.seed=1" +
       "&rain.volume=50&rain.muted=0&rain.intensity=25&rain.surface=ground&rain.distance=45" +
       "&rain.bubbles=30&rain.seed=1",
+  },
+  {
+    id: "cafe-study",
+    name: "Café Study",
+    description: "A corner table in a busy café, light rain running down the window beside it.",
+    hash:
+      "#name=Caf%C3%A9%20Study&master=70&layers=coffee-shop,rain" +
+      "&coffee-shop.volume=70&coffee-shop.muted=0&coffee-shop.crowd=6&coffee-shop.clatter=35" +
+      "&coffee-shop.room=55&coffee-shop.seed=1" +
+      "&rain.volume=50&rain.muted=0&rain.intensity=30&rain.surface=window&rain.distance=35" +
+      "&rain.bubbles=25&rain.seed=1",
   },
   {
     id: "long-haul-flight",
