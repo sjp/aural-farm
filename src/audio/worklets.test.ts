@@ -76,16 +76,4 @@ describe("startProcessor", () => {
     dispose();
     expect(fake.port.messages).toEqual([STOP_MESSAGE]);
   });
-
-  it("gives the node one output per entry when the channels are a list", async () => {
-    const ctx = new FakeAudioContext();
-    const node = await withAudioScope(async (scope) =>
-      startProcessor(ctx.asContext(), scope, "events.js", "events", {
-        channels: [2, 2, 3],
-        startAt: 0,
-        processorOptions: {},
-      }),
-    );
-    expect(node.numberOfOutputs).toBe(3);
-  });
 });

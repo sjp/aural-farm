@@ -54,13 +54,8 @@ export function loadWorklet(ctx: BaseAudioContext, url: string): Promise<void> {
 }
 
 interface ProcessorOptions {
-  /**
-   * Output channels, or a list for a node with several outputs: one per entry,
-   * each with that many channels. Separate outputs let a sound connect each
-   * stereo pair (or control signal) straight to its own filter, without a
-   * splitter and mergers.
-   */
-  channels: number | readonly number[];
+  /** Output channels. */
+  channels: number;
   /** The sound's `init.startAt`: the absolute time the context's current time stands for. */
   startAt: number;
   /** Passed to the processor's constructor, with `offset` added. */
@@ -87,12 +82,11 @@ export async function startProcessor(
   options: ProcessorOptions,
 ): Promise<AudioWorkletNode> {
   await loadWorklet(ctx, moduleUrl);
-  const outputs = typeof options.channels === "number" ? [options.channels] : [...options.channels];
   const node = scope.add(
     new AudioWorkletNode(ctx, processor, {
       numberOfInputs: 0,
-      numberOfOutputs: outputs.length,
-      outputChannelCount: outputs,
+      numberOfOutputs: 1,
+      outputChannelCount: [options.channels],
       processorOptions: { ...options.processorOptions, offset: options.startAt - ctx.currentTime },
       ...(options.parameterData ? { parameterData: options.parameterData } : {}),
     }),
