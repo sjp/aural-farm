@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -354,6 +354,20 @@ a short, irregular rattle as the train crosses points (Off, Rarely, about every 
 or Sometimes, about every 90 seconds). **Variation** crossfades to a different track, its
 joints a little differently spaced, and different sways. With rain on the window, it makes
 the **Night Train** preset.
+
+**Distant City** is a city heard from an open window several streets away, or from a
+balcony high up. Nothing is close: a low, steady wash of traffic from everywhere at once,
+swelling and easing slowly as lights change across town, and now and then a single car on a
+nearer road, a soft whoosh that rises, crosses from one side to the other with a slight fall
+in pitch, and fades. Everything sits in open air between buildings. **Time** picks **Night**
+(quieter and darker, a car every 20 seconds or so) or **Day** (a brighter, fuller rumble and
+about a car every 4 seconds), gliding between them. **Traffic** sets how often cars pass (0
+is the rumble alone), **Rumble** the wash's level (0 is off), **Horns, sirens** adds a very
+distant horn or a siren far off (Off, Rare, about every 6 minutes, or Occasional, every 2),
+always soft and never startling, and **Space** how much of the open air you hear.
+**Variation** crossfades to different car timings and swells. A change of Time, Traffic or
+the signals applies from the next second. With light rain on the street, it makes the
+**City Night** preset.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
