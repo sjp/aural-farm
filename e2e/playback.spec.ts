@@ -76,7 +76,8 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
   });
   await expect(page.getByRole("button", { name: "Test Tone" })).toBeVisible();
   await page.waitForTimeout(2000);
-  await expect(page.getByRole("alert")).toHaveCount(0);
+  // A locator rather than a role query, so an alert in a panel that has idled out still counts.
+  await expect(page.locator("[role=alert]")).toHaveCount(0);
 
   expect(errors).toEqual([]);
 });
