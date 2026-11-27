@@ -57,3 +57,51 @@ export interface MediaOutputElement {
   addEventListener: (type: "pause", listener: () => void) => void;
   removeEventListener: (type: "pause", listener: () => void) => void;
 }
+
+/** Reads `OutputFeatures` from the browser. */
+export function detectOutputFeatures(): OutputFeatures {
+  return {
+    mediaStreamDestination:
+      typeof AudioContext !== "undefined" &&
+      typeof AudioContext.prototype.createMediaStreamDestination === "function",
+    mediaSession: "mediaSession" in navigator,
+    coarsePointer: window.matchMedia("(pointer: coarse)").matches,
+  };
+}
+
+let outputElement: HTMLAudioElement | undefined;
+
+/**
+ * The page's one hidden `<audio>` element for the media route, added to the
+ * document on first use. Without `controls` it takes no space and isn't shown.
+ */
+export function pageOutputElement(): HTMLAudioElement {
+  if (!outputElement) {
+    outputElement = document.createElement("audio");
+    outputElement.className = "audio-output";
+    outputElement.setAttribute("aria-hidden", "true");
+    document.body.append(outputElement);
+  }
+  return outputElement;
+}
+
+/** Safari's Audio Session API, which the DOM types don't list yet. */
+interface AudioSession {
+  type: string;
+}
+
+/**
+ * Marks the page's audio as media playback where the Audio Session API exists
+ * (Safari 17+), so it keeps playing with the ring/silent switch on, Web Audio
+ * included. Call it before the context starts.
+ */
+export function preferPlaybackSession(nav: Navigator = navigator): void {
+  const session = (nav as Navigator & { audioSession?: AudioSession }).audioSession;
+  if (session && session.type !== "playback") {
+    try {
+      session.type = "playback";
+    } catch {
+      // An older or stricter implementation: play as the default session.
+    }
+  }
+}

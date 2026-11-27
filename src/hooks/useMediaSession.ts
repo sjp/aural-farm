@@ -9,6 +9,18 @@ import {
   type MetadataFactory,
 } from "../lib/media-session";
 
+/** The browser's Media Session, where there is one. */
+export function browserMediaSession(): MediaSessionLike | undefined {
+  return "mediaSession" in navigator ? navigator.mediaSession : undefined;
+}
+
+const newMediaMetadata: MetadataFactory = (init) => new MediaMetadata(init);
+
+/** `MediaMetadata`, where the browser has it. */
+export function browserMetadata(): MetadataFactory | undefined {
+  return typeof MediaMetadata === "function" ? newMediaMetadata : undefined;
+}
+
 /**
  * Keeps the Media Session in step with the app: its buttons call `actions`, it
  * shows `title`, and its playback state mirrors `state`. With no session (or no

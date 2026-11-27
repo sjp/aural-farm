@@ -25,6 +25,11 @@ interface ScreenWakeLock {
   dispose: () => void;
 }
 
+/** The browser's wake lock, where it has one. */
+export function browserWakeLock(): WakeLockLike | undefined {
+  return "wakeLock" in navigator ? navigator.wakeLock : undefined;
+}
+
 export function createScreenWakeLock(
   wakeLock: WakeLockLike,
   doc: VisibilitySource = document,

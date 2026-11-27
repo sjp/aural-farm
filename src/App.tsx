@@ -7,6 +7,12 @@ import {
   type EngineState,
   type LayerState,
 } from "./audio/engine";
+import {
+  chooseOutputRoute,
+  detectOutputFeatures,
+  pageOutputElement,
+  preferPlaybackSession,
+} from "./audio/output";
 import { tintWeights } from "./backdrop/colours";
 import {
   backdropLabel,
@@ -25,10 +31,14 @@ import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
 import { useKeyboardInset } from "./hooks/useKeyboardInset";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { browserMediaSession, browserMetadata, useMediaSession } from "./hooks/useMediaSession";
+import { useWakeLock } from "./hooks/useWakeLock";
 import { copyText } from "./lib/clipboard";
 import { createFavourites, type Favourites } from "./lib/favourites";
+import { mediaTitle, type MediaSessionLike, type MetadataFactory } from "./lib/media-session";
 import { createPreferences, type Preferences } from "./lib/preferences";
 import { createStore } from "./lib/store";
+import { browserWakeLock, type WakeLockLike } from "./lib/wake-lock";
 import {
   defaultLayer,
   MASTER_PARAM,
@@ -138,11 +148,19 @@ type EngineCallbacks = Pick<Parameters<typeof createAudioEngine>[0], "onState" |
 /** Makes the app's engine; tests pass a stand-in. */
 export type EngineFactory = (callbacks: EngineCallbacks) => AudioEngine;
 
-function browserEngine(loader: SoundLoader): EngineFactory {
+function browserEngine(loader: SoundLoader, preferences: Preferences): EngineFactory {
   return (callbacks) =>
     createAudioEngine({
-      // The "playback" latency hint picks a larger buffer, which saves power.
-      createContext: () => new AudioContext({ latencyHint: "playback" }),
+      createContext: () => {
+        preferPlaybackSession();
+        // The "playback" latency hint picks a larger buffer, which saves power.
+        return new AudioContext({ latencyHint: "playback" });
+      },
+      // Read when the context is made, so a changed Audio output applies after a reload.
+      mediaElement: () =>
+        chooseOutputRoute(loadDisplay(preferences).audioOutput, detectOutputFeatures()) === "media"
+          ? pageOutputElement()
+          : undefined,
       loader,
       ...callbacks,
     });
@@ -165,6 +183,11 @@ interface AppProps {
   sounds?: readonly SoundEntry[] | undefined;
   /** The sound a hash without `layers` holds. */
   defaultSoundId?: string;
+  /** The lock screen's and media keys' controls; tests pass a fake. */
+  mediaSession?: MediaSessionLike | undefined;
+  mediaMetadata?: MetadataFactory | undefined;
+  /** Keeps the screen on; tests pass a fake. */
+  wakeLock?: WakeLockLike | undefined;
 }
 
 export function App({
@@ -175,6 +198,9 @@ export function App({
   createEngine,
   sounds = registry,
   defaultSoundId = DEFAULT_SOUND_ID,
+  mediaSession = browserMediaSession(),
+  mediaMetadata = browserMetadata(),
+  wakeLock = browserWakeLock(),
 }: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
   const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
@@ -201,7 +227,7 @@ export function App({
 
   const [playback] = useState(() => createStore<Playback>({ state: "idle", layers: {} }));
   const [engine] = useState(() =>
-    (createEngine ?? browserEngine(loader))({
+    (createEngine ?? browserEngine(loader, preferences))({
       onState: (engineState) => {
         playback.set({ ...playback.get(), state: engineState });
       },
@@ -296,6 +322,33 @@ export function App({
       stopListening();
     };
   }, [engine, playback]);
+
+  const sessionTitle = useMemo(
+    () =>
+      mediaTitle(
+        state.mix.layers.flatMap((layer) => sounds.find((s) => s.id === layer.id)?.name ?? []),
+      ),
+    [state.mix.layers, sounds],
+  );
+  const sessionActions = useMemo(
+    () => ({
+      play: () => {
+        if (stateRef.current.mix.layers.length > 0) {
+          void engine.play();
+        }
+      },
+      pause: () => {
+        engine.pause();
+      },
+      stop: () => {
+        engine.pause();
+      },
+    }),
+    [engine],
+  );
+  useMediaSession(sessionTitle, engineState, sessionActions, mediaSession, mediaMetadata);
+  // Only while playing: a paused mix shouldn't keep the device awake.
+  useWakeLock(display.keepAwake && isPlaying(engineState), wakeLock);
 
   const togglePlay = useCallback(() => {
     if (isPlaying(playback.get().state)) {
@@ -681,6 +734,7 @@ export function App({
             sounds={sounds}
             display={display}
             onDisplayChange={changeDisplay}
+            wakeLock={wakeLock !== undefined}
             layout={layout}
             sheetOpen={sheetOpen}
             onSheetOpenChange={setSheetOpen}

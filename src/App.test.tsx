@@ -10,6 +10,7 @@ import { createSoundLoader } from "./sounds/loader";
 import type { SoundEntry } from "./sounds/registry";
 import { act } from "./test/act";
 import { TEST_TONE_ID, testCatalogue } from "./test/catalogue";
+import { fakeMediaSession } from "./test/fake-media";
 
 const loader = createSoundLoader();
 
@@ -395,6 +396,95 @@ describe("App playback", () => {
       view.unmount();
     });
     expect(engine.dispose).toHaveBeenCalled();
+  });
+});
+
+describe("App media session and wake lock", () => {
+  beforeEach(() => {
+    vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  });
+
+  function renderWithSession(hash: string, preferences = createPreferences(() => undefined)) {
+    const fake = fakeEngine();
+    const { session, handlers } = fakeMediaSession();
+    const requests: string[] = [];
+    const released: number[] = [];
+    window.history.replaceState(null, "", `/${hash}`);
+    render(
+      <App
+        initial={parseHash(window.location.hash, catalogue, TEST_TONE_ID)}
+        loader={loader}
+        preferences={preferences}
+        favourites={createFavourites(() => undefined)}
+        createEngine={fake.factory}
+        sounds={catalogue}
+        defaultSoundId={TEST_TONE_ID}
+        mediaSession={session}
+        mediaMetadata={(init) => ({ ...init }) as unknown as MediaMetadata}
+        wakeLock={{
+          request: (type) => {
+            requests.push(type);
+            const index = requests.length;
+            return Promise.resolve({
+              released: false,
+              release: () => {
+                released.push(index);
+                return Promise.resolve();
+              },
+              addEventListener: () => undefined,
+            });
+          },
+        }}
+      />,
+    );
+    return { ...fake, session, handlers, requests, released };
+  }
+
+  it("names the mix's sounds in the session and follows changes", async () => {
+    const { session } = renderWithSession("#layers=test-tone,alpha");
+    await settle();
+    expect(session.metadata?.title).toBe("Test Tone + Alpha");
+    expect(session.metadata?.artist).toBe("Aural Farm");
+    fireEvent.click(screen.getAllByRole("button", { name: /^Remove/ })[1]);
+    expect(session.metadata?.title).toBe("Test Tone");
+  });
+
+  it("mirrors the engine's state and plays, pauses and stops from the session", async () => {
+    const { session, handlers, engine } = renderWithSession("#layers=test-tone");
+    await settle();
+    expect(session.playbackState).toBe("playing");
+    act(() => {
+      handlers.get("pause")?.({ action: "pause" });
+    });
+    expect(engine.pause).toHaveBeenCalledTimes(1);
+    expect(session.playbackState).toBe("paused");
+    act(() => {
+      handlers.get("play")?.({ action: "play" });
+    });
+    expect(engine.play).toHaveBeenCalledTimes(2);
+    act(() => {
+      handlers.get("stop")?.({ action: "stop" });
+    });
+    expect(engine.pause).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the screen on with Keep screen on, only while playing", async () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("display.keepAwake", "1");
+    const { requests, released, handlers } = renderWithSession("#layers=test-tone", preferences);
+    await settle();
+    expect(requests).toEqual(["screen"]);
+    act(() => {
+      handlers.get("pause")?.({ action: "pause" });
+    });
+    await settle();
+    expect(released).toEqual([1]);
+  });
+
+  it("leaves the screen alone without Keep screen on", async () => {
+    const { requests } = renderWithSession("#layers=test-tone");
+    await settle();
+    expect(requests).toEqual([]);
   });
 });
 
