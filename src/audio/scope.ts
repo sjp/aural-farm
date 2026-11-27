@@ -8,7 +8,7 @@ interface Disposable {
   dispose: () => void;
 }
 
-interface AudioScope {
+export interface AudioScope {
   /** Disconnects `node` on dispose. Returns it, so creation and registration read as one. */
   add: <T extends AudioNode>(node: T) => T;
   /** Stops and disconnects a scheduled source (oscillator, buffer or constant source) on dispose. */
