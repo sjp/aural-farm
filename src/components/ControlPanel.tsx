@@ -21,6 +21,7 @@ import { Section } from "./Section";
 import { FULL_MIX_HINT, layerNameId, levelBrightness } from "./mixer";
 import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
+import { Slider } from "./Slider";
 
 /** The preference holding collapsed sections: "<sound>" for a layer, "<sound>/<section>" inside one. */
 const CLOSED_KEY = "closedSections";
@@ -158,17 +159,15 @@ function MasterVolume({
       >
         {muted ? <SpeakerMutedIcon /> : <SpeakerIcon />}
       </button>
-      <input
-        type="range"
-        aria-label={MASTER_PARAM.label}
+      <Slider
+        label={MASTER_PARAM.label}
         title={hover ? `${MASTER_PARAM.label} (↑ ↓)` : MASTER_PARAM.label}
-        style={{ "--p": `${String(position * 100)}%` }}
+        position={position}
         min={MASTER_PARAM.min}
         max={MASTER_PARAM.max}
         step={MASTER_PARAM.step}
         value={value}
-        onInput={(event) => {
-          const next = Number(event.currentTarget.value);
+        onValue={(next) => {
           if (next !== value) {
             onChange(next);
           }

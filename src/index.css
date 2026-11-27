@@ -471,6 +471,11 @@ body,
   color: var(--text);
 }
 
+/* A slider's wrapper takes touch input when the input doesn't (see below). */
+.slider {
+  display: flex;
+}
+
 input[type="range"] {
   width: 100%;
   height: 20px;
@@ -759,6 +764,16 @@ kbd {
     height: 44px;
   }
 
+  /* The wrapper drags the value on sideways movement only and lets vertical swipes
+     scroll, so the input itself takes no pointer input. */
+  .slider {
+    touch-action: pan-y;
+  }
+
+  .slider input[type="range"] {
+    pointer-events: none;
+  }
+
   input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 3px;
@@ -790,7 +805,7 @@ kbd {
   margin: 6px -6px 0;
 }
 
-.master-row input[type="range"] {
+.master-row .slider {
   flex: 1;
   min-width: 0;
 }

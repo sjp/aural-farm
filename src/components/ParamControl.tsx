@@ -2,6 +2,7 @@ import type { ComponentChildren, JSX } from "preact";
 import { formatValue, isDefault, sliderPosition, snap, valueAtPosition } from "../sounds/params";
 import type { NumberParam, ParamDef, ParamValue, SelectOption } from "../sounds/types";
 import { ResetIcon } from "./icons";
+import { Slider } from "./Slider";
 
 /** Slider resolution for log-scaled params, which slide over positions, not values. */
 const LOG_STEPS = 1000;
@@ -99,21 +100,19 @@ export function ParamControl({
       const n = Number(value);
       const position = sliderPosition(def, n);
       const log = def.scale === "log";
-      const style = { "--p": `${String(position * 100)}%` };
       return (
         <div className="control">
           {label(<span className="control-value">{formatValue(def, n)}</span>)}
-          <input
+          <Slider
             id={inputId}
-            type="range"
-            style={style}
+            position={position}
             min={log ? 0 : def.min}
             max={log ? LOG_STEPS : def.max}
             step={log ? "any" : def.step}
             value={log ? position * LOG_STEPS : n}
-            aria-valuetext={formatValue(def, n)}
-            onInput={(event) => {
-              const next = nextNumber(def, n, Number(event.currentTarget.value));
+            valueText={formatValue(def, n)}
+            onValue={(raw) => {
+              const next = nextNumber(def, n, raw);
               if (next !== n) {
                 onChange(next);
               }
