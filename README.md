@@ -120,8 +120,8 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Seaside**, **Stormy Night**, **Deep Brown**, **Soft Pink** and **Masking Blend**. More
-  arrive as more sounds are added.
+  **Seaside**, **Stormy Night**, **Summer Night**, **Deep Brown**, **Soft Pink** and
+  **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
 
@@ -297,6 +297,16 @@ on its own, **Size** from a small brook (small, high bubbles over a faint rush) 
 river (larger, lower bubbles almost lost in a deep, full rush), **Distance** moves you from
 the bank to further away, where the babble fades into the rush, and **Variation** crossfades
 to a different pattern of bubbles and surges.
+
+**Night Insects** is a warm summer night outdoors: several crickets around you, near and far,
+each with its own pitch and pace, chirping in soft, rounded pulses, drifting in and out of
+step and pausing now and then, over a faint shimmer of countless insects further off.
+**Crickets** sets how many are near enough to pick out (each fades in or out), **Warmth**
+how warm the night is (crickets chirp faster when it's warmer: from about one chirp a second
+at 12 °C to nearly three at 28 °C), **Distance** moves you from among them to the edge of a
+field, where the far-off chorus carries the sound, **Katydids** adds a few rasping insects
+further away, and **Variation** crossfades to a different set of crickets. A change of
+warmth or distance applies from each cricket's next chirp.
 
 **Fireplace** is a wood fire in an open hearth, heard from an armchair across the room: the
 soft, flickering breath of the flames under little clusters of dry crackles, the odd
