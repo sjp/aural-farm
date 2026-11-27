@@ -788,3 +788,60 @@ describe("levels", () => {
     expect(analyser?.connections).toEqual([]);
   });
 });
+
+describe("master level", () => {
+  const analysers = () => ctx.nodes.filter((n) => n.kind === "analyser");
+
+  it("makes no analyser until something watches the master level", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    expect(analysers()).toHaveLength(0);
+    expect(engine.getMasterLevel()).toBe(0);
+  });
+
+  it("taps the master output with one 512-sample analyser and reads its RMS level", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    const stop = engine.watchMasterLevel();
+    expect(analysers()).toHaveLength(1);
+    const analyser = analysers()[0] as unknown as FakeNode & { fftSize: number; signal: number };
+    expect(analyser.fftSize).toBe(512);
+    const { trim } = chain();
+    expect(trim.connections).toContain(analyser);
+    analyser.signal = 0.5;
+    expect(engine.getMasterLevel()).toBeCloseTo(0.5);
+    stop();
+    expect(trim.connections).not.toContain(analyser);
+    expect(engine.getMasterLevel()).toBe(0);
+  });
+
+  it("waits for the context when watched before the first play, and keeps one analyser for every watcher", async () => {
+    const first = engine.watchMasterLevel();
+    const second = engine.watchMasterLevel();
+    expect(analysers()).toHaveLength(0);
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    expect(analysers()).toHaveLength(1);
+    first();
+    first();
+    expect(chain().trim.connections).toContain(analysers()[0]);
+    second();
+    expect(chain().trim.connections).not.toContain(analysers()[0]);
+  });
+
+  it("doesn't take the layer meters' analysers", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    const stopMaster = engine.watchMasterLevel();
+    const stopLayers = engine.watchLevels();
+    expect(analysers()).toHaveLength(2);
+    stopLayers();
+    expect(engine.getMasterLevel()).toBe(0);
+    expect(chain().trim.connections).toContain(analysers()[0]);
+    stopMaster();
+  });
+});

@@ -18,7 +18,9 @@
  * any layer in the mix is soloed, the solo gains of the others glide to zero.
  *
  * Levels for a meter come from one small analyser per layer, tapped after its fade.
- * The analysers exist only while something watches levels (`watchLevels`).
+ * The analysers exist only while something watches levels (`watchLevels`). The
+ * master level (for the backdrop) comes from one more, tapped at the output, which
+ * likewise exists only while watched (`watchMasterLevel`).
  *
  * Each sound is crash-isolated: a throw in `create` or `update`, or a crashed
  * worklet, fails that layer alone, and `retry` builds it again. The context is
@@ -83,6 +85,8 @@ export const BLOCKED_AFTER_MS = 500;
 const MIN_POLL_MS = 20;
 /** Samples a level analyser looks at: about 5 ms, enough for a meter. */
 const LEVEL_FFT_SIZE = 256;
+/** Samples the master level analyser looks at: about 11 ms, a little steadier. */
+const MASTER_LEVEL_FFT_SIZE = 512;
 
 interface EngineOptions {
   /** Makes the context, on the first `play()`. Injected so tests can pass a fake. */
@@ -119,6 +123,13 @@ export interface AudioEngine {
   watchLevels: () => () => void;
   /** A layer's current RMS level after its gains (0 = silent, 1 = full scale). */
   getLevel: (id: string) => number;
+  /**
+   * Starts measuring the master output for `getMasterLevel`, and returns a function
+   * that stops. Its one analyser exists only while at least one watcher is active.
+   */
+  watchMasterLevel: () => () => void;
+  /** The master output's current RMS level (0 = silent, 1 = full scale). */
+  getMasterLevel: () => number;
   /** Stops everything and closes the context. */
   dispose: () => void;
   readonly state: EngineState;
@@ -156,6 +167,16 @@ function fadeParam(param: AudioParam, fade: Fade, to: number, seconds: number, n
 
 function sameParams(a: ParamValues, b: ParamValues): boolean {
   return Object.keys(a).every((key) => a[key] === b[key]);
+}
+
+/** An analyser's current RMS level, read into `samples` (as long as its `fftSize`). */
+function rmsOf(analyser: AnalyserNode, samples: Float32Array<ArrayBuffer>): number {
+  analyser.getFloatTimeDomainData(samples);
+  let sum = 0;
+  for (const sample of samples) {
+    sum += sample * sample;
+  }
+  return Math.sqrt(sum / samples.length);
 }
 
 /** Reads the state afresh: it changes behind TypeScript's back across an await. */
@@ -226,6 +247,10 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   let levelWatchers = 0;
   /** Scratch space for reading an analyser, shared by every layer. */
   const levelSamples = new Float32Array(LEVEL_FFT_SIZE);
+  /** How many `watchMasterLevel` callers are active. */
+  let masterWatchers = 0;
+  let masterAnalyser: AnalyserNode | undefined;
+  const masterSamples = new Float32Array(MASTER_LEVEL_FFT_SIZE);
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
   const setState = (next: EngineState) => {
@@ -324,6 +349,24 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     analyser.fftSize = LEVEL_FFT_SIZE;
     voice.fade.connect(analyser);
     voice.analyser = analyser;
+  };
+
+  const attachMasterAnalyser = () => {
+    if (!context || !master || masterAnalyser || masterWatchers === 0 || disposed) {
+      return;
+    }
+    masterAnalyser = context.createAnalyser();
+    masterAnalyser.fftSize = MASTER_LEVEL_FFT_SIZE;
+    master.output.connect(masterAnalyser);
+  };
+
+  const detachMasterAnalyser = () => {
+    if (!masterAnalyser) {
+      return;
+    }
+    master?.output.disconnect(masterAnalyser);
+    masterAnalyser.disconnect();
+    masterAnalyser = undefined;
   };
 
   const detachAnalyser = (voice: Voice) => {
@@ -621,6 +664,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     context = ctx;
     masterFade = still(0);
     ctx.addEventListener("statechange", onContextState);
+    attachMasterAnalyser();
     for (const entry of layers.values()) {
       build(entry);
     }
@@ -824,12 +868,30 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     if (!analyser || disposed) {
       return 0;
     }
-    analyser.getFloatTimeDomainData(levelSamples);
-    let sum = 0;
-    for (const sample of levelSamples) {
-      sum += sample * sample;
+    return rmsOf(analyser, levelSamples);
+  };
+
+  const watchMasterLevel = () => {
+    masterWatchers++;
+    attachMasterAnalyser();
+    let stopped = false;
+    return () => {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      masterWatchers--;
+      if (masterWatchers === 0) {
+        detachMasterAnalyser();
+      }
+    };
+  };
+
+  const getMasterLevel = () => {
+    if (!masterAnalyser || disposed) {
+      return 0;
     }
-    return Math.sqrt(sum / levelSamples.length);
+    return rmsOf(masterAnalyser, masterSamples);
   };
 
   const retry = (id: string) => {
@@ -868,6 +930,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     for (const voice of Array.from(leaving)) {
       release(voice);
     }
+    detachMasterAnalyser();
     if (context) {
       context.removeEventListener("statechange", onContextState);
       context.close().catch(() => undefined);
@@ -883,6 +946,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     setMasterMuted,
     watchLevels,
     getLevel,
+    watchMasterLevel,
+    getMasterLevel,
     dispose,
     get state() {
       return state;

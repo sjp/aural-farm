@@ -46,6 +46,8 @@ function fakeEngine() {
     setMasterMuted: vi.fn<AudioEngine["setMasterMuted"]>(),
     watchLevels: vi.fn<AudioEngine["watchLevels"]>(() => () => undefined),
     getLevel: vi.fn<AudioEngine["getLevel"]>(() => 0),
+    watchMasterLevel: vi.fn<AudioEngine["watchMasterLevel"]>(() => () => undefined),
+    getMasterLevel: vi.fn<AudioEngine["getMasterLevel"]>(() => 0),
     dispose: vi.fn<AudioEngine["dispose"]>(),
   } satisfies AudioEngine;
   const factory: EngineFactory = (given) => {
