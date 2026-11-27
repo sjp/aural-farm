@@ -70,6 +70,7 @@ row with:
 
 - a **tint dot** that glows with the layer's level while it plays;
 - the sound's name, and a short hint for some sounds;
+- a **star**, while the row is expanded, which adds the sound to your favourites;
 - **Solo (S)**: while any layer is soloed, only the soloed layers are heard, and the header
   offers **Clear solo**;
 - **Mute (M)**: the row dims, and its controls still work;
@@ -79,8 +80,22 @@ row with:
   seconds;
 - a **volume** slider, always shown.
 
-**Add sound** under the rows lists every sound not yet in the mix; a new layer joins at
-the end, at volume 70. An empty mix says so, and Play stays disabled until a sound is added.
+**Add sound** under the rows opens the sound picker in place of the mixer. Its search field
+finds sounds by name, description, tags and categories (every word must match, ignoring
+case and accents, and name matches come first). Under it, category chips narrow the list
+(a sound shows if it's in any chosen category), and a count sits beside the sort:
+**Featured**, **A–Z**, **By category** or **Lightest first** (which shows each sound's
+processing cost), remembered in the browser. Starred sounds list first under
+**Favourites**; stars are kept in the browser and shared between its tabs, never put in the
+link. Each row shows the sound's tint, name, description and star, and **In mix ✓** for the
+sounds already playing.
+
+Picking a sound adds it at the end of the mix, at volume 70, closes the picker and moves
+focus to the new row; `Shift+Enter` (or Shift-click) adds it and keeps the picker open.
+Picking a sound already in the mix moves focus to its row instead. In a full mix of eight
+the other sounds can't be picked, and a note says why. In the picker, `↑` `↓` `PageUp`
+`PageDown` `Home` `End` move through the list, `Enter` picks, `*` stars, and `Esc` clears
+the search, then the chips, then closes the picker. An empty mix says so, and Play stays disabled until a sound is added.
 If a sound fails to load or crashes, its layer says so and offers **Retry** and **Remove**;
 the other layers keep playing. The footer has **Reset all**, which puts every layer's
 settings and volume, and the master volume, back to their defaults while keeping the layers
@@ -137,7 +152,8 @@ steady) and **Variation**, which crossfades to a different take on the same nois
 | Key                 | Action                                |
 | ------------------- | ------------------------------------- |
 | `Space`             | Play or pause                         |
-| `/`                 | Add a sound (opens the list, focused) |
+| `/`                 | Add a sound (opens the picker)        |
+| `S`                 | Star or unstar the focused layer      |
 | `1`–`8`             | Mute or unmute layer N                |
 | `Shift+1`–`Shift+8` | Solo or unsolo layer N                |
 | `M`                 | Mute or unmute everything             |
