@@ -19,6 +19,7 @@ import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
 import { quartersMeta } from "./quarters/quarters.meta";
 import { rainMeta } from "./rain/rain.meta";
+import { serverRoomMeta } from "./server-room/server-room.meta";
 import { streamMeta } from "./stream/stream.meta";
 import { thunderMeta } from "./thunder/thunder.meta";
 import { trainMeta } from "./train/train.meta";
@@ -41,6 +42,10 @@ export const sounds: readonly SoundEntry[] = [
     load: () => import("./life-support/life-support").then((m) => m.lifeSupport),
   },
   { ...fanMeta, load: () => import("./fan/fan").then((m) => m.fan) },
+  {
+    ...serverRoomMeta,
+    load: () => import("./server-room/server-room").then((m) => m.serverRoom),
+  },
   { ...airplaneMeta, load: () => import("./airplane/airplane").then((m) => m.airplane) },
   { ...trainMeta, load: () => import("./train/train").then((m) => m.train) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
