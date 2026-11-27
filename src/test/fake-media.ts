@@ -1,9 +1,9 @@
 /**
- * A stand-in for the hidden `<audio>` element the engine can play its output
- * through: enough of `HTMLMediaElement` for `MediaOutputElement`, plus controls
- * for tests.
+ * Stand-ins for the hidden `<audio>` element the engine can play its output
+ * through, and for `navigator.mediaSession`.
  */
 import type { MediaOutputElement } from "../audio/output";
+import type { MediaSessionLike } from "../lib/media-session";
 
 export class FakeMediaElement implements MediaOutputElement {
   srcObject: MediaProvider | null = null;
@@ -58,4 +58,20 @@ export class FakeMediaElement implements MediaOutputElement {
       }
     });
   }
+}
+
+/** A fake `navigator.mediaSession` that records its handlers, and knows no `seekto`. */
+export function fakeMediaSession() {
+  const handlers = new Map<MediaSessionAction, MediaSessionActionHandler | null>();
+  const session: MediaSessionLike = {
+    metadata: null,
+    playbackState: "none",
+    setActionHandler(action, handler) {
+      if (action === "seekto") {
+        throw new TypeError("seekto isn't supported");
+      }
+      handlers.set(action, handler);
+    },
+  };
+  return { session, handlers };
 }
