@@ -61,6 +61,14 @@ cursor hidden.
 **Copy link** copies a link that spells out every setting, defaults included, plus
 `panel=hidden`, so the mix sounds the same even if a default changes later.
 
+### Sounds
+
+A fresh visit opens with **Brown Noise**. The noise colours (**Brown**, **Pink**, **White**
+and **Grey Noise**) are the plain, steady noises used for sleep, focus and masking. Each has
+**Tone** (darker to brighter), **Width** (mono to wide stereo, at a steady level),
+**Movement** (slow, subtle swells; 0 is perfectly steady) and **Variation**, which
+crossfades to a different take on the same noise.
+
 ### Keyboard shortcuts
 
 | Key                 | Action                                |
