@@ -23,7 +23,7 @@ test("finds, adds, stars and closes with the keyboard alone", async ({ page }) =
   );
 
   // Search is accent- and case-blind; every word must match.
-  await search.fill("BRÓWN noise");
+  await search.fill("BRÓWN waterfall");
   await expect(list.getByRole("option")).toHaveCount(1);
   await expect(page.getByRole("status").filter({ hasText: "sound" })).toHaveText("1 sound");
 
