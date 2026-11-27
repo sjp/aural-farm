@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { DriftGenerator } from "./drift-dsp";
 import { NOISE_COLOURS, NoiseGenerator } from "./noise-dsp";
+import { REVERB_KINDS, reverbImpulse } from "./reverb";
 
 /**
  * Times the shared worklet kernels per second of audio, run as a worklet would:
- * one 128-sample render quantum at a time, at 48 kHz. Prints each cost as a
+ * one 128-sample render quantum at a time, at 48 kHz, and prints each cost as a
  * percentage of real time (one layer's budget is 0.2–1.5 %, see the README).
+ * Also times generating each reverb impulse, which happens once per context.
  */
 const SR = 48000;
 const QUANTUM = 128;
@@ -49,5 +51,16 @@ describe("kernel cost", () => {
     });
     report(`drift, ${String(octaves)} octaves`, cost);
     expect(cost).toBeLessThan(0.01);
+  });
+});
+
+describe("reverb impulse generation", () => {
+  it.each(REVERB_KINDS)("%s takes a few milliseconds", (kind) => {
+    reverbImpulse(kind, SR);
+    const begin = performance.now();
+    reverbImpulse(kind, SR);
+    const ms = performance.now() - begin;
+    console.warn(`${kind} impulse: ${ms.toFixed(1)} ms`);
+    expect(ms).toBeLessThan(50);
   });
 });
