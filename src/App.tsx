@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
   createAudioEngine,
   isPlaying,
@@ -7,7 +7,7 @@ import {
   type EngineState,
   type LayerState,
 } from "./audio/engine";
-import { ControlPanel } from "./components/ControlPanel";
+import { ControlPanel, FULL_MIX_HINT, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
@@ -17,10 +17,19 @@ import { useMediaQuery } from "./hooks/useMediaQuery";
 import { copyText } from "./lib/clipboard";
 import { createPreferences, type Preferences } from "./lib/preferences";
 import { createStore } from "./lib/store";
-import { parseHash, serialiseHash, VOLUME_PARAM, type HashState, type Layer } from "./mixes/mix";
+import {
+  defaultLayer,
+  MASTER_PARAM,
+  MAX_LAYERS,
+  parseHash,
+  serialiseHash,
+  VOLUME_PARAM,
+  type HashState,
+  type Layer,
+} from "./mixes/mix";
 import type { SoundLoader } from "./sounds/loader";
 import { defaults } from "./sounds/params";
-import { getSound } from "./sounds/registry";
+import { DEFAULT_SOUND_ID, sounds as registry, type SoundEntry } from "./sounds/registry";
 import type { ParamValue } from "./sounds/types";
 
 /** The panel and cursor fade after this long without input. */
@@ -28,10 +37,17 @@ export const IDLE_MS = 3000;
 /** Hash writes wait this long after the last change, so dragging a slider writes once. */
 export const HASH_DEBOUNCE_MS = 250;
 export const TOAST_MS = 2500;
+/** "Removed <name>" stays up this long, so there's time to press Undo. */
+export const UNDO_TOAST_MS = 5000;
+/** How far ↑ and ↓ move the master volume. */
+const MASTER_STEP = 5;
 
 interface Toast {
   id: number;
   message: string;
+  /** A button in the toast, such as Undo. */
+  action: { label: string; run: () => void } | undefined;
+  duration: number;
 }
 
 /** Whether a key press belongs to a form field rather than to the shortcuts. */
@@ -64,6 +80,19 @@ function onPlayToggle(event: Event): boolean {
     (event instanceof KeyboardEvent && event.key === " ") ||
     (event.target instanceof Element && event.target.closest(`[${PLAY_TOGGLE_ATTRIBUTE}]`) !== null)
   );
+}
+
+/** Whether a key press has no focused control to go to, so arrow keys are free for shortcuts. */
+function nothingFocused(target: EventTarget | null): boolean {
+  return (
+    !(target instanceof Element) || target === document.body || target === document.documentElement
+  );
+}
+
+/** The layer number (1–8) a key press names, from the key's position so Shift doesn't change it. */
+function layerNumber(event: KeyboardEvent): number | undefined {
+  const digit = /^(?:Digit|Numpad)([1-8])$/.exec(event.code)?.[1] ?? /^[1-8]$/.exec(event.key)?.[0];
+  return digit === undefined ? undefined : Number(digit);
 }
 
 /** Input events that count as a user gesture, which lets a blocked context start. */
@@ -101,6 +130,10 @@ interface AppProps {
   loader: SoundLoader;
   preferences?: Preferences;
   createEngine?: EngineFactory;
+  /** Every sound, in Featured order: the registry, or a stand-in in tests. */
+  sounds?: readonly SoundEntry[] | undefined;
+  /** The sound a hash without `layers` holds. */
+  defaultSoundId?: string;
 }
 
 export function App({
@@ -108,8 +141,17 @@ export function App({
   loader,
   preferences: givenPreferences,
   createEngine,
+  sounds = registry,
+  defaultSoundId = DEFAULT_SOUND_ID,
 }: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
+  const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
+  const [masterMuted, setMasterMuted] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const stateRef = useRef(state);
+  useLayoutEffect(() => {
+    stateRef.current = state;
+  });
   const [preferences] = useState(() => givenPreferences ?? createPreferences());
   const [toast, setToast] = useState<Toast | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -147,6 +189,19 @@ export function App({
     engine.setMix(state.mix);
   }, [engine, state.mix]);
 
+  useEffect(() => {
+    engine.setSolo(solo);
+  }, [engine, solo]);
+
+  useEffect(() => {
+    engine.setMasterMuted(masterMuted);
+  }, [engine, masterMuted]);
+
+  const levels = useMemo<LevelMeter>(
+    () => ({ watch: engine.watchLevels, get: engine.getLevel }),
+    [engine],
+  );
+
   // A fresh visit or a shared link starts playing. If the browser blocks that, the
   // first tap, click or key press anywhere starts it instead.
   useEffect(() => {
@@ -164,6 +219,10 @@ export function App({
       }
     };
     const autoplay = async () => {
+      // An empty mix has nothing to play: wait for the Play button instead.
+      if (stateRef.current.mix.layers.length === 0) {
+        return;
+      }
       const result = await engine.play();
       if (active && result === "blocked") {
         for (const type of GESTURES) {
@@ -181,20 +240,15 @@ export function App({
   const togglePlay = useCallback(() => {
     if (isPlaying(playback.get().state)) {
       engine.pause();
-    } else {
+    } else if (stateRef.current.mix.layers.length > 0) {
       void engine.play();
     }
   }, [engine, playback]);
 
-  const stateRef = useRef(state);
-  useLayoutEffect(() => {
-    stateRef.current = state;
-  });
-
   // State → hash, debounced. replaceState keeps edits out of the back button's history.
   useEffect(() => {
     const timer = setTimeout(() => {
-      const hash = serialiseHash(state);
+      const hash = serialiseHash(state, {}, sounds);
       if (window.location.hash !== hash) {
         const url = new URL(window.location.href);
         url.hash = hash;
@@ -204,13 +258,13 @@ export function App({
     return () => {
       clearTimeout(timer);
     };
-  }, [state]);
+  }, [state, sounds]);
 
   // Hash → state, for edited or pasted hashes. One that matches the state is skipped.
   useEffect(() => {
     const onHashChange = () => {
-      const next = parseHash(window.location.hash);
-      if (serialiseHash(next) !== serialiseHash(stateRef.current)) {
+      const next = parseHash(window.location.hash, sounds, defaultSoundId);
+      if (serialiseHash(next, {}, sounds) !== serialiseHash(stateRef.current, {}, sounds)) {
         setState(next);
       }
     };
@@ -218,7 +272,7 @@ export function App({
     return () => {
       window.removeEventListener("hashchange", onHashChange);
     };
-  }, []);
+  }, [sounds, defaultSoundId]);
 
   useEffect(() => {
     if (!toast) {
@@ -226,15 +280,18 @@ export function App({
     }
     const timer = setTimeout(() => {
       setToast(null);
-    }, TOAST_MS);
+    }, toast.duration);
     return () => {
       clearTimeout(timer);
     };
   }, [toast]);
 
-  const showToast = useCallback((message: string) => {
-    setToast((t) => ({ id: (t?.id ?? 0) + 1, message }));
-  }, []);
+  const showToast = useCallback(
+    (message: string, action?: Toast["action"], duration = action ? UNDO_TOAST_MS : TOAST_MS) => {
+      setToast((t) => ({ id: (t?.id ?? 0) + 1, message, action, duration }));
+    },
+    [],
+  );
 
   const setPanelHidden = useCallback((panelHidden: boolean) => {
     setState((s) => ({ ...s, panelHidden }));
@@ -256,12 +313,12 @@ export function App({
 
   const copyLink = useCallback(() => {
     const url = new URL(window.location.href);
-    url.hash = serialiseHash({ ...stateRef.current, panelHidden: true }, { full: true });
+    url.hash = serialiseHash({ ...stateRef.current, panelHidden: true }, { full: true }, sounds);
     void copyText(url.href).then((ok) => {
       showToast(ok ? "Link copied" : "Couldn't copy the link");
       return undefined;
     });
-  }, [showToast]);
+  }, [showToast, sounds]);
 
   const updateLayer = useCallback((id: string, change: (layer: Layer) => Layer) => {
     setState((s) => ({
@@ -284,8 +341,92 @@ export function App({
     [updateLayer],
   );
 
-  const onRemoveLayer = useCallback((id: string) => {
-    setState((s) => ({ ...s, mix: { ...s.mix, layers: s.mix.layers.filter((l) => l.id !== id) } }));
+  const onAddLayer = useCallback(
+    (id: string) => {
+      const sound = sounds.find((s) => s.id === id);
+      if (!sound) {
+        return;
+      }
+      setState((s) =>
+        s.mix.layers.length >= MAX_LAYERS || s.mix.layers.some((l) => l.id === id)
+          ? s
+          : { ...s, mix: { ...s.mix, layers: [...s.mix.layers, defaultLayer(sound)] } },
+      );
+    },
+    [sounds],
+  );
+
+  /** Puts a removed layer back where it was, unless its sound is back already or the mix is full. */
+  const restoreLayer = useCallback((layer: Layer, index: number) => {
+    setState((s) => {
+      const { layers } = s.mix;
+      if (layers.length >= MAX_LAYERS || layers.some((l) => l.id === layer.id)) {
+        return s;
+      }
+      const next = [...layers];
+      next.splice(Math.min(index, next.length), 0, layer);
+      return { ...s, mix: { ...s.mix, layers: next } };
+    });
+  }, []);
+
+  const onRemoveLayer = useCallback(
+    (id: string) => {
+      const { layers } = stateRef.current.mix;
+      const index = layers.findIndex((l) => l.id === id);
+      const layer = index === -1 ? undefined : layers.at(index);
+      if (!layer) {
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        mix: { ...s.mix, layers: s.mix.layers.filter((l) => l.id !== id) },
+      }));
+      setSolo((current) => {
+        if (!current.has(id)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+      const name = sounds.find((s) => s.id === id)?.name ?? id;
+      showToast(`Removed ${name}`, {
+        label: "Undo",
+        run: () => {
+          restoreLayer(layer, index);
+        },
+      });
+    },
+    [restoreLayer, showToast, sounds],
+  );
+
+  const onToggleSolo = useCallback((id: string) => {
+    setSolo((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const onClearSolo = useCallback(() => {
+    setSolo(new Set());
+  }, []);
+
+  const onMasterChange = useCallback((master: number) => {
+    setState((s) => ({ ...s, mix: { ...s.mix, master } }));
+  }, []);
+
+  const toggleMute = useCallback((index: number) => {
+    setState((s) => {
+      const target = s.mix.layers.at(index);
+      if (!target) {
+        return s;
+      }
+      const layers = s.mix.layers.map((l) => (l === target ? { ...l, muted: !l.muted } : l));
+      return { ...s, mix: { ...s.mix, layers } };
+    });
   }, []);
 
   const onRetryLayer = useCallback(
@@ -300,8 +441,9 @@ export function App({
       ...s,
       mix: {
         ...s.mix,
+        master: MASTER_PARAM.default,
         layers: s.mix.layers.map((l) => {
-          const sound = getSound(l.id);
+          const sound = sounds.find((entry) => entry.id === l.id);
           return {
             ...l,
             volume: VOLUME_PARAM.default,
@@ -310,7 +452,7 @@ export function App({
         }),
       },
     }));
-  }, []);
+  }, [sounds]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -328,7 +470,38 @@ export function App({
         return;
       }
       const key = event.key.toLowerCase();
-      if (key === "h") {
+      const number = layerNumber(event);
+      if (number !== undefined) {
+        const layer = stateRef.current.mix.layers.at(number - 1);
+        if (event.shiftKey && layer) {
+          onToggleSolo(layer.id);
+        } else if (!event.shiftKey) {
+          toggleMute(number - 1);
+        }
+      } else if (event.key === "/") {
+        event.preventDefault();
+        setPanelHidden(false);
+        if (stateRef.current.mix.layers.length >= MAX_LAYERS) {
+          showToast(FULL_MIX_HINT);
+        } else {
+          setAddOpen(true);
+        }
+      } else if (key === "m") {
+        setMasterMuted((muted) => !muted);
+      } else if (
+        (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+        nothingFocused(event.target)
+      ) {
+        event.preventDefault();
+        const step = event.key === "ArrowUp" ? MASTER_STEP : -MASTER_STEP;
+        setState((s) => {
+          const master = Math.min(
+            MASTER_PARAM.max,
+            Math.max(MASTER_PARAM.min, s.mix.master + step),
+          );
+          return master === s.mix.master ? s : { ...s, mix: { ...s.mix, master } };
+        });
+      } else if (key === "h") {
         setPanelHidden(!stateRef.current.panelHidden);
       } else if (key === "f" && canFullscreen) {
         toggleFullscreen();
@@ -341,7 +514,16 @@ export function App({
     return () => {
       window.removeEventListener("keydown", onKey);
     };
-  }, [canFullscreen, hover, setPanelHidden, toggleFullscreen, togglePlay]);
+  }, [
+    canFullscreen,
+    hover,
+    onToggleSolo,
+    setPanelHidden,
+    showToast,
+    toggleFullscreen,
+    toggleMute,
+    togglePlay,
+  ]);
 
   // The panel fades with the cursor when idle, except on touch (there's no pointer
   // to bring it back) and while the pointer rests on it.
@@ -369,10 +551,17 @@ export function App({
             onTogglePlay={togglePlay}
             onRetryLayer={onRetryLayer}
             onRemoveLayer={onRemoveLayer}
+            onAddLayer={onAddLayer}
             preferences={preferences}
             hover={hover}
             onLayerChange={onLayerChange}
             onParamChange={onParamChange}
+            onMasterChange={onMasterChange}
+            masterMuted={masterMuted}
+            onMasterMutedChange={setMasterMuted}
+            solo={solo}
+            onToggleSolo={onToggleSolo}
+            onClearSolo={onClearSolo}
             onResetAll={onResetAll}
             onCopyLink={copyLink}
             onFullscreen={canFullscreen ? toggleFullscreen : undefined}
@@ -381,6 +570,11 @@ export function App({
             }}
             shortcutsOpen={shortcutsOpen}
             onShortcutsOpenChange={setShortcutsOpen}
+            addOpen={addOpen}
+            onAddOpenChange={setAddOpen}
+            levels={levels}
+            levelsActive={!panelHidden && !fade && engineState === "playing"}
+            sounds={sounds}
           />
         </div>
       </PanelErrorBoundary>
@@ -396,8 +590,25 @@ export function App({
         </button>
       )}
       {toast && (
-        <div key={toast.id} className="toast" role="status">
+        <div
+          key={toast.id}
+          className="toast"
+          role="status"
+          data-action={toast.action !== undefined}
+        >
           {toast.message}
+          {toast.action && (
+            <button
+              type="button"
+              className="toast-action"
+              onClick={() => {
+                toast.action?.run();
+                setToast(null);
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
       <button

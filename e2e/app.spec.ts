@@ -13,7 +13,7 @@ test("shows the panel with the default layer and keeps the hash in sync", async 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Aural Farm" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Test Tone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Test Tone" })).toBeVisible();
 
   const pitch = page.getByLabel("Pitch");
   await expect(pitch).toBeVisible();
@@ -21,7 +21,7 @@ test("shows the panel with the default layer and keeps the hash in sync", async 
   await page.keyboard.press("ArrowRight");
   await expect(page).toHaveURL(/test-tone\.pitch=\d+/);
 
-  const volume = page.getByLabel("Volume");
+  const volume = page.getByLabel("Volume", { exact: true });
   await volume.fill("40");
   await expect(page).toHaveURL(/test-tone\.volume=40/);
 

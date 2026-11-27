@@ -70,11 +70,11 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
   await page.evaluate(() => {
     window.location.hash = "layers=";
   });
-  await expect(page.getByText("The mix is empty.")).toBeVisible();
+  await expect(page.getByText("Add a sound to start")).toBeVisible();
   await page.evaluate(() => {
     window.location.hash = "layers=test-tone";
   });
-  await expect(page.getByRole("button", { name: "Test Tone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Test Tone" })).toBeVisible();
   await page.waitForTimeout(2000);
   // A locator rather than a role query, so an alert in a panel that has idled out still counts.
   await expect(page.locator("[role=alert]")).toHaveCount(0);

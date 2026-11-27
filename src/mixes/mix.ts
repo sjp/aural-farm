@@ -23,7 +23,7 @@ export const VOLUME_PARAM = {
 } as const satisfies NumberParam;
 
 /** The master volume, 0–100. */
-const MASTER_PARAM = {
+export const MASTER_PARAM = {
   ...VOLUME_PARAM,
   label: "Master volume",
 } as const satisfies NumberParam;

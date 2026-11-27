@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS, type EngineFactory } from "./App";
+import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS, UNDO_TOAST_MS, type EngineFactory } from "./App";
 import type { AudioEngine, EngineState } from "./audio/engine";
 import { createPreferences } from "./lib/preferences";
-import { parseHash, type Mix } from "./mixes/mix";
+import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
 import { createSoundLoader } from "./sounds/loader";
+import type { SoundEntry } from "./sounds/registry";
 import { act } from "./test/act";
+import { testCatalogue } from "./test/catalogue";
 
 const loader = createSoundLoader();
 
@@ -53,19 +55,38 @@ function fakeEngine() {
   return { engine, factory, controls, setState, callbacks: () => callbacks };
 }
 
-function renderApp(hash = "", fake = fakeEngine()) {
+function renderApp(hash = "", fake = fakeEngine(), sounds?: SoundEntry[]) {
   window.history.replaceState(null, "", `/${hash}`);
   const replaceState = vi.spyOn(window.history, "replaceState");
   const view = render(
     <App
-      initial={parseHash(window.location.hash)}
+      initial={parseHash(window.location.hash, sounds)}
       loader={loader}
       preferences={createPreferences(() => undefined)}
       createEngine={fake.factory}
+      sounds={sounds}
     />,
   );
   return { replaceState, ...fake, view };
 }
+
+const catalogue = testCatalogue();
+
+/** Renders the app with the test catalogue: Test Tone, then Alpha to India. */
+function renderMixer(hash: string) {
+  return renderApp(hash, fakeEngine(), catalogue);
+}
+
+/** The hash once the debounce has written it. */
+function writtenHash() {
+  act(() => {
+    vi.advanceTimersByTime(HASH_DEBOUNCE_MS);
+  });
+  return window.location.hash;
+}
+
+const rowNames = () =>
+  [...document.querySelectorAll(".layer .layer-title")].map((el) => el.textContent);
 
 /** Lets the autoplay attempt settle. */
 async function settle() {
@@ -168,8 +189,8 @@ describe("App hash sync", () => {
     expect(window.location.hash).toBe("#layers=test-tone&panel=hidden");
   });
 
-  it("resets every layer's settings and volume", () => {
-    renderApp("#layers=test-tone&test-tone.volume=20&test-tone.soft=1&test-tone.muted=1");
+  it("resets every layer's settings and volume, and the master volume, but keeps mutes", () => {
+    renderApp("#master=30&layers=test-tone&test-tone.volume=20&test-tone.soft=1&test-tone.muted=1");
     fireEvent.click(screen.getByRole("button", { name: "Reset all" }));
     act(() => {
       vi.advanceTimersByTime(HASH_DEBOUNCE_MS);
@@ -368,5 +389,214 @@ describe("App playback", () => {
       view.unmount();
     });
     expect(engine.dispose).toHaveBeenCalled();
+  });
+});
+
+describe("App mixer", () => {
+  it("adds a sound at volume 70 at the end of the mix", () => {
+    const { engine } = renderMixer("#layers=alpha");
+    fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
+    fireEvent.click(screen.getByRole("button", { name: "Charlie" }));
+    expect(rowNames()).toEqual(["Alpha", "Charlie"]);
+    expect(engine.setMix.mock.lastCall?.[0].layers.at(-1)).toMatchObject({
+      id: "charlie",
+      volume: 70,
+      muted: false,
+    });
+    expect(screen.queryByRole("list", { name: "Sounds to add" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Charlie" }));
+    expect(writtenHash()).toBe("#layers=alpha,charlie");
+  });
+
+  it("removes a layer with an Undo toast that restores it in place", () => {
+    renderMixer("#layers=alpha,bravo,charlie&bravo.volume=30&bravo.level=9&bravo.muted=1");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Bravo" }));
+    expect(rowNames()).toEqual(["Alpha", "Charlie"]);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Charlie" }));
+    const toast = screen.getByRole("status");
+    expect(toast.textContent).toContain("Removed Bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(rowNames()).toEqual(["Alpha", "Bravo", "Charlie"]);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(writtenHash()).toBe(
+      "#layers=alpha,bravo,charlie&bravo.volume=30&bravo.muted=1&bravo.level=9",
+    );
+  });
+
+  it("restores the last layer at the end, even after another was added", () => {
+    renderMixer("#layers=alpha,bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(rowNames()).toEqual(["Alpha", "Bravo", "Delta"]);
+  });
+
+  it("keeps the Undo toast for 5 s", () => {
+    renderMixer("#layers=alpha");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
+    act(() => {
+      vi.advanceTimersByTime(UNDO_TOAST_MS - 1);
+    });
+    expect(screen.getByRole("button", { name: "Undo" })).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+  });
+
+  it(`holds at most ${String(MAX_LAYERS)} layers`, () => {
+    renderMixer("#layers=alpha,bravo,charlie,delta,echo,foxtrot,golf");
+    fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hotel" }));
+    expect(rowNames()).toHaveLength(MAX_LAYERS);
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Add sound" }).disabled).toBe(
+      true,
+    );
+    expect(screen.getByText("8 sounds is the most a mix can hold")).toBeTruthy();
+    // `/` says why instead of opening the list.
+    fireEvent.keyDown(window, { key: "/", code: "Slash" });
+    expect(screen.getByRole("status").textContent).toBe("8 sounds is the most a mix can hold");
+  });
+
+  it("doesn't restore a layer into a full mix", () => {
+    renderMixer("#layers=alpha,bravo,charlie,delta,echo,foxtrot,golf,hotel");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
+    fireEvent.click(screen.getByRole("button", { name: "India" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(rowNames()).not.toContain("Alpha");
+    expect(rowNames()).toHaveLength(MAX_LAYERS);
+  });
+
+  it("solos through the engine, never the hash, and clears", () => {
+    const { engine } = renderMixer("#layers=alpha,bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Solo Bravo" }));
+    expect(engine.setSolo.mock.lastCall?.[0]).toEqual(new Set(["bravo"]));
+    expect(writtenHash()).toBe("#layers=alpha,bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Clear solo" }));
+    expect(engine.setSolo.mock.lastCall?.[0]).toEqual(new Set());
+  });
+
+  it("drops a removed layer's solo", () => {
+    const { engine } = renderMixer("#layers=alpha,bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Solo Bravo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Bravo" }));
+    expect(engine.setSolo.mock.lastCall?.[0]).toEqual(new Set());
+    expect(screen.queryByRole("button", { name: "Clear solo" })).toBeNull();
+  });
+
+  it("mutes a layer in the hash", () => {
+    renderMixer("#layers=alpha,bravo");
+    fireEvent.click(screen.getByRole("button", { name: "Mute Bravo" }));
+    expect(writtenHash()).toBe("#layers=alpha,bravo&bravo.muted=1");
+  });
+
+  it("sets the master volume in the hash, and mutes everything outside it", () => {
+    const { engine } = renderMixer("#layers=alpha");
+    fireEvent.input(screen.getByLabelText("Master volume"), { target: { value: "40" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mute everything" }));
+    expect(engine.setMasterMuted.mock.lastCall?.[0]).toBe(true);
+    expect(writtenHash()).toBe("#master=40&layers=alpha");
+  });
+
+  it("shows the empty state, doesn't autoplay it, and ignores Space", async () => {
+    const { engine } = renderMixer("#layers=");
+    await settle();
+    expect(screen.getByText("Add a sound to start")).toBeTruthy();
+    expect(engine.play).not.toHaveBeenCalled();
+    fireEvent.keyDown(window, { key: " " });
+    expect(engine.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(engine.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads levels only while the panel is seen and the mix is playing", async () => {
+    const { engine } = renderMixer("#layers=alpha");
+    await settle();
+    expect(engine.watchLevels).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Hide controls" }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    const reads = engine.getLevel.mock.calls.length;
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(engine.getLevel.mock.calls.length).toBe(reads);
+  });
+});
+
+describe("App mixer shortcuts", () => {
+  const press = (key: string, code: string, shiftKey = false) => {
+    fireEvent.keyDown(window, { key, code, shiftKey });
+  };
+  const pressed = (label: string) =>
+    screen.getByRole("button", { name: label }).getAttribute("aria-pressed");
+
+  it("opens the Add sound list with /, focused", () => {
+    renderMixer("#layers=alpha&panel=hidden");
+    press("/", "Slash");
+    expect(panelWrap()?.getAttribute("data-visible")).toBe("true");
+    expect(screen.getByRole("list", { name: "Sounds to add" })).toBeTruthy();
+    expect(document.activeElement?.textContent).toBe("Test Tone");
+  });
+
+  it("mutes layer N with 1–8 and solos it with Shift", () => {
+    const { engine } = renderMixer("#layers=alpha,bravo");
+    press("2", "Digit2");
+    expect(pressed("Mute Bravo")).toBe("true");
+    press("2", "Digit2");
+    expect(pressed("Mute Bravo")).toBe("false");
+    press("!", "Digit1", true);
+    expect(pressed("Solo Alpha")).toBe("true");
+    expect(engine.setSolo.mock.lastCall?.[0]).toEqual(new Set(["alpha"]));
+    press("!", "Digit1", true);
+    expect(pressed("Solo Alpha")).toBe("false");
+    // No layer 3: nothing happens.
+    press("3", "Digit3");
+    press("#", "Digit3", true);
+    expect(writtenHash()).toBe("#layers=alpha,bravo");
+  });
+
+  it("mutes everything with M", () => {
+    const { engine } = renderMixer("#layers=alpha");
+    press("m", "KeyM");
+    expect(pressed("Mute everything")).toBe("true");
+    expect(engine.setMasterMuted.mock.lastCall?.[0]).toBe(true);
+    press("M", "KeyM", true);
+    expect(pressed("Mute everything")).toBe("false");
+  });
+
+  it("moves the master volume by 5 with the arrows when nothing has focus", () => {
+    renderMixer("#master=98&layers=alpha");
+    press("ArrowUp", "ArrowUp");
+    expect(screen.getByLabelText<HTMLInputElement>("Master volume").value).toBe("100");
+    press("ArrowDown", "ArrowDown");
+    press("ArrowDown", "ArrowDown");
+    expect(writtenHash()).toBe("#master=90&layers=alpha");
+    // On a focused control the arrows are the control's own.
+    fireEvent.keyDown(screen.getByRole("button", { name: "Copy link" }), { key: "ArrowUp" });
+    fireEvent.keyDown(screen.getByLabelText("Volume"), { key: "ArrowUp" });
+    expect(writtenHash()).toBe("#master=90&layers=alpha");
+  });
+
+  it("ignores the mixer shortcuts in form fields", () => {
+    renderMixer("#layers=alpha");
+    const volume = screen.getByLabelText("Volume");
+    fireEvent.keyDown(volume, { key: "1", code: "Digit1" });
+    fireEvent.keyDown(volume, { key: "m", code: "KeyM" });
+    fireEvent.keyDown(volume, { key: "/", code: "Slash" });
+    expect(pressed("Mute Alpha")).toBe("false");
+    expect(pressed("Mute everything")).toBe("false");
+    expect(screen.queryByRole("list", { name: "Sounds to add" })).toBeNull();
+  });
+
+  it("lists every shortcut in the popover", () => {
+    renderMixer("#layers=alpha");
+    const keys = [...document.querySelectorAll(".shortcuts-popover kbd")].map((k) => k.textContent);
+    expect(keys).toEqual(["Space", "/", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "?"]);
   });
 });

@@ -61,3 +61,11 @@ export const PlayIcon = () => (
   <FilledIcon d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z" />
 );
 export const PauseIcon = () => <FilledIcon d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />;
+export const CloseIcon = () => <Icon d="M6 6l12 12M18 6L6 18" size={16} />;
+export const PlusIcon = () => <Icon d="M12 5v14M5 12h14" size={16} />;
+export const SpeakerIcon = () => (
+  <Icon d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+);
+export const SpeakerMutedIcon = () => (
+  <Icon d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5" />
+);

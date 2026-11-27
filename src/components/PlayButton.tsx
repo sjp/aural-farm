@@ -9,6 +9,8 @@ interface PlayButtonProps {
   state: EngineState;
   /** Whether to add the shortcut to the tooltip. */
   hover: boolean;
+  /** Set when there's nothing to play, such as an empty mix. */
+  disabled?: boolean;
   onToggle: () => void;
 }
 
@@ -16,7 +18,12 @@ interface PlayButtonProps {
  * Play/Pause, with a spinner while the audio starts. When the browser blocked
  * autoplay it becomes a prominent "Tap to play".
  */
-export function PlayButton({ state, hover, onToggle }: PlayButtonProps): JSX.Element {
+export function PlayButton({
+  state,
+  hover,
+  disabled = false,
+  onToggle,
+}: PlayButtonProps): JSX.Element {
   const toggle = { [PLAY_TOGGLE_ATTRIBUTE]: true };
   if (state === "blocked") {
     return (
@@ -35,7 +42,7 @@ export function PlayButton({ state, hover, onToggle }: PlayButtonProps): JSX.Ele
       aria-label={label}
       title={hover ? `${label} (Space)` : label}
       aria-busy={state === "starting"}
-      disabled={state === "failed"}
+      disabled={disabled || state === "failed"}
       onClick={onToggle}
       {...toggle}
     >
