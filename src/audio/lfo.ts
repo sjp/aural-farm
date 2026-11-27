@@ -58,18 +58,15 @@ export function rotateWave(wave: Wave, phase: number): Wave {
 const RESOLUTION = 2048;
 
 /**
- * An asymmetric raised pulse: a raised-cosine rise over the first `rise` of the
- * cycle (0 to 1), then a raised-cosine fall over the rest, band-limited to
- * `harmonics` Fourier terms. The truncated series is scaled to span exactly 1;
- * add `offset` (a `ConstantSourceNode`, or a gain's base value) to map it onto
- * 0..1, since a `PeriodicWave` has no DC term.
+ * The periodic function `shape` (phase in cycles, 0 to 1), band-limited to its
+ * first `harmonics` Fourier terms. The truncated series is scaled to span
+ * exactly 1; add `offset` (a `ConstantSourceNode`, or a gain's base value) to
+ * map it onto 0..1, since a `PeriodicWave` has no DC term.
  */
-export function pulseWave(rise: number, harmonics: number): Wave & { offset: number } {
-  const r = Math.min(0.95, Math.max(0.05, rise));
-  const shape = (phase: number) =>
-    phase < r
-      ? 0.5 - 0.5 * Math.cos((Math.PI * phase) / r)
-      : 0.5 + 0.5 * Math.cos((Math.PI * (phase - r)) / (1 - r));
+export function fourierWave(
+  shape: (phase: number) => number,
+  harmonics: number,
+): Wave & { offset: number } {
   const real = [0];
   const imag = [0];
   for (let k = 1; k <= harmonics; k++) {
@@ -97,6 +94,22 @@ export function pulseWave(rise: number, harmonics: number): Wave & { offset: num
     imag: imag.map((v) => v / span),
     offset: -min / span,
   };
+}
+
+/**
+ * An asymmetric raised pulse: a raised-cosine rise over the first `rise` of the
+ * cycle (0 to 1), then a raised-cosine fall over the rest, band-limited to
+ * `harmonics` Fourier terms and scaled as `fourierWave` scales it.
+ */
+export function pulseWave(rise: number, harmonics: number): Wave & { offset: number } {
+  const r = Math.min(0.95, Math.max(0.05, rise));
+  return fourierWave(
+    (phase) =>
+      phase < r
+        ? 0.5 - 0.5 * Math.cos((Math.PI * phase) / r)
+        : 0.5 + 0.5 * Math.cos((Math.PI * (phase - r)) / (1 - r)),
+    harmonics,
+  );
 }
 
 interface LfoOptions {

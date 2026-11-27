@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FakeAudioContext, installFakeAudioGlobals } from "../test/fake-audio";
 import {
   createLfo,
+  fourierWave,
   pulseWave,
   rotateWave,
   setLfoFrequency,
@@ -50,6 +51,25 @@ describe("pulseWave", () => {
     // Halfway up comes sooner after the trough than halfway down after the peak.
     expect(at(0.175)).toBeGreaterThan(0.3);
     expect(at(0.35 + 0.175)).toBeGreaterThan(at(0.175));
+  });
+});
+
+describe("fourierWave", () => {
+  it("keeps the first harmonics of a shape, spanning 0..1 with its offset", () => {
+    // A square wave: its first three terms are the odd harmonics 1 and 3.
+    const wave = fourierWave((phase) => (phase < 0.5 ? 1 : 0), 3);
+    expect(wave.real).toHaveLength(4);
+    expect(Math.abs(wave.imag[2] ?? 1)).toBeLessThan(1e-9);
+    expect((wave.imag[3] ?? 0) / (wave.imag[1] ?? 1)).toBeCloseTo(1 / 3, 4);
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < 1000; i++) {
+      const v = waveAt(wave, i / 1000) + wave.offset;
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    }
+    expect(min).toBeCloseTo(0, 4);
+    expect(max).toBeCloseTo(1, 4);
   });
 });
 
