@@ -14,6 +14,9 @@ export default defineConfig({
   testDir: "e2e",
   timeout: 60_000,
   fullyParallel: true,
+  // A worker per core: the default, half the cores, leaves a 4-core CI runner idle
+  // while tests wait on the browser.
+  ...(CI ? { workers: "100%" } : {}),
   forbidOnly: CI,
   reporter: [["list"], ...(CI ? [["github"] as const] : []), ["./e2e/sound-reporter.ts"]],
   use: {

@@ -226,14 +226,9 @@ function measure({ channels, sampleRate }: Rendered): Measurements {
   const skip = Math.round(SETTLE * sampleRate);
   const settled = channels.map((c) => c.subarray(skip));
   const [left = new Float32Array(0), right = left] = settled;
+  const spectra = settled.map((c) => analysis.spectrumOf(c, sampleRate));
   const band = (lo: number, hi: number) =>
-    10 *
-    Math.log10(
-      settled.reduce(
-        (sum, c) => sum + 10 ** (analysis.bandEnergyDb(c, sampleRate, lo, hi) / 10),
-        0,
-      ),
-    );
+    10 * Math.log10(spectra.reduce((sum, s) => sum + 10 ** (s.bandDb(lo, hi) / 10), 0));
   const total = band(0, sampleRate);
   return {
     finite: channels.every((c) => c.every((v) => Number.isFinite(v))),
@@ -244,7 +239,7 @@ function measure({ channels, sampleRate }: Rendered): Measurements {
     speakersDb: band(150, 4000) - total,
     monoLossDb: analysis.monoLossDb(left, right),
     correlation: analysis.interChannelCorrelation(left, right),
-    slope: analysis.spectralSlope(left, sampleRate, 100, 8000),
+    slope: spectra[0]?.slope(100, 8000) ?? Number.NaN,
   };
 }
 

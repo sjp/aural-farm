@@ -130,6 +130,23 @@ export function dcOffset(ch: Float32Array): number {
   return sum / Math.max(1, ch.length);
 }
 
+/** Each FFT size's twiddle factors: cos and sin of −2πk/size, for 0 ≤ k < size/2. */
+const twiddles = new Map<number, { cos: Float64Array; sin: Float64Array }>();
+
+function twiddlesFor(size: number): { cos: Float64Array; sin: Float64Array } {
+  let table = twiddles.get(size);
+  if (!table) {
+    const half = size >> 1;
+    table = { cos: new Float64Array(half), sin: new Float64Array(half) };
+    for (let k = 0; k < half; k++) {
+      table.cos[k] = Math.cos((-2 * Math.PI * k) / size);
+      table.sin[k] = Math.sin((-2 * Math.PI * k) / size);
+    }
+    twiddles.set(size, table);
+  }
+  return table;
+}
+
 /** In-place radix-2 FFT of (`re`, `im`); the length must be a power of two. */
 function fft(re: Float64Array, im: Float64Array): void {
   const n = re.length;
@@ -140,17 +157,23 @@ function fft(re: Float64Array, im: Float64Array): void {
     }
     j ^= bit;
     if (i < j) {
-      [re[i], re[j]] = [re[j] ?? 0, re[i] ?? 0];
-      [im[i], im[j]] = [im[j] ?? 0, im[i] ?? 0];
+      const r = re[i] ?? 0;
+      re[i] = re[j] ?? 0;
+      re[j] = r;
+      const m = im[i] ?? 0;
+      im[i] = im[j] ?? 0;
+      im[j] = m;
     }
   }
+  const { cos: cosTable, sin: sinTable } = twiddlesFor(n);
   for (let size = 2; size <= n; size <<= 1) {
-    const angle = (-2 * Math.PI) / size;
     const half = size >> 1;
+    // The table is for size n: step through it n/size entries at a time.
+    const stride = n / size;
     for (let start = 0; start < n; start += size) {
       for (let k = 0; k < half; k++) {
-        const cos = Math.cos(angle * k);
-        const sin = Math.sin(angle * k);
+        const cos = cosTable[k * stride] ?? 0;
+        const sin = sinTable[k * stride] ?? 0;
         const a = start + k;
         const b = a + half;
         const bRe = re[b] ?? 0;
@@ -171,6 +194,18 @@ function fft(re: Float64Array, im: Float64Array): void {
 /** The longest FFT segment the spectral measures use: about 2.9 Hz bins at 48 kHz. */
 const MAX_SEGMENT = 16384;
 
+/** Each segment size's Hann window. */
+const hannWindows = new Map<number, Float64Array>();
+
+function hannWindow(size: number): Float64Array {
+  let window = hannWindows.get(size);
+  if (!window) {
+    window = Float64Array.from({ length: size }, (_, i) => Math.sin((Math.PI * i) / size) ** 2);
+    hannWindows.set(size, window);
+  }
+  return window;
+}
+
 /**
  * Welch's power spectrum of `ch`: Hann-windowed segments overlapping by half,
  * averaged. Entry k is the mean-square power in bin k (0 ≤ k ≤ size/2), with the
@@ -182,7 +217,7 @@ function powerSpectrum(ch: Float32Array): Float64Array {
   while (size * 2 <= Math.min(MAX_SEGMENT, ch.length)) {
     size *= 2;
   }
-  const window = Float64Array.from({ length: size }, (_, i) => Math.sin((Math.PI * i) / size) ** 2);
+  const window = hannWindow(size);
   const windowPower = window.reduce((sum, w) => sum + w * w, 0);
   const power = new Float64Array(size / 2 + 1);
   const re = new Float64Array(size);
@@ -216,45 +251,66 @@ function bandPower(spectrum: Float64Array, sampleRate: number, lo: number, hi: n
   return sum;
 }
 
-/**
- * The mean-square power of `ch` between `lo` and `hi` Hz, in dB, from an FFT:
- * the whole band (0 to Nyquist and above) reads about the same as `rmsDb`.
- */
-export function bandEnergyDb(ch: Float32Array, sampleRate: number, lo: number, hi: number): number {
-  return powerDb(bandPower(powerSpectrum(ch), sampleRate, lo, hi));
+/** The spectral measures of one channel, from a single power spectrum. */
+export interface Spectrum {
+  /**
+   * The mean-square power between `lo` and `hi` Hz, in dB: the whole band (0 to
+   * Nyquist and above) reads about the same as `rmsDb`.
+   */
+  bandDb: (lo: number, hi: number) => number;
+  /**
+   * The tilt between `lo` and `hi` Hz, in dB per octave: a straight-line fit of
+   * the power density of third-octave bands against octaves. White noise reads
+   * 0, pink noise −3 and brown noise −6.
+   */
+  slope: (lo: number, hi: number) => number;
 }
 
 /**
- * The spectrum's tilt between `lo` and `hi` Hz, in dB per octave: a straight-line
- * fit of the power density of third-octave bands against octaves. White noise
- * reads 0, pink noise −3 and brown noise −6.
+ * The spectrum of `ch`, for taking several measures from it without
+ * transforming it again for each.
  */
+export function spectrumOf(ch: Float32Array, sampleRate: number): Spectrum {
+  const spectrum = powerSpectrum(ch);
+  return {
+    bandDb: (lo, hi) => powerDb(bandPower(spectrum, sampleRate, lo, hi)),
+    slope: (lo, hi) => {
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (let band = lo; band * 2 ** (1 / 3) <= hi * 1.0001; band *= 2 ** (1 / 3)) {
+        const top = band * 2 ** (1 / 3);
+        const power = bandPower(spectrum, sampleRate, band, top);
+        if (power > 0) {
+          xs.push(Math.log2(Math.sqrt(band * top)));
+          ys.push(powerDb(power / (top - band)));
+        }
+      }
+      const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+      const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+      let num = 0;
+      let den = 0;
+      xs.forEach((x, i) => {
+        num += (x - mx) * ((ys[i] ?? 0) - my);
+        den += (x - mx) ** 2;
+      });
+      return num / den;
+    },
+  };
+}
+
+/** The mean-square power of `ch` between `lo` and `hi` Hz, in dB (see `Spectrum.bandDb`). */
+export function bandEnergyDb(ch: Float32Array, sampleRate: number, lo: number, hi: number): number {
+  return spectrumOf(ch, sampleRate).bandDb(lo, hi);
+}
+
+/** The spectrum's tilt between `lo` and `hi` Hz, in dB per octave (see `Spectrum.slope`). */
 export function spectralSlope(
   ch: Float32Array,
   sampleRate: number,
   lo: number,
   hi: number,
 ): number {
-  const spectrum = powerSpectrum(ch);
-  const xs: number[] = [];
-  const ys: number[] = [];
-  for (let band = lo; band * 2 ** (1 / 3) <= hi * 1.0001; band *= 2 ** (1 / 3)) {
-    const top = band * 2 ** (1 / 3);
-    const power = bandPower(spectrum, sampleRate, band, top);
-    if (power > 0) {
-      xs.push(Math.log2(Math.sqrt(band * top)));
-      ys.push(powerDb(power / (top - band)));
-    }
-  }
-  const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
-  const my = ys.reduce((a, b) => a + b, 0) / ys.length;
-  let num = 0;
-  let den = 0;
-  xs.forEach((x, i) => {
-    num += (x - mx) * ((ys[i] ?? 0) - my);
-    den += (x - mx) ** 2;
-  });
-  return num / den;
+  return spectrumOf(ch, sampleRate).slope(lo, hi);
 }
 
 /** The correlation of the two channels: 1 for mono, 0 for unrelated, −1 for inverted. */
