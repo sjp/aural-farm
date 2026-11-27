@@ -100,6 +100,13 @@ const type = (text: string) => {
 const chip = (name: string) => within(screen.getByRole("toolbar")).getByRole("button", { name });
 
 describe("SoundList", () => {
+  it("focuses the search without scrolling the page to it", () => {
+    const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+    renderList();
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    focus.mockRestore();
+  });
+
   it("is a combobox over the list, focused on opening, with the first row active", () => {
     renderList();
     const input = search();

@@ -236,7 +236,8 @@ export function SoundList({
   });
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Without preventScroll, iOS scrolls the page to show the field, and the page jumps.
+    inputRef.current?.focus({ preventScroll: true });
     if (!onPrefetch) {
       return undefined;
     }
