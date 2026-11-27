@@ -210,6 +210,35 @@ alone, and not at all in a background tab. With reduced motion set in the system
 still and doesn't respond to sound. Without WebGL2 it shows a still gradient of the same
 colours.
 
+### Exporting audio
+
+The **Export** section under Display (collapsed at first) saves the mix as an audio file,
+for a video edit, an offline player, or a media player or game engine that repeats it:
+
+- **Type:** **Clip** (1, 5, 10, 15, 30, 45 or 60 min, 10 by default) or **Seamless loop**
+  (30 s, 1, 2, 5 or 10 min, 2 by default). A loop's end runs into its start without a
+  seam: the few seconds after the loop point are crossfaded into its first seconds. When
+  the mix has a steady rhythm, such as Engine Core's throb, the loop's length is rounded to
+  a whole number of beats so the rhythm carries on across the loop point.
+- **Format:** **WAV** (16-bit, 48 kHz stereo) or **Compressed**: Opus in WebM at 128 kb/s,
+  or AAC in M4A at 160 kb/s, whichever the browser can encode. Where it can encode neither,
+  Compressed is disabled.
+- The file's size, shown as you choose. A WAV over 500 MB (45 and 60 min) gets a warning
+  that suggests Compressed, and on phones and tablets a WAV can be at most 15 min long.
+
+**Export** then shows a progress bar, with the time left and **Cancel**. The file is made
+from the mix as it was when the export started (each layer's volume, mute and settings,
+with the master volume at 100 and solo ignored), through the same high-pass and limiter as
+playback, and with the same sound for the same Variation. Playback carries on meanwhile,
+and changing the mix doesn't affect an export already running. Rendering runs much faster
+than real time, in pieces of 30 seconds, so memory stays small whatever the length.
+
+The file is named after the mix (or its sounds) and its length, such as
+`aural-farm-night-drive-10min.wav` or `aural-farm-engine-core-2min-loop.webm`. A WAV is
+written straight to a file you pick, where the browser can do that (Chrome and Edge on
+desktop); otherwise, and for compressed files, it downloads when it's done. The choices are
+remembered in the browser.
+
 ### Sounds
 
 A fresh visit opens with **Starship Engine Core**: the deep, steady hum of a large engine
