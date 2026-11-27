@@ -97,8 +97,9 @@ describe.each(sounds.map((s) => [s.id, s] as const))("%s", (_, sound) => {
   it("loads a definition whose metadata matches", async () => {
     const definition = await sound.load();
     const { load: _load, ...meta } = sound;
-    const { create, ...loadedMeta } = definition;
+    const { create, loopPeriod, ...loadedMeta } = definition;
     expect(loadedMeta).toEqual(meta);
     expect(typeof create).toBe("function");
+    expect(["function", "undefined"]).toContain(typeof loopPeriod);
   });
 });

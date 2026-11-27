@@ -234,6 +234,8 @@ function throbTargets(params: EngineParams) {
 }
 
 export const engineCore = defineSound(engineCoreMeta, {
+  // The throb's rate wanders as phase modulation, so its average period stays exactly this.
+  loopPeriod: (params) => (throbDepth(params.pulseDepth) > 0 ? 1 / params.pulseRate : undefined),
   create(ctx, out, init) {
     return withAudioScope(async (scope) => {
       // Absolute time is `startAt` at the context time `create` runs.

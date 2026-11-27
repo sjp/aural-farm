@@ -120,6 +120,13 @@ interface SoundImplementation<P extends ParamSchema = ParamSchema> {
     out: AudioNode,
     init: SoundInit<P>,
   ) => SoundInstance<P> | Promise<SoundInstance<P>>;
+  /**
+   * For a sound with a steady rhythm (a throb, a tick, a beat): the rhythm's
+   * period in seconds at `params`, or undefined when it has none at those
+   * params. A seamless loop export snaps its length to a whole number of
+   * periods, so the rhythm carries on across the loop point unbroken.
+   */
+  loopPeriod?: (params: ParamValues<P>) => number | undefined;
 }
 
 /** A loaded sound: its metadata plus its implementation. */
@@ -142,5 +149,12 @@ export function defineSound<const P extends ParamSchema>(
   // widening the implementation to the general param types is safe.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   const create = implementation.create as unknown as SoundImplementation["create"];
-  return { ...meta, create };
+  if (!implementation.loopPeriod) {
+    return { ...meta, create };
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  const loopPeriod = implementation.loopPeriod as unknown as (
+    params: ParamValues,
+  ) => number | undefined;
+  return { ...meta, create, loopPeriod };
 }
