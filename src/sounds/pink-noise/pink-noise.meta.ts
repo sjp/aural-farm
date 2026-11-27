@@ -7,7 +7,7 @@ export const pinkNoiseMeta = defineSoundMeta({
   description: "A soft, even hush, like rain on a roof.",
   categories: ["Noise", "Sleep", "Focus"],
   tags: ["masking", "balanced", "steady", "shush"],
-  cost: "very low",
+  cost: "low",
   tint: "#d89aa8",
   params: NOISE_PARAMS,
 });

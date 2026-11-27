@@ -7,7 +7,7 @@ export const greyNoiseMeta = defineSoundMeta({
   description: "A full, rounded hush that sounds about equally loud from low to high.",
   categories: ["Noise"],
   tags: ["gray", "equal-loudness", "masking", "neutral"],
-  cost: "very low",
+  cost: "low",
   tint: "#9a9aa6",
   params: NOISE_PARAMS,
 });

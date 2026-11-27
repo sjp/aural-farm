@@ -7,7 +7,7 @@ export const brownNoiseMeta = defineSoundMeta({
   description: "A deep, soft roar, like a distant waterfall or the hum of a plane cabin.",
   categories: ["Noise", "Sleep"],
   tags: ["red", "rumble", "masking", "low"],
-  cost: "very low",
+  cost: "low",
   tint: "#8a6a4f",
   // A touch darker than the other colours by default.
   params: { ...NOISE_PARAMS, tone: { ...NOISE_PARAMS.tone, default: -10 } },

@@ -7,7 +7,7 @@ export const whiteNoiseMeta = defineSoundMeta({
   description: "A bright, airy hiss, like an untuned radio.",
   categories: ["Noise", "Focus"],
   tags: ["static", "masking", "tinnitus", "shush"],
-  cost: "very low",
+  cost: "low",
   tint: "#d8d8d8",
   params: NOISE_PARAMS,
 });

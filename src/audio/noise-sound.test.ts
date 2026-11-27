@@ -7,9 +7,9 @@ import {
   GREY_EQ,
   LEVEL_DB,
   SHAPING,
-  TILT_HIGH,
-  TILT_LOW,
+  TILT_PIVOT,
   tiltDb,
+  tiltGains,
   widthGains,
   type NoiseSoundColour,
 } from "./noise-sound";
@@ -45,11 +45,13 @@ function render(colour: NoiseSoundColour, tone: number, width: number, seconds: 
     left.map((v, i) => direct * v + cross * (right[i] ?? 0)),
     right.map((v, i) => direct * v + cross * (left[i] ?? 0)),
   ];
-  const t = tiltDb(tone);
-  const low = biquadCoefficients({ type: "lowshelf", frequency: TILT_LOW, gain: -t }, RATE);
-  const high = biquadCoefficients({ type: "highshelf", frequency: TILT_HIGH, gain: t }, RATE);
-  const trim = dbToGain(LEVEL_DB[colour]);
-  return mixed.map((x) => filterSamples(high, filterSamples(low, x)).map((v) => v * trim));
+  const tilt = tiltGains(tiltDb(tone));
+  const shelf = biquadCoefficients(
+    { type: "highshelf", frequency: TILT_PIVOT, gain: tilt.shelf },
+    RATE,
+  );
+  const gain = dbToGain(LEVEL_DB[colour]) * tilt.level;
+  return mixed.map((x) => filterSamples(shelf, x).map((v) => v * gain));
 }
 
 function peakDb(channels: readonly Float32Array[], skip: number): number {
@@ -87,6 +89,20 @@ describe("tiltDb", () => {
     [100, 6],
   ])("tilts tone %s by %s dB", (tone, expected) => {
     expect(tiltDb(tone)).toBeCloseTo(expected, 9);
+  });
+});
+
+describe("tiltGains", () => {
+  it.each([-6, -3, 0, 3, 6])("turns the lows by −%s dB and the highs by %s dB", (db) => {
+    const { shelf, level } = tiltGains(db);
+    const coefficients = biquadCoefficients(
+      { type: "highshelf", frequency: TILT_PIVOT, gain: shelf },
+      RATE,
+    );
+    const levelDb = 20 * Math.log10(level);
+    expect(responseDb(coefficients, 20, RATE) + levelDb).toBeCloseTo(-db, 1);
+    expect(responseDb(coefficients, 20000, RATE) + levelDb).toBeCloseTo(db, 1);
+    expect(responseDb(coefficients, TILT_PIVOT, RATE) + levelDb).toBeCloseTo(0, 6);
   });
 });
 

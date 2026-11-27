@@ -5,10 +5,15 @@
  * Per variation (seed), the graph is:
  *
  *   noise (stereo, decorrelated) → shaping filters → splitter
- *     → width matrix → per channel: low shelf → high shelf → level → merger → out
+ *     → width matrix → per channel: tilt shelf → level → merger → out
  *
  * and a slow drift per channel moves that channel's tilt and level a little, so
  * the stereo image breathes. A seed change crossfades to a fresh variation.
+ *
+ * Biquads are the costliest nodes here, so the tone tilt uses one per channel: a
+ * high shelf at 1 kHz of twice the tilt, with the level lowered by the tilt. That
+ * turns the lows down and the highs up by the same amount around 1 kHz, as a
+ * low and a high shelf moving in opposite directions would.
  */
 import type { NumberParam, ParamValues, SoundDefinition, SoundMeta } from "../sounds/types";
 import { defineSound } from "../sounds/types";
@@ -76,12 +81,15 @@ export const LEVEL_DB: Readonly<Record<NoiseSoundColour, number>> = {
   grey: -15.7,
 };
 
-/** The tilt's shelves, in Hz. */
-export const TILT_LOW = 250;
-export const TILT_HIGH = 4000;
-/** The tilt at tone ±100, in dB per shelf. */
+/** The tilt's pivot: its shelf's frequency, in Hz. */
+export const TILT_PIVOT = 1000;
+/** The tilt at tone ±100: how far the lows go down and the highs up, in dB. */
 const TILT_RANGE_DB = 6;
-/** How far the drift moves the tilt and the level at full movement, in dB. */
+/**
+ * How far the drift moves the tilt and the level at full movement, in dB. Both
+ * together leave the lows where they are and move the highs twice as far, so the
+ * drift only needs to move the tilt shelf.
+ */
 const MOVEMENT_DB = 1.5;
 /** The drift's rate (Hz) and octaves. */
 const DRIFT_RATE = 0.03;
@@ -94,12 +102,18 @@ const GAIN_GLIDE = 0.08;
 const TIMBRE_GLIDE = 0.5;
 /** A seed change's crossfade, in seconds. */
 const SEED_FADE = 2;
-/** The level drift's depth at full movement, as a linear swing around 1. */
-const LEVEL_SWING = (dbToGain(MOVEMENT_DB) - dbToGain(-MOVEMENT_DB)) / 2;
 
-/** The high shelf's gain for `tone` (−100 to 100), in dB; the low shelf gets its negative. */
+/** The tilt for `tone` (−100 to 100): the highs' change in dB, and minus the lows'. */
 export function tiltDb(tone: number): number {
   return (tone / 100) * TILT_RANGE_DB;
+}
+
+/**
+ * The tilt shelf's gain (dB) and the level's (linear, before the trim) for a
+ * tilt of `db`.
+ */
+export function tiltGains(db: number): { shelf: number; level: number } {
+  return { shelf: 2 * db, level: dbToGain(-db) };
 }
 
 /**
@@ -115,10 +129,9 @@ export function widthGains(width: number): { direct: number; cross: number } {
   return { direct: (scale * (1 + w)) / 2, cross: (scale * (1 - w)) / 2 };
 }
 
-/** The movement depths per channel: tilt (dB) and level (linear, before the trim). */
-function depths(movement: number): { tilt: number; level: number } {
-  const m = Math.min(1, Math.max(0, movement / 100));
-  return { tilt: MOVEMENT_DB * m, level: LEVEL_SWING * m };
+/** The drift's depth on the tilt shelf's gain, in dB, for `movement` (0–100 %). */
+function driftDepth(movement: number): number {
+  return 2 * MOVEMENT_DB * Math.min(1, Math.max(0, movement / 100));
 }
 
 interface Variation extends Disposable {
@@ -173,48 +186,42 @@ function buildVariation(
 
     const trim = dbToGain(LEVEL_DB[colour]);
     const width = widthGains(p.width);
-    const tilt = tiltDb(p.tone);
-    const depth = depths(p.movement);
+    const tilt = tiltGains(tiltDb(p.tone));
+    const depth = driftDepth(p.movement);
     const channels = drifts.map((drift, channel) => {
       const own = scope.add(new GainNode(ctx, { gain: width.direct }));
       const other = scope.add(new GainNode(ctx, { gain: width.cross }));
       splitter.connect(own, channel);
       splitter.connect(other, 1 - channel);
-      const low = scope.add(
-        new BiquadFilterNode(ctx, { type: "lowshelf", frequency: TILT_LOW, gain: -tilt }),
+      const shelf = scope.add(
+        new BiquadFilterNode(ctx, { type: "highshelf", frequency: TILT_PIVOT, gain: tilt.shelf }),
       );
-      const high = scope.add(
-        new BiquadFilterNode(ctx, { type: "highshelf", frequency: TILT_HIGH, gain: tilt }),
-      );
-      const level = scope.add(new GainNode(ctx, { gain: trim }));
-      own.connect(low);
-      other.connect(low);
-      low.connect(high).connect(level).connect(merger, 0, channel);
+      // The drift and the glides move the shelf slowly: once per render quantum is
+      // plenty, and spares it recomputing its coefficients every sample.
+      shelf.gain.automationRate = "k-rate";
+      const level = scope.add(new GainNode(ctx, { gain: trim * tilt.level }));
+      own.connect(shelf);
+      other.connect(shelf);
+      shelf.connect(level).connect(merger, 0, channel);
 
       // The drift brightens and lifts together, darkens and dips together.
-      const lowDepth = scope.add(new GainNode(ctx, { gain: -depth.tilt }));
-      const highDepth = scope.add(new GainNode(ctx, { gain: depth.tilt }));
-      const levelDepth = scope.add(new GainNode(ctx, { gain: trim * depth.level }));
-      drift.connect(lowDepth).connect(low.gain);
-      drift.connect(highDepth).connect(high.gain);
-      drift.connect(levelDepth).connect(level.gain);
-      return { own, other, low, high, lowDepth, highDepth, levelDepth };
+      const drifting = scope.add(new GainNode(ctx, { gain: depth }));
+      drift.connect(drifting).connect(shelf.gain);
+      return { own, other, shelf, level, drifting };
     });
     merger.connect(into);
 
     return {
       update(next, when) {
         const w = widthGains(next.width);
-        const t = tiltDb(next.tone);
-        const d = depths(next.movement);
+        const t = tiltGains(tiltDb(next.tone));
+        const d = driftDepth(next.movement);
         for (const c of channels) {
           glide(c.own.gain, w.direct, when, GAIN_GLIDE);
           glide(c.other.gain, w.cross, when, GAIN_GLIDE);
-          glide(c.low.gain, -t, when, TIMBRE_GLIDE);
-          glide(c.high.gain, t, when, TIMBRE_GLIDE);
-          glide(c.lowDepth.gain, -d.tilt, when, TIMBRE_GLIDE);
-          glide(c.highDepth.gain, d.tilt, when, TIMBRE_GLIDE);
-          glide(c.levelDepth.gain, trim * d.level, when, TIMBRE_GLIDE);
+          glide(c.shelf.gain, t.shelf, when, TIMBRE_GLIDE);
+          glide(c.level.gain, trim * t.level, when, TIMBRE_GLIDE);
+          glide(c.drifting.gain, d, when, TIMBRE_GLIDE);
         }
       },
       dispose: () => {
