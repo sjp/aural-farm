@@ -12,6 +12,9 @@ test("shows the panel with the default layer and keeps the hash in sync", async 
   });
 
   await page.goto("/");
+  // Rest the pointer on the panel, so it can't fade out (and leave the accessibility
+  // tree) if a step takes longer than the idle timeout on a busy machine.
+  await page.locator(".panel").hover();
   await expect(page.getByRole("heading", { name: "Aural Farm" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Starship Engine Core" })).toBeVisible();
 
