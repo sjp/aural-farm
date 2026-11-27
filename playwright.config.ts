@@ -5,7 +5,9 @@ const CI = (process.env.CI ?? "") !== "";
 
 /**
  * Browser tests in headless Chromium, run against the Vite dev server so the
- * dev-only checks are active too. The sound reporter gathers the sound checks' measurements into
+ * dev-only checks are active too. The sound cost checks time renders, so they
+ * run in their own project, one at a time, once every other test has finished.
+ * The sound reporter gathers the sound checks' measurements into
  * `test-results/sounds.json` and a table.
  */
 export default defineConfig({
@@ -18,6 +20,15 @@ export default defineConfig({
     baseURL: `http://localhost:${String(PORT)}`,
     browserName: "chromium",
   },
+  projects: [
+    { name: "browser", testIgnore: /sound-cost\.spec\.ts$/ },
+    {
+      name: "cost",
+      testMatch: /sound-cost\.spec\.ts$/,
+      dependencies: ["browser"],
+      workers: 1,
+    },
+  ],
   webServer: {
     command: `npx vite --port ${String(PORT)} --strictPort`,
     url: `http://localhost:${String(PORT)}/`,

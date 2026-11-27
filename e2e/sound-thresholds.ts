@@ -3,6 +3,10 @@
  * that are allowed to miss one, each with its reason. A sound that needs an
  * exception gets it here, never in the spec.
  */
+import type { SoundMeta } from "../src/sounds/types";
+
+const CI = (process.env.CI ?? "") !== "";
+
 export const THRESHOLDS = {
   /** Not silent: 10 s at defaults reads above this, in LUFS. */
   audibleLufs: -50,
@@ -57,6 +61,20 @@ export const THRESHOLDS = {
 } as const;
 
 type ThresholdName = keyof typeof THRESHOLDS;
+
+/** Render time ÷ audio time for one layer at defaults, by its metadata's `cost`. */
+export const COST_BUDGET: Readonly<Record<SoundMeta["cost"], number>> = {
+  "very low": 0.002,
+  low: 0.005,
+  medium: 0.015,
+};
+
+/**
+ * The budgets hold on the developer's machine. Shared CI runners are slower
+ * and noisier, so CI allows twice the budget: it still catches a sound that
+ * blows its budget, without failing on a busy runner.
+ */
+export const COST_SLACK = CI ? 2 : 1;
 
 interface Exception {
   value: number;

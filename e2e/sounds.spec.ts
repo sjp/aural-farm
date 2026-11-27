@@ -12,7 +12,8 @@ import { silentSet, threshold, THRESHOLDS } from "./sound-thresholds";
  * lazy load, in an OfflineAudioContext, and measured: level, peaks, spectrum,
  * stereo, clicks, determinism and time-addressability. Each sound is one test,
  * with a step per check; the pass marks are in `sound-thresholds.ts`. A final
- * test plays every sound at once through the master chain.
+ * test plays every sound at once through the master chain. Render cost is
+ * measured on its own, in `sound-cost.spec.ts`.
  *
  * Each test attaches its measurements, which the sound reporter collects into
  * `test-results/sounds.json` and a table.
