@@ -307,7 +307,7 @@
       }
     },
     {
-      "files": ["**/*.worklet.ts", "**/*-dsp.ts"],
+      "files": ["**/*.worklet.ts", "**/*-dsp.ts", "src/audio/dsp/**", "src/audio/random.ts"],
       "rules": {
         "no-restricted-globals": [
           "error",
