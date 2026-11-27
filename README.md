@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Meditation**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -474,6 +474,17 @@ the next strike within one new interval), **Rim singing** adds one bowl rubbed a
 singing continuously underneath and swelling and receding over half a minute or so (fading in
 or out over a few seconds), **Space** how much of the room you hear, and **Variation**
 crossfades to a different run of strikes and slightly different bowls.
+
+**Drone Pad** is a warm, slowly evolving chord that sits under everything else. It is never a
+melody and has no beat: one open voicing of roots, fifths and ninths glows for a minute or so,
+then dissolves into another over tens of seconds, so you notice it has changed only some time
+after it has, and no voicing plays twice running. **Key** picks the root of every voicing (C
+to B, crossfading over a few seconds), **Brightness** goes from dark and soft to open and
+shimmering, **Movement** sets how quickly the chords change (every 2 minutes at 0 to every 30
+seconds at 100; a faster setting brings the next change forward, never into a change already
+under way) and how much the pitch and tone drift, **Space** how much of the hall you hear, and
+**Variation** crossfades to a different order of chords. With singing bowls and wind chimes in
+the same key, it makes the **Meditation** preset.
 
 **Distant Thunder** is a storm some miles away: mostly quiet, then now and again a long, low
 rumble that swells in over a second or two, rolls through a few overlapping peaks and dies
