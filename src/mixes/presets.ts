@@ -8,7 +8,6 @@
  * checks). Planned presets still waiting for their sounds, each to be added here
  * along with the last of its sounds:
  *
- *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
  *   Café Study        Coffee Shop, Rain (light)
  *   City Night        Distant City (night), Rain (light)
  *   Server Hall       Server Room, Fan
@@ -115,6 +114,19 @@ export const presets: readonly Preset[] = [
       "&stream.seed=1" +
       "&wind.volume=45&wind.muted=0&wind.strength=25&wind.gustiness=35&wind.setting=trees" +
       "&wind.whistle=0&wind.seed=1",
+  },
+  {
+    id: "rainy-cabin",
+    name: "Rainy Cabin",
+    description: "Rain on the roof, a crackling fire and a clock ticking on the shelf.",
+    hash:
+      "#name=Rainy%20Cabin&master=70&layers=fireplace,rain,clock" +
+      "&fireplace.volume=65&fireplace.muted=0&fireplace.size=45&fireplace.crackle=45" +
+      "&fireplace.wood=hardwood&fireplace.room=40&fireplace.seed=1" +
+      "&rain.volume=55&rain.muted=0&rain.intensity=45&rain.surface=roof&rain.distance=40" +
+      "&rain.bubbles=20&rain.seed=1" +
+      "&clock.volume=90&clock.muted=0&clock.clock=mantel&clock.tone=30&clock.room=45" +
+      "&clock.chime=0&clock.seed=1",
   },
   {
     id: "night-train",
