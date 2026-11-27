@@ -112,6 +112,15 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       { name: "highest pitch, full power", params: { pitch: 72, power: 100, pulseDepth: 100 } },
     ],
   },
+  bridge: {
+    // Everything at once: the busiest consoles, doors and the alert over the loudest bed.
+    extraSets: [
+      {
+        name: "busy, doors sometimes, alert, everything up",
+        params: { activity: "busy", doors: "sometimes", alert: true, engine: 100, air: 100 },
+      },
+    ],
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
