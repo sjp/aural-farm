@@ -33,6 +33,7 @@ import { useDocumentVisible } from "./hooks/useDocumentVisible";
 import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
 import { useKeyboardInset } from "./hooks/useKeyboardInset";
+import { useAudioExport } from "./hooks/useAudioExport";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { browserMediaSession, browserMetadata, useMediaSession } from "./hooks/useMediaSession";
 import { useWakeLock } from "./hooks/useWakeLock";
@@ -581,6 +582,14 @@ export function App({
     },
     [],
   );
+
+  const coarse = useMediaQuery("(pointer: coarse)");
+  const audioExport = useAudioExport({
+    preferences,
+    mix: state.mix,
+    coarse,
+    notify: showToast,
+  });
 
   const setPanelHidden = useCallback((panelHidden: boolean) => {
     setState((s) => ({ ...s, panelHidden }));
@@ -1151,6 +1160,7 @@ export function App({
               onSettingsChange: changeSleepSettings,
             }}
             mixes={mixes}
+            audioExport={audioExport}
           />
         </div>
       </PanelErrorBoundary>
