@@ -365,6 +365,11 @@ class FakeAnalyser extends FakeNode {
   }
 }
 
+class FakeMediaStreamDestination extends FakeNode {
+  /** Stands in for the `MediaStream` a media element plays. */
+  readonly stream = { id: "fake-stream" };
+}
+
 class FakeWorkletNode extends FakeNode {
   readonly parameters = new Map<string, FakeParam>();
   readonly port = {
@@ -563,6 +568,8 @@ export class FakeAudioContext extends FakeEventTarget {
   createDynamicsCompressor = () => this.make(() => new FakeCompressor(this, "compressor"));
   createWaveShaper = () => this.make(() => new FakeWaveShaper(this, "waveshaper"));
   createAnalyser = () => this.make(() => new FakeAnalyser(this, "analyser"));
+  createMediaStreamDestination = () =>
+    this.make(() => new FakeMediaStreamDestination(this, "media-stream-destination", 1, 0));
   createChannelSplitter = (outputs = 6) =>
     this.make(() => new FakeNode(this, "splitter", 1, outputs));
   createChannelMerger = (inputs = 6) => this.make(() => new FakeNode(this, "merger", inputs, 1));

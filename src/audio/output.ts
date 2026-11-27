@@ -47,3 +47,13 @@ export function chooseOutputRoute(
   }
   return features.mediaSession && features.coarsePointer ? "media" : "direct";
 }
+
+/** The parts of an `<audio>` element the engine uses; tests pass a fake. */
+export interface MediaOutputElement {
+  srcObject: MediaProvider | null;
+  readonly paused: boolean;
+  play: () => Promise<void>;
+  pause: () => void;
+  addEventListener: (type: "pause", listener: () => void) => void;
+  removeEventListener: (type: "pause", listener: () => void) => void;
+}

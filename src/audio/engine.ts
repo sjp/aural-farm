@@ -7,7 +7,7 @@
  *   shared reverb (one convolver per kind) ──────────────┤
  *                                                        └→ master level
  *        → master mute → master fade → high-pass 25 Hz → limiter → trim −1 dB
- *        → output (→ destination)
+ *        → output (→ destination, or → media stream → <audio> element)
  *
  * A sound's reverb sends go to its layer's reverb bus: for each kind it uses, a
  * level, solo and fade gain chain that copies the layer's own automation, feeding
@@ -27,6 +27,15 @@
  * created on the first `play()` and suspended once a pause has faded out, so
  * nothing runs while paused. It keeps playing when the tab is hidden.
  *
+ * With a media element (`mediaElement`), the output plays through it, which is
+ * what phones need to treat the sound as media (see `chooseOutputRoute`). The
+ * element plays while the engine does and is paused once a pause has suspended
+ * the context. If something outside the app pauses it (the system handing the
+ * audio to another app, a lock-screen control that bypasses Media Session), the
+ * engine pauses too and stays paused, since the user chose that. The context's
+ * own interruptions (Safari's "interrupted", as during a phone call) resume by
+ * themselves when the context runs again.
+ *
  * Fades and glides are scheduled on the audio clock. Work that has to wait for
  * the clock (disposing a removed layer, suspending after a pause) polls it with a
  * timer, so a throttled timer in a background tab only makes it late, never early.
@@ -44,6 +53,7 @@ import {
   volumeGain,
   type MasterChain,
 } from "./mix-graph";
+import type { MediaOutputElement } from "./output";
 import { getReverb, routeReverb, type ReverbKind } from "./reverb";
 
 export type EngineState =
@@ -96,6 +106,11 @@ interface EngineOptions {
   onLayerState: (id: string, state: LayerState) => void;
   /** Connects the master output to the speakers; the default goes to `ctx.destination`. */
   connectOutput?: (ctx: AudioContext, output: AudioNode) => void;
+  /**
+   * Asked once, when the context is made: an element to play the output through
+   * instead of `connectOutput`, or undefined for none.
+   */
+  mediaElement?: (() => MediaOutputElement | undefined) | undefined;
   /** Finds a sound's registry entry; the default is the registry. */
   findSound?: typeof getSound;
 }
@@ -230,6 +245,10 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   let context: AudioContext | undefined;
   let master: MasterChain | undefined;
   let masterFade = still(0);
+  /** The element the output plays through, if any. */
+  let element: MediaOutputElement | undefined;
+  /** Set when the element refused to play (no user gesture), until the next `play()`. */
+  let elementRefused = false;
   /** Reverb kinds whose shared convolver feeds the master bus. */
   const reverbReturns = new Set<ReverbKind>();
   let mix: Mix = { master: 100, layers: [] };
@@ -653,7 +672,15 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       chain.level.gain.value = volumeGain(mix.master);
       chain.mute.gain.value = masterMuted ? 0 : 1;
       chain.fade.gain.value = 0;
-      connectOutput(ctx, chain.output);
+      const media = options.mediaElement?.();
+      if (media) {
+        const stream = ctx.createMediaStreamDestination();
+        chain.output.connect(stream);
+        media.srcObject = stream.stream;
+        element = media;
+      } else {
+        connectOutput(ctx, chain.output);
+      }
       master = chain;
     } catch (error) {
       console.error("Couldn't start audio:", error);
@@ -664,6 +691,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     context = ctx;
     masterFade = still(0);
     ctx.addEventListener("statechange", onContextState);
+    element?.addEventListener("pause", onElementPause);
     attachMasterAnalyser();
     for (const entry of layers.values()) {
       build(entry);
@@ -689,6 +717,50 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
   };
 
+  /** Blocks playback after the element refused to play, unless a play or pause came since. */
+  const elementRefusedPlay = (token: number) => {
+    if (stale(token) || !wantPlaying) {
+      return;
+    }
+    elementRefused = true;
+    silence();
+    setState("blocked");
+    if (context?.state === "running") {
+      context.suspend().catch(() => undefined);
+    }
+  };
+
+  /**
+   * Starts the media element, if there is one. If it refuses (it needs a user
+   * gesture), playback is blocked, as when the context refuses to start, and the
+   * context is suspended so that nothing runs unheard.
+   */
+  const playElement = (): Promise<unknown> => {
+    if (!element) {
+      return Promise.resolve();
+    }
+    elementRefused = false;
+    const token = transition;
+    return element.play().catch(() => {
+      elementRefusedPlay(token);
+    });
+  };
+
+  /** Follows the element when something outside the engine pauses it. */
+  function onElementPause() {
+    // Skip the event of the engine's own pause, and one that arrives after a play
+    // has started the element again.
+    if (disposed || !context || !wantPlaying || element?.paused !== true || elementRefused) {
+      return;
+    }
+    const contextState: string = context.state;
+    if (contextState === "interrupted") {
+      // Part of the context's interruption, which resumes the element when it ends.
+      return;
+    }
+    pause();
+  }
+
   function onContextState() {
     if (disposed || !context) {
       return;
@@ -696,7 +768,13 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     // Safari adds "interrupted", which the DOM types don't list.
     const contextState: string = context.state;
     if (contextState === "running") {
-      if (wantPlaying) {
+      if (wantPlaying && elementRefused) {
+        // A resume went through, but the element won't play: nothing would be heard.
+        context.suspend().catch(() => undefined);
+      } else if (wantPlaying) {
+        if (element?.paused === true && state === "interrupted") {
+          void playElement();
+        }
         startPlaying();
       } else if (state === "paused") {
         // A resume that was pending when the user paused has gone through: nothing
@@ -722,8 +800,13 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     if (!ctx) {
       return state;
     }
+    // Started at once, while the user gesture that called play() still counts.
+    const elementStarted = playElement();
     if (ctx.state === "running") {
       startPlaying();
+      if (element) {
+        await settleWithin(elementStarted, BLOCKED_AFTER_MS);
+      }
       return state;
     }
     if (state !== "blocked" && state !== "interrupted") {
@@ -733,6 +816,15 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     // gesture; give it a moment, then report that playback is blocked.
     await settleWithin(ctx.resume(), BLOCKED_AFTER_MS);
     if (stale(token)) {
+      return state;
+    }
+    if (element) {
+      await settleWithin(elementStarted, BLOCKED_AFTER_MS);
+      if (stale(token)) {
+        return state;
+      }
+    }
+    if (elementRefused) {
       return state;
     }
     if (isRunning(ctx)) {
@@ -754,6 +846,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       // Not sounding (blocked, interrupted or still starting): nothing to fade.
       silence();
       setState("paused");
+      element?.pause();
       if (ctx.state === "suspended") {
         return;
       }
@@ -778,6 +871,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
     if (!stale(token)) {
       setState("paused");
+      element?.pause();
       // The clock has stopped, so layers still fading out can go now.
       for (const voice of Array.from(leaving)) {
         release(voice);
@@ -931,6 +1025,11 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       release(voice);
     }
     detachMasterAnalyser();
+    if (element) {
+      element.removeEventListener("pause", onElementPause);
+      element.pause();
+      element.srcObject = null;
+    }
     if (context) {
       context.removeEventListener("statechange", onContextState);
       context.close().catch(() => undefined);

@@ -5,6 +5,7 @@ import { SEED_PARAM } from "../sounds/param-options";
 import type { SoundEntry } from "../sounds/registry";
 import { defineSound, defineSoundMeta, type ParamValues } from "../sounds/types";
 import { FakeAudioContext, type FakeNode, type FakeParam } from "../test/fake-audio";
+import { FakeMediaElement } from "../test/fake-media";
 import {
   BLOCKED_AFTER_MS,
   createAudioEngine,
@@ -122,10 +123,14 @@ let states: EngineState[];
 let layerStates: Map<string, LayerState[]>;
 let engine: AudioEngine;
 
-function makeEngine(createContext: () => AudioContext = () => ctx.asContext()) {
+function makeEngine(
+  createContext: () => AudioContext = () => ctx.asContext(),
+  mediaElement?: () => FakeMediaElement | undefined,
+) {
   const sounds = new Map([a, b].map((s) => [s.entry.id, s.entry]));
   return createAudioEngine({
     createContext,
+    mediaElement,
     loader: createSoundLoader(),
     findSound: (id) => sounds.get(id),
     onState: (s) => {
@@ -391,6 +396,137 @@ describe("play and pause", () => {
     await flush();
     ctx.setState("suspended");
     expect(states.at(-1)).toBe("interrupted");
+  });
+});
+
+describe("media element output", () => {
+  let element: FakeMediaElement;
+  let asked: number;
+
+  beforeEach(() => {
+    element = new FakeMediaElement();
+    asked = 0;
+    engine = makeEngine(undefined, () => {
+      asked++;
+      return element;
+    });
+  });
+
+  it("plays the output through the element instead of the destination", async () => {
+    await expect(engine.play()).resolves.toBe("playing");
+    const stream = ctx.nodes.find((n) => n.kind === "media-stream-destination");
+    expect(stream).toBeDefined();
+    expect(ctx.nodes.some((n) => n.connections.includes(ctx.destination))).toBe(false);
+    const trim = ctx.nodes.find((n) => stream !== undefined && n.connections.includes(stream));
+    expect(trim?.kind).toBe("gain");
+    expect(element.srcObject).toBe((stream as unknown as { stream: object }).stream);
+    expect(element.calls).toEqual(["play"]);
+    expect(element.paused).toBe(false);
+    await engine.play();
+    expect(asked).toBe(1);
+  });
+
+  it("pauses the element once the pause has suspended the context", async () => {
+    await engine.play();
+    await flush();
+    engine.pause();
+    expect(element.paused).toBe(false);
+    await tick(PAUSE_FADE_OUT);
+    await flush();
+    expect(ctx.state).toBe("suspended");
+    expect(element.paused).toBe(true);
+    expect(states).toEqual(["playing", "pausing", "paused"]);
+    await expect(engine.play()).resolves.toBe("playing");
+    expect(element.calls).toEqual(["play", "pause", "play"]);
+  });
+
+  it("follows the element when something outside pauses it, and stays paused", async () => {
+    await engine.play();
+    await flush();
+    element.pauseFromOutside();
+    await flush();
+    expect(states.at(-1)).toBe("pausing");
+    await tick(PAUSE_FADE_OUT);
+    await flush();
+    expect(states.at(-1)).toBe("paused");
+    expect(ctx.state).toBe("suspended");
+    // The context running again (as when the other app lets go) doesn't resume.
+    ctx.setState("running");
+    await flush();
+    expect(ctx.state).toBe("suspended");
+    expect(states.at(-1)).toBe("paused");
+    expect(element.calls.filter((call) => call === "play")).toHaveLength(1);
+  });
+
+  it("ignores the pause event of a pause that a play has already overtaken", async () => {
+    await engine.play();
+    await flush();
+    engine.pause();
+    await tick(PAUSE_FADE_OUT);
+    // The element's pause event is still queued when play starts it again.
+    const playing = engine.play();
+    await flush();
+    await playing;
+    expect(states.at(-1)).toBe("playing");
+    expect(element.paused).toBe(false);
+  });
+
+  it("rides out an interruption that pauses the element, and resumes when it ends", async () => {
+    await engine.play();
+    await flush();
+    ctx.setState("interrupted");
+    element.pauseFromOutside();
+    await flush();
+    expect(states.at(-1)).toBe("interrupted");
+    expect(ctx.calls).not.toContain("suspend");
+    ctx.setState("running");
+    await flush();
+    expect(states.at(-1)).toBe("playing");
+    expect(element.calls).toEqual(["play", "play"]);
+    expect(element.paused).toBe(false);
+  });
+
+  it("shows Play after an interruption that the platform never ends", async () => {
+    await engine.play();
+    await flush();
+    ctx.setState("interrupted");
+    await tick(60);
+    expect(states.at(-1)).toBe("interrupted");
+    await expect(engine.play()).resolves.toBe("playing");
+  });
+
+  it("blocks, and suspends the context, when the element won't play without a gesture", async () => {
+    element.allowed = false;
+    await expect(engine.play()).resolves.toBe("blocked");
+    expect(ctx.state).toBe("suspended");
+    element.allowed = true;
+    await expect(engine.play()).resolves.toBe("playing");
+    expect(element.paused).toBe(false);
+    expect(ctx.state).toBe("running");
+  });
+
+  it("blocks when the element refuses while the context is still starting", async () => {
+    ctx = new FakeAudioContext({ allowed: false });
+    element.allowed = false;
+    const result = engine.play();
+    await vi.advanceTimersByTimeAsync(BLOCKED_AFTER_MS);
+    await expect(result).resolves.toBe("blocked");
+    // A resume that goes through later still leaves nothing running unheard.
+    ctx.allowed = true;
+    await ctx.resume();
+    await flush();
+    expect(ctx.state).toBe("suspended");
+    expect(states.at(-1)).toBe("blocked");
+  });
+
+  it("lets go of the element on dispose", async () => {
+    await engine.play();
+    await flush();
+    expect(element.listenerCount).toBe(1);
+    engine.dispose();
+    expect(element.listenerCount).toBe(0);
+    expect(element.paused).toBe(true);
+    expect(element.srcObject).toBeNull();
   });
 });
 
