@@ -29,14 +29,16 @@ export function loadWorklet(ctx: BaseAudioContext, url: string): Promise<void> {
     return cached;
   }
   // Browsers only offer AudioWorklet on secure pages: https, or localhost.
-  if (!ctx.audioWorklet) {
+  // The DOM types promise `audioWorklet`, but insecure pages leave it out.
+  const worklet = ctx.audioWorklet as AudioWorklet | undefined;
+  if (worklet === undefined) {
     return Promise.reject(
       new Error(
         "this browser only allows it on secure pages; open the app over https or localhost",
       ),
     );
   }
-  const loading = ctx.audioWorklet.addModule(url).catch((error: unknown) => {
+  const loading = worklet.addModule(url).catch((error: unknown) => {
     modules.delete(url);
     throw error;
   });
