@@ -19,6 +19,14 @@ import { configDefaults, defineConfig } from "vitest/config";
  * srcObject is a MediaStream from the audio graph, not a URL, so nothing is
  * fetched. (Were it fetched, default-src 'self' would cover it.) The Media
  * Session's artwork is the site's own icon, under 'self'.
+ *
+ * Exporting audio needs nothing more either. The finished file downloads through
+ * a blob: link, a navigation, which CSP doesn't govern; writing to a file picked
+ * with showSaveFilePicker isn't governed either. The renderer and the encoder
+ * (mediabunny) are lazily loaded chunks under 'self'. WebCodecs encodes in the
+ * page and fetches nothing. Mediabunny starts blob: workers only for video
+ * features (alpha channels, camera tracks) the export never uses; were they
+ * needed, they'd need worker-src blob:.
  */
 const CSP = [
   "default-src 'self'",
