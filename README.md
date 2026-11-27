@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Meditation**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Meditation**, **Deep Focus**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -485,6 +485,19 @@ seconds at 100; a faster setting brings the next change forward, never into a ch
 under way) and how much the pitch and tone drift, **Space** how much of the hall you hear, and
 **Variation** crossfades to a different order of chords. With singing bowls and wind chimes in
 the same key, it makes the **Meditation** preset.
+
+**Binaural Beats** are two pure, steady tones a few hertz apart, one in each ear, which you
+hear as one tone with a slow pulse at the difference between them. They only work on
+headphones, so the layer row says **Use headphones**; left and right stay fully apart, with no
+panning or reverb. **Beat** picks the difference: **Delta 2 Hz**, **Theta 6 Hz**, **Alpha 10
+Hz** or **Beta 18 Hz** (named after the frequency bands they fall in), or **Custom**, which
+uses **Custom beat** (1 to 30 Hz; it does nothing for the other choices). **Tone** sets the
+pitch the two tones sit around (100 to 400 Hz), and both glide over a second or so when
+changed. **Mode** switches, with a 2-second crossfade, to **Isochronic**, which plays one tone
+in both ears and swells its level gently at the beat rate instead, so it works on speakers
+too. **Noise bed** adds soft pink noise underneath (0 is the tones alone), and **Variation**
+crossfades to a different take on that noise. It is meant to sit quietly under other sounds;
+with pink noise and a drone pad it makes the **Deep Focus** preset.
 
 **Distant Thunder** is a storm some miles away: mostly quiet, then now and again a long, low
 rumble that swells in over a second or two, rolls through a few overlapping peaks and dies
