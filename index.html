@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
@@ -10,6 +12,12 @@
     />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#000000" />
+    <!-- Installed on an iPhone's home screen: full screen, the page drawn under the
+         status bar (the layout keeps clear of it with the safe-area insets). -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Aural Farm" />
     <title>Aural Farm</title>
   </head>
   <body>

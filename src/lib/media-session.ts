@@ -26,6 +26,7 @@ const ARTIST = "Aural Farm";
 
 /** The app's icon, relative to the page so it works under a subpath. */
 const ARTWORK: MediaImage[] = [
+  { src: "icon-192.png", sizes: "192x192", type: "image/png" },
   { src: "icon-512.png", sizes: "512x512", type: "image/png" },
   { src: "favicon.svg", sizes: "any", type: "image/svg+xml" },
 ];

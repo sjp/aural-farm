@@ -27,12 +27,17 @@ import { configDefaults, defineConfig } from "vitest/config";
  * page and fetches nothing. Mediabunny starts blob: workers only for video
  * features (alpha channels, camera tracks) the export never uses; were they
  * needed, they'd need worker-src blob:.
+ *
+ * The web app manifest is fetched under manifest-src, named explicitly ('self',
+ * the same as default-src) so the policy reads as a list of what the page loads;
+ * its icons are images under img-src.
  */
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
   "img-src 'self'",
+  "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",
