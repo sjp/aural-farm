@@ -95,6 +95,10 @@ export default defineConfig({
     preact({ reactAliasesEnabled: false, exclude: PREACT_EXCLUDE }),
     contentSecurityPolicy(),
   ],
+  // The dev server finds a dependency imported only lazily (the export encoder's
+  // mediabunny) when it is first imported, pre-bundles it then and reloads the
+  // page, which would cut short the export that loaded it. Pre-bundle it up front.
+  optimizeDeps: { include: ["mediabunny"] },
   // Agent worktrees live under .claude/; keep their copies of the tests out of the run.
   // e2e/ holds the Playwright browser tests, run by `npm run test:browser`, and
   // *.perf.test.ts the timing tests, run one file at a time by `npm run test:perf`.
