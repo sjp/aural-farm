@@ -58,21 +58,26 @@ class NoiseProcessor extends StoppableProcessor {
   }
 }
 
+/** Runs one drift per output channel. */
 class DriftProcessor extends StoppableProcessor {
-  private readonly generator: DriftGenerator;
+  private readonly generators: DriftGenerator[];
   private readonly offset: number;
 
   constructor(options: AudioWorkletNodeOptions) {
     super();
     const o = readDriftOptions(options.processorOptions);
-    this.generator = new DriftGenerator(o.seed, o.stream, o.rate, o.octaves, sampleRate);
+    this.generators = o.drifts.map(
+      (d) => new DriftGenerator(o.seed, d.stream, d.rate, d.octaves, sampleRate),
+    );
     this.offset = Math.round(o.offset * sampleRate);
   }
 
   process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
     const output = outputs[0] ?? [];
-    if (output.length > 0) {
-      this.generator.render(output[0], currentFrame + this.offset);
+    const start = currentFrame + this.offset;
+    const channels = Math.min(output.length, this.generators.length);
+    for (let c = 0; c < channels; c++) {
+      this.generators[c]?.render(output[c], start);
     }
     return !this.stopped;
   }

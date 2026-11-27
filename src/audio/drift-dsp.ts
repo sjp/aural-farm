@@ -23,31 +23,55 @@ const OCTAVE_RATIO = 2.137;
 const KNOT_SCALE = 0.8;
 export const MAX_DRIFT_OCTAVES = 3;
 
-export interface DriftOptions {
-  seed: number;
+/** One drift's settings. */
+export interface DriftSpec {
   stream: number;
   /** Knots per second of the slowest octave. */
   rate: number;
   /** 1–3. */
   octaves: number;
+}
+
+/** A drift processor's options: one drift per output channel, all from one seed. */
+export interface DriftOptions {
+  seed: number;
+  drifts: DriftSpec[];
   /** Seconds to add to the context's time to get absolute time. */
   offset: number;
 }
 
+/** The most drifts one processor runs. */
+export const MAX_DRIFT_CHANNELS = 16;
+
 const numberOr = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
-/** Reads `processorOptions` from the main thread, falling back to safe defaults. */
-export function readDriftOptions(raw: unknown): DriftOptions {
-  const get = (key: string): unknown =>
-    typeof raw === "object" && raw !== null ? Reflect.get(raw, key) : undefined;
-  const octaves = Math.round(numberOr(get("octaves"), 1));
+const field = (raw: unknown, key: string): unknown =>
+  typeof raw === "object" && raw !== null ? Reflect.get(raw, key) : undefined;
+
+function readDriftSpec(raw: unknown): DriftSpec {
+  const octaves = Math.round(numberOr(field(raw, "octaves"), 1));
   return {
-    seed: Math.trunc(numberOr(get("seed"), 0)),
-    stream: Math.trunc(numberOr(get("stream"), 0)),
-    rate: Math.max(1e-6, numberOr(get("rate"), 0.1)),
+    stream: Math.trunc(numberOr(field(raw, "stream"), 0)),
+    rate: Math.max(1e-6, numberOr(field(raw, "rate"), 0.1)),
     octaves: Math.min(MAX_DRIFT_OCTAVES, Math.max(1, octaves)),
-    offset: numberOr(get("offset"), 0),
+  };
+}
+
+/**
+ * Reads `processorOptions` from the main thread, falling back to safe defaults:
+ * one drift when `drifts` is missing or empty, and at most `MAX_DRIFT_CHANNELS`.
+ */
+export function readDriftOptions(raw: unknown): DriftOptions {
+  const drifts = field(raw, "drifts");
+  const specs = Array.isArray(drifts) ? drifts.slice(0, MAX_DRIFT_CHANNELS) : [];
+  return {
+    seed: Math.trunc(numberOr(field(raw, "seed"), 0)),
+    drifts:
+      specs.length > 0
+        ? specs.map((spec: unknown) => readDriftSpec(spec))
+        : [readDriftSpec(undefined)],
+    offset: numberOr(field(raw, "offset"), 0),
   };
 }
 

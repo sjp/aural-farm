@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FakeAudioContext, installFakeAudioGlobals, type FakeNode } from "../test/fake-audio";
-import { createDrift } from "./drift";
+import { createDrift, createDrifts } from "./drift";
 import { DRIFT_PROCESSOR } from "./drift-dsp";
 import { createNoise } from "./noise";
 import { NOISE_PROCESSOR } from "./noise-dsp";
@@ -196,7 +196,39 @@ describe("createDrift", () => {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [1],
-      processorOptions: { seed: 3, stream: 4, rate: 0.05, octaves: 2, offset: -7 },
+      processorOptions: {
+        seed: 3,
+        drifts: [{ stream: 4, rate: 0.05, octaves: 2 }],
+        offset: -7,
+      },
+    });
+  });
+
+  it("runs several drifts in one node, one per channel", async () => {
+    const ctx = contextAt(0);
+    const options = recordOptions();
+    await withAudioScope(async (scope) => {
+      await createDrifts(ctx.asContext(), scope, {
+        seed: 3,
+        drifts: [
+          { stream: 4, rate: 0.05, octaves: 2 },
+          { stream: 5, rate: 0.02, octaves: 1 },
+          { stream: 6, rate: 0.08, octaves: 1 },
+        ],
+        startAt: 0,
+      });
+    });
+    expect(ctx.nodes.filter((n) => n.kind === "worklet")).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      outputChannelCount: [3],
+      processorOptions: {
+        seed: 3,
+        drifts: [
+          { stream: 4, rate: 0.05, octaves: 2 },
+          { stream: 5, rate: 0.02, octaves: 1 },
+          { stream: 6, rate: 0.08, octaves: 1 },
+        ],
+      },
     });
   });
 });

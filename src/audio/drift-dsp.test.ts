@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DriftGenerator, MAX_DRIFT_OCTAVES, readDriftOptions } from "./drift-dsp";
+import {
+  DriftGenerator,
+  MAX_DRIFT_CHANNELS,
+  MAX_DRIFT_OCTAVES,
+  readDriftOptions,
+} from "./drift-dsp";
 
 const SR = 48000;
 
@@ -77,23 +82,41 @@ describe("DriftGenerator", () => {
 
 describe("readDriftOptions", () => {
   it("reads valid options", () => {
-    expect(readDriftOptions({ seed: 2, stream: 3, rate: 0.05, octaves: 2, offset: -5 })).toEqual({
+    expect(
+      readDriftOptions({
+        seed: 2,
+        drifts: [
+          { stream: 3, rate: 0.05, octaves: 2 },
+          { stream: 4, rate: 0.02, octaves: 1 },
+        ],
+        offset: -5,
+      }),
+    ).toEqual({
       seed: 2,
-      stream: 3,
-      rate: 0.05,
-      octaves: 2,
+      drifts: [
+        { stream: 3, rate: 0.05, octaves: 2 },
+        { stream: 4, rate: 0.02, octaves: 1 },
+      ],
       offset: -5,
     });
   });
 
   it("clamps and falls back", () => {
-    expect(readDriftOptions({ rate: -1, octaves: 9 })).toEqual({
+    expect(readDriftOptions({ drifts: [{ rate: -1, octaves: 9 }] })).toEqual({
       seed: 0,
-      stream: 0,
-      rate: 1e-6,
-      octaves: MAX_DRIFT_OCTAVES,
+      drifts: [{ stream: 0, rate: 1e-6, octaves: MAX_DRIFT_OCTAVES }],
       offset: 0,
     });
-    expect(readDriftOptions(undefined).octaves).toBe(1);
+    expect(readDriftOptions(undefined).drifts).toEqual([{ stream: 0, rate: 0.1, octaves: 1 }]);
+    expect(readDriftOptions({ drifts: [] }).drifts).toHaveLength(1);
+  });
+
+  it("runs at most MAX_DRIFT_CHANNELS drifts", () => {
+    const drifts = Array.from({ length: MAX_DRIFT_CHANNELS + 3 }, (_, stream) => ({
+      stream,
+      rate: 0.1,
+      octaves: 1,
+    }));
+    expect(readDriftOptions({ drifts }).drifts).toHaveLength(MAX_DRIFT_CHANNELS);
   });
 });
