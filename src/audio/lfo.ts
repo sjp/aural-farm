@@ -124,7 +124,7 @@ interface LfoOptions {
 /**
  * An oscillator at `frequency`, started now, whose phase at absolute time
  * `startAt` is `fract(frequency · startAt)`, as if it had run since absolute time
- * 0. The wave isn't normalised: its values are those of `wave`. The oscillator is
+ * 0, so it can run at audio rates as a tone. The wave isn't normalised: its values are those of `wave`. The oscillator is
  * registered with `scope`.
  */
 export function createLfo(
@@ -133,7 +133,10 @@ export function createLfo(
   options: LfoOptions,
 ): OscillatorNode {
   const { frequency, startAt } = options;
-  const cycles = frequency * startAt;
+  // The oscillator runs at its frequency param's single-precision value, so the
+  // phase follows that: the double would drift from it by up to a few
+  // hundredths of a cycle over an hour at audio rates.
+  const cycles = Math.fround(frequency) * startAt;
   const rotated = rotateWave(options.wave ?? SINE_WAVE, cycles - Math.floor(cycles));
   const periodicWave = new PeriodicWave(ctx, {
     real: [...rotated.real],

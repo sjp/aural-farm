@@ -93,11 +93,13 @@ describe("createLfo", () => {
       ) as unknown as { periodicWave: Wave; frequency: { value: number }; startedAt: number };
       expect(osc.startedAt).toBe(2);
       expect(osc.frequency.value).toBe(frequency);
-      // At its start (absolute time startAt) the oscillator is at phase frequency · startAt.
+      // At its start (absolute time startAt) the oscillator is at phase frequency · startAt,
+      // at the single-precision frequency it runs at.
+      const runs = Math.fround(frequency);
       for (let i = 0; i < 20; i++) {
         const t = i / 20 / frequency;
-        expect(waveAt(osc.periodicWave, frequency * t)).toBeCloseTo(
-          waveAt(ODD, frequency * (startAt + t)),
+        expect(waveAt(osc.periodicWave, runs * t)).toBeCloseTo(
+          waveAt(ODD, runs * (startAt + t)),
           9,
         );
       }
