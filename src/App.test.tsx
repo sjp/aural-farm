@@ -8,7 +8,7 @@ import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
 import { createSoundLoader } from "./sounds/loader";
 import type { SoundEntry } from "./sounds/registry";
 import { act } from "./test/act";
-import { testCatalogue } from "./test/catalogue";
+import { TEST_TONE_ID, testCatalogue } from "./test/catalogue";
 
 const loader = createSoundLoader();
 
@@ -55,22 +55,24 @@ function fakeEngine() {
   return { engine, factory, controls, setState, callbacks: () => callbacks };
 }
 
-function renderApp(hash = "", fake = fakeEngine(), sounds?: SoundEntry[]) {
+const catalogue = testCatalogue();
+
+/** Renders the app with `sounds` (the test catalogue by default), whose default is Test Tone. */
+function renderApp(hash = "", fake = fakeEngine(), sounds: SoundEntry[] = catalogue) {
   window.history.replaceState(null, "", `/${hash}`);
   const replaceState = vi.spyOn(window.history, "replaceState");
   const view = render(
     <App
-      initial={parseHash(window.location.hash, sounds)}
+      initial={parseHash(window.location.hash, sounds, TEST_TONE_ID)}
       loader={loader}
       preferences={createPreferences(() => undefined)}
       createEngine={fake.factory}
       sounds={sounds}
+      defaultSoundId={TEST_TONE_ID}
     />,
   );
   return { replaceState, ...fake, view };
 }
-
-const catalogue = testCatalogue();
 
 /** Renders the app with the test catalogue: Test Tone, then Alpha to India. */
 function renderMixer(hash: string) {

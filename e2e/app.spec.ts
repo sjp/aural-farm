@@ -13,26 +13,23 @@ test("shows the panel with the default layer and keeps the hash in sync", async 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Aural Farm" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Test Tone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brown Noise" })).toBeVisible();
 
-  const pitch = page.getByLabel("Pitch");
-  await expect(pitch).toBeVisible();
-  await pitch.focus();
+  const tone = page.getByRole("slider", { name: "Tone" });
+  await expect(tone).toBeVisible();
+  await tone.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page).toHaveURL(/test-tone\.pitch=\d+/);
+  await expect(page).toHaveURL(/brown-noise\.tone=-9/);
 
   const volume = page.getByLabel("Volume", { exact: true });
   await volume.fill("40");
-  await expect(page).toHaveURL(/test-tone\.volume=40/);
+  await expect(page).toHaveURL(/brown-noise\.volume=40/);
 
   // An edited hash applies without a reload.
   await page.evaluate(() => {
-    window.location.hash = "layers=test-tone&test-tone.wave=triangle";
+    window.location.hash = "layers=brown-noise&brown-noise.width=25";
   });
-  await expect(page.getByRole("button", { name: "Triangle" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByRole("slider", { name: "Width" })).toHaveValue("25");
 
   expect(errors).toEqual([]);
 });

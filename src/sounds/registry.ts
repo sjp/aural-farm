@@ -7,7 +7,6 @@ import type { SoundDefinition, SoundMeta } from "./types";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
-import { testToneMeta } from "./test-tone/test-tone.meta";
 import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
 
 export interface SoundEntry extends SoundMeta {
@@ -15,7 +14,6 @@ export interface SoundEntry extends SoundMeta {
 }
 
 export const sounds: readonly SoundEntry[] = [
-  { ...testToneMeta, load: () => import("./test-tone/test-tone").then((m) => m.testTone) },
   {
     ...brownNoiseMeta,
     load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),
@@ -29,7 +27,7 @@ export const sounds: readonly SoundEntry[] = [
 ];
 
 /** The sound a fresh visit's mix holds. */
-export const DEFAULT_SOUND_ID = "test-tone";
+export const DEFAULT_SOUND_ID = "brown-noise";
 
 export function getSound(id: string): SoundEntry | undefined {
   return sounds.find((s) => s.id === id);

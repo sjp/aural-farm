@@ -39,7 +39,7 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
   });
   const contextStates = () =>
     page.evaluate(() => (window.madeContexts ?? []).map((ctx) => ctx.state));
-  await page.goto("/#layers=test-tone");
+  await page.goto("/#layers=brown-noise");
 
   // Autoplay, or a click where the browser asks for one (headless Chromium does).
   const pause = page.getByRole("button", { name: "Pause" });
@@ -72,9 +72,9 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
   });
   await expect(page.getByText("Add a sound to start")).toBeVisible();
   await page.evaluate(() => {
-    window.location.hash = "layers=test-tone";
+    window.location.hash = "layers=brown-noise";
   });
-  await expect(page.getByRole("heading", { name: "Test Tone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Brown Noise" })).toBeVisible();
   await page.waitForTimeout(2000);
   // A locator rather than a role query, so an alert in a panel that has idled out still counts.
   await expect(page.locator("[role=alert]")).toHaveCount(0);
@@ -84,7 +84,7 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
 
 test("starts on the first click anywhere when autoplay is blocked", async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto("/#layers=test-tone&panel=hidden");
+  await page.goto("/#layers=brown-noise&panel=hidden");
   const prompt = page.getByRole("button", { name: "Tap to play" });
   const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
   await expect(playing.or(prompt)).toBeAttached();

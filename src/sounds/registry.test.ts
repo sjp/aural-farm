@@ -38,6 +38,10 @@ describe("registry", () => {
     expect(getSound("no-such-sound")).toBeUndefined();
   });
 
+  it("has no placeholder test tone", () => {
+    expect(getSound("test-tone")).toBeUndefined();
+  });
+
   it.each(SOUND_CATEGORIES.filter((c) => !ORIGINAL_CATEGORIES.has(c)))(
     "has enough sounds in the added category %s",
     (category) => {

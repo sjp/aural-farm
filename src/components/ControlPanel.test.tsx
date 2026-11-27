@@ -6,7 +6,7 @@ import { defaultLayer, defaultMix, MAX_LAYERS, type Mix } from "../mixes/mix";
 import type { EngineState, LayerState } from "../audio/engine";
 import type { SoundEntry } from "../sounds/registry";
 import { act } from "../test/act";
-import { testCatalogue } from "../test/catalogue";
+import { TEST_TONE_ID, testCatalogue } from "../test/catalogue";
 import { ControlPanel, FULL_MIX_HINT, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
 import { LOADING_DELAY_MS } from "./LayerSection";
 
@@ -47,7 +47,7 @@ function renderPanel(initial: PanelOptions = {}) {
   let options = initial;
   const panel = () => (
     <ControlPanel
-      mix={options.mix ?? defaultMix()}
+      mix={options.mix ?? defaultMix(catalogue, TEST_TONE_ID)}
       engineState={options.engineState ?? "idle"}
       layerStates={options.layerStates ?? {}}
       preferences={preferences}
@@ -59,7 +59,7 @@ function renderPanel(initial: PanelOptions = {}) {
       addOpen={options.addOpen ?? false}
       levels={options.levels}
       levelsActive={options.levelsActive}
-      sounds={options.sounds}
+      sounds={options.sounds ?? catalogue}
       {...handlers}
     />
   );
@@ -137,7 +137,7 @@ describe("ControlPanel", () => {
   });
 
   it("counts a layer's changed settings", () => {
-    const mix = defaultMix();
+    const mix = defaultMix(catalogue, TEST_TONE_ID);
     mix.layers = mix.layers.map((l) => ({ ...l, volume: 20, params: { ...l.params, soft: true } }));
     renderPanel({ mix });
     expect(document.querySelector(".layer-row")?.textContent).toContain("2 changed");
