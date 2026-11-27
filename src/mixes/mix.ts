@@ -2,7 +2,7 @@
  * The mix: up to `MAX_LAYERS` sounds, each with its own volume, mute and params,
  * under a master volume. The whole mix lives in the URL hash:
  *
- *   #master=60&layers=a,b&a.volume=80&a.pitch=330&b.muted=1&panel=hidden
+ *   #name=Night&master=60&layers=a,b&a.volume=80&a.pitch=330&b.muted=1&panel=hidden
  *
  * `panel=hidden` isn't part of the mix but is read and written alongside it.
  */
@@ -11,6 +11,34 @@ import { DEFAULT_SOUND_ID, sounds } from "../sounds/registry";
 import type { NumberParam, ParamValues, SoundMeta } from "../sounds/types";
 
 export const MAX_LAYERS = 8;
+
+/** The longest a mix's name can be, in code points. */
+export const MAX_NAME_LENGTH = 40;
+
+/** Line breaks and tabs, which become spaces so a name stays on one line. */
+const BREAKS = /[\t\n\v\f\r\u0085\u2028\u2029]+/gu;
+/**
+ * Characters a name never keeps: control characters, bidi embeddings, overrides
+ * and isolates (which could make a name read backwards or spill into the text
+ * around it), and invisible zero-width spaces and joiners other than U+200C and
+ * U+200D, which emoji sequences and some scripts need.
+ */
+const UNSAFE = /[\p{Cc}\u200B\u202A-\u202E\u2060-\u2069\uFEFF\u180E]/gu;
+
+/**
+ * Makes text safe to show as a mix's name: NFC-normalised, without control,
+ * bidi-override or zero-width characters, on one line with single spaces, and
+ * at most `MAX_NAME_LENGTH` code points. Emoji are kept. It may return "".
+ */
+export function sanitizeName(text: string): string {
+  const clean = text
+    .normalize("NFC")
+    .replaceAll(BREAKS, " ")
+    .replaceAll(UNSAFE, "")
+    .replaceAll(/\s+/gu, " ")
+    .trim();
+  return Array.from(clean).slice(0, MAX_NAME_LENGTH).join("").trimEnd();
+}
 
 /** A layer's volume, 0–100. */
 export const VOLUME_PARAM = {
@@ -39,6 +67,7 @@ export interface Layer {
 export interface Mix {
   master: number;
   layers: Layer[];
+  /** The mix's name, once it has been saved or picked as a preset; never empty. */
   name?: string;
 }
 
@@ -66,10 +95,18 @@ export function defaultMix(catalogue: Catalogue = sounds, defaultId = DEFAULT_SO
   return { master: MASTER_PARAM.default, layers: sound ? [defaultLayer(sound)] : [] };
 }
 
+/** `mix` with `name` (sanitised), or without a name when it sanitises to nothing. */
+export function withName(mix: Mix, name: string | null | undefined): Mix {
+  const clean = sanitizeName(name ?? "");
+  const unnamed: Mix = { master: mix.master, layers: mix.layers };
+  return clean === "" ? unnamed : { ...unnamed, name: clean };
+}
+
 /**
  * Reads the hash. Unknown sounds, repeats and layers past `MAX_LAYERS` are dropped;
  * every value is coerced, and a missing or invalid one takes its default. With no
- * `layers` key at all, the mix is the default mix; `layers=` is an empty one.
+ * `layers` key at all, the mix is the default mix; `layers=` is an empty one. A
+ * `name` is sanitised, and dropped if nothing is left.
  */
 export function parseHash(
   hash: string,
@@ -79,8 +116,9 @@ export function parseHash(
   const query = new URLSearchParams(hash.replace(/^#/, ""));
   const panelHidden = query.get("panel") === "hidden";
   const layerList = query.get("layers");
+  const rawName = query.get("name");
   if (layerList === null) {
-    return { mix: defaultMix(catalogue, defaultId), panelHidden };
+    return { mix: withName(defaultMix(catalogue, defaultId), rawName), panelHidden };
   }
   const chosen: Pick<SoundMeta, "id" | "params">[] = [];
   for (const id of layerList.split(",")) {
@@ -108,10 +146,8 @@ export function parseHash(
       params: parseParams(sound.params, values),
     };
   });
-  return {
-    mix: { master: Number(coerce(MASTER_PARAM, query.get("master") ?? undefined)), layers },
-    panelHidden,
-  };
+  const master = Number(coerce(MASTER_PARAM, query.get("master") ?? undefined));
+  return { mix: withName({ master, layers }, rawName), panelHidden };
 }
 
 /** Percent-encodes a hash key or value, keeping commas readable. */
@@ -132,6 +168,9 @@ export function serialiseHash(
   const full = options.full === true;
   const pairs: [string, string][] = [];
   const { mix } = state;
+  if (mix.name !== undefined) {
+    pairs.push(["name", mix.name]);
+  }
   if (full || mix.master !== MASTER_PARAM.default) {
     pairs.push(["master", String(mix.master)]);
   }

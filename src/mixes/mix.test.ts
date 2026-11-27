@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { defaults, sliderPosition, valueAtPosition } from "../sounds/params";
 import { sounds } from "../sounds/registry";
 import type { ParamSchema, ParamValues } from "../sounds/types";
-import { MAX_LAYERS, defaultLayer, defaultMix, parseHash, serialiseHash, type Mix } from "./mix";
+import {
+  MAX_LAYERS,
+  MAX_NAME_LENGTH,
+  defaultLayer,
+  defaultMix,
+  parseHash,
+  sanitizeName,
+  serialiseHash,
+  withName,
+  type Mix,
+} from "./mix";
 
 const tone = {
   id: "tone",
@@ -120,6 +130,99 @@ describe("serialiseHash", () => {
   it.each([false, true])("round-trips (full: %s)", (full) => {
     const state = { mix: changed, panelHidden: full };
     expect(parse(serialiseHash(state, { full }, catalogue))).toEqual(state);
+  });
+});
+
+describe("sanitizeName", () => {
+  it.each([
+    ["Rainy Cabin", "Rainy Cabin"],
+    ["  Rainy   Cabin  ", "Rainy Cabin"],
+    ["Rainy\nCabin", "Rainy Cabin"],
+    ["Rainy\r\n\tCabin", "Rainy Cabin"],
+    ["Rainy\u2028Cabin", "Rainy Cabin"],
+    ["Bell\u0007s\u0000", "Bells"],
+    ["Esc\u001b[31m", "Esc[31m"],
+    ["\u009bC1", "C1"],
+    ["\u202Eniaga\u202C", "niaga"],
+    ["a\u202Ab\u202Bc\u202Dd", "abcd"],
+    ["\u2066isolated\u2069 \u2067x\u2068", "isolated x"],
+    ["zero\u200Bwidth\uFEFF\u2060", "zerowidth"],
+    ["", ""],
+    [" \n\t ", ""],
+    ["\u202E\u200B", ""],
+  ])("makes %j %j", (text, expected) => {
+    expect(sanitizeName(text)).toBe(expected);
+  });
+
+  it("normalises to NFC", () => {
+    expect(sanitizeName("Cafe\u0301")).toBe("Caf\u00e9");
+  });
+
+  it.each(["Sleep 🌙", "🌧️ + 🔥", "👩‍👩‍👧 family", "🏳️‍🌈"])("keeps emoji in %j", (text) => {
+    expect(sanitizeName(text)).toBe(text);
+  });
+
+  it("counts the length in code points, not UTF-16 units", () => {
+    const moons = "🌙".repeat(MAX_NAME_LENGTH + 5);
+    expect(Array.from(sanitizeName(moons))).toHaveLength(MAX_NAME_LENGTH);
+    expect(sanitizeName("a".repeat(100))).toBe("a".repeat(MAX_NAME_LENGTH));
+    // 40 emoji are 80 UTF-16 units but still fit.
+    expect(sanitizeName("🌙".repeat(MAX_NAME_LENGTH))).toBe("🌙".repeat(MAX_NAME_LENGTH));
+  });
+
+  it("drops a space the cut leaves at the end", () => {
+    expect(sanitizeName(`${"a".repeat(MAX_NAME_LENGTH - 1)} b`)).toBe("a".repeat(39));
+  });
+});
+
+describe("mix names in the hash", () => {
+  const mix: Mix = { master: 70, layers: [{ id: "a", volume: 70, muted: false, params: {} }] };
+
+  it("writes the name first, percent-encoded", () => {
+    expect(serialiseHash({ mix: { ...mix, name: "Rainy Cabin" }, panelHidden: false })).toBe(
+      "#name=Rainy%20Cabin&layers=a",
+    );
+  });
+
+  it("writes no name key for an unnamed mix", () => {
+    expect(serialiseHash({ mix, panelHidden: false }, {}, catalogue)).toBe("#layers=a");
+  });
+
+  it.each(["Rainy Cabin", "Sleep 🌙", "a & b = c, d", "100% #focus", "日本語の名前", "👩‍👩‍👧"])(
+    "round-trips %j in both forms",
+    (name) => {
+      const state = { mix: { ...mix, name }, panelHidden: false };
+      for (const full of [false, true]) {
+        expect(parse(serialiseHash(state, { full }, catalogue))).toEqual(state);
+      }
+    },
+  );
+
+  it("sanitises a pasted name", () => {
+    expect(parse("#name=%E2%80%AEevil%0Aname%07&layers=a").mix.name).toBe("evil name");
+  });
+
+  it.each(["#name=&layers=a", "#name=%20%0A&layers=a", "#name=%E2%80%8B&layers=a"])(
+    "drops a name that sanitises to nothing in %s",
+    (hash) => {
+      expect(parse(hash).mix).not.toHaveProperty("name");
+    },
+  );
+
+  it("keeps a name on the default mix", () => {
+    expect(parse("#name=Hello").mix).toEqual({ ...defaultMix(catalogue, "tone"), name: "Hello" });
+  });
+});
+
+describe("withName", () => {
+  const mix: Mix = { master: 70, layers: [], name: "Old" };
+
+  it("sets a sanitised name", () => {
+    expect(withName(mix, " New\n")).toEqual({ master: 70, layers: [], name: "New" });
+  });
+
+  it.each([undefined, null, "", "\u200B"])("removes the name for %j", (name) => {
+    expect(withName(mix, name)).toEqual({ master: 70, layers: [] });
   });
 });
 
