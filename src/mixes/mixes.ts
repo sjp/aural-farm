@@ -46,14 +46,17 @@ interface SavedMixes {
   /** The saved mixes, newest first. The same array comes back until something changes. */
   get: () => readonly SavedMix[];
   /** The mix saved under `name`, ignoring case. */
-  find: (name: string) => SavedMix | undefined;
+  byName: (name: string) => SavedMix | undefined;
   /**
    * Saves `hash` as `name`, newest, replacing any mix of that name (ask first).
    * Fails with "full" for a new name once `MAX_SAVED_MIXES` are saved.
    */
   save: (name: string, hash: string) => MixesResult;
-  /** Renames a mix, keeping its place. Fails with "taken" if another mix has the new name. */
-  rename: (from: string, to: string) => MixesResult;
+  /**
+   * Renames a mix, keeping its place, and stores `hash` for it if given (the
+   * hash carries the name too). Fails with "taken" if another mix has the new name.
+   */
+  rename: (from: string, to: string, hash?: string) => MixesResult;
   /** Deletes a mix; returns it, to pass to `restore` for Undo. */
   remove: (name: string) => SavedMix | undefined;
   /** Puts a deleted mix back in its place, unless its name is taken by now or there's no room. */
@@ -159,7 +162,7 @@ export function createSavedMixes(
     notify();
     return stored;
   };
-  const find = (name: string) => mixes.find((m) => sameName(m.name, name));
+  const byName = (name: string) => mixes.find((m) => sameName(m.name, name));
   const onStorage = (event: StorageEvent) => {
     // A null key means another tab cleared the whole storage.
     if (event.key !== MIXES_KEY && event.key !== null) {
@@ -174,7 +177,7 @@ export function createSavedMixes(
 
   return {
     get: () => mixes,
-    find,
+    byName,
     save(name, hash) {
       const clean = sanitizeName(name);
       if (clean === "") {
@@ -186,9 +189,9 @@ export function createSavedMixes(
       }
       return { ok: true, stored: commit([{ name: clean, hash, savedAt: now() }, ...others]) };
     },
-    rename(from, to) {
+    rename(from, to, hash) {
       const clean = sanitizeName(to);
-      const current = find(from);
+      const current = byName(from);
       if (!current) {
         return { ok: false, reason: "missing" };
       }
@@ -198,18 +201,20 @@ export function createSavedMixes(
       if (mixes.some((m) => m !== current && sameName(m.name, clean))) {
         return { ok: false, reason: "taken" };
       }
-      const next = mixes.map((m) => (m === current ? { ...m, name: clean } : m));
+      const next = mixes.map((m) =>
+        m === current ? { ...m, name: clean, hash: hash ?? m.hash } : m,
+      );
       return { ok: true, stored: commit(next) };
     },
     remove(name) {
-      const current = find(name);
+      const current = byName(name);
       if (current) {
         commit(mixes.filter((m) => m !== current));
       }
       return current;
     },
     restore(mix) {
-      if (find(mix.name)) {
+      if (byName(mix.name)) {
         return { ok: false, reason: "taken" };
       }
       if (mixes.length >= MAX_SAVED_MIXES) {
@@ -219,7 +224,7 @@ export function createSavedMixes(
     },
     conflicts: (incoming) =>
       incoming.flatMap((mix) => {
-        const current = find(mix.name);
+        const current = byName(mix.name);
         return current && current.hash !== mix.hash ? [current.name] : [];
       }),
     merge(incoming, replace) {

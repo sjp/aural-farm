@@ -89,7 +89,7 @@ describe("saving", () => {
       { name: "RAIN", hash: "#layers=c", savedAt: 4000 },
       { name: "Wind", hash: "#layers=b", savedAt: 3000 },
     ]);
-    expect(mixes.find("rain")?.hash).toBe("#layers=c");
+    expect(mixes.byName("rain")?.hash).toBe("#layers=c");
   });
 
   it("returns the same array until something changes", () => {
@@ -135,6 +135,13 @@ describe("rename", () => {
     mixes.save("Wind", "#layers=b");
     expect(mixes.rename("rain", " Rainy\nCabin ")).toEqual({ ok: true, stored: true });
     expect(names(stored() ?? [])).toEqual(["Wind", "Rainy Cabin"]);
+  });
+
+  it("stores a new hash with the new name", () => {
+    const { mixes } = setup();
+    mixes.save("Rain", "#name=Rain&layers=a");
+    mixes.rename("Rain", "Storm", "#name=Storm&layers=a");
+    expect(mixes.get()).toEqual([{ name: "Storm", hash: "#name=Storm&layers=a", savedAt: 2000 }]);
   });
 
   it("changes the case of a name", () => {
@@ -321,14 +328,14 @@ describe("merging imported mixes", () => {
       noRoom: 0,
       stored: true,
     });
-    expect(mixes.find("rain")?.hash).toBe("#layers=a");
+    expect(mixes.byName("rain")?.hash).toBe("#layers=a");
     expect(names(mixes.get())).toEqual(["Same", "Rain", "Wind"]);
   });
 
   it("replaces mixes of a taken name when asked", () => {
     const { mixes } = withSaved();
     expect(mixes.merge(incoming, true)).toMatchObject({ added: 1, replaced: 1, unchanged: 1 });
-    expect(mixes.find("Rain")).toEqual({ name: "rain", hash: "#layers=b", savedAt: 50 });
+    expect(mixes.byName("Rain")).toEqual({ name: "rain", hash: "#layers=b", savedAt: 50 });
   });
 
   it("stops adding at the limit", () => {
