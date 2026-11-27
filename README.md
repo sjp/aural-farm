@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -294,6 +294,18 @@ under Starship Engine Core and Starship Bridge in a mix (the **Night Shift** pre
 hum** the hum's level (0 is off), **Hull** how much the structure resonates (0 is none),
 **Warmth** how dark and muffled the room sounds without changing its level, and
 **Variation** crossfades to different resonances and slow drifts while the hum plays on.
+
+**Life Support** is a space station's plant room heard from the corridor, an air recycler
+working steadily and patiently: a rush of air through ducts, a pump that every half-minute
+or so works through a slow cycle (a low motor spinning up and a soft surge of moving fluid
+that rise, hold and fall away, each cycle a little different), now and then a pressure valve
+releasing with a soft hiss or a lower sigh that always eases in, and a faint electrical hum
+just under everything. **Air flow** sets the air's level (it never goes fully silent: it is
+the bed), **Pump** how strong the pump cycle is (0 is none), **Pump cycle** how long one
+cycle takes (15–60 s), **Valves** how often a valve releases (Off, Rarely, about every 5
+minutes, Sometimes, every 90 seconds, or Often, every 40), **Hum** the hum's level (0 is off),
+and **Variation** crossfades to different valve timings and slow drifts while the pump and
+hum play on. It sits under Starship Engine Core in the **Engine Room** preset.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
