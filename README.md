@@ -452,6 +452,17 @@ field; trees, with a flutter of leaves; or a house, heard muffled from inside, w
 the gaps; a change crossfades, with the gusts carrying on through it), **Whistle** sets how
 much it whistles, and **Variation** crossfades to a different run of gusts.
 
+**Wind Chimes** are a set of tuned metal tubes hanging on a porch in a light breeze. Most of
+the time they are nearly quiet, a tube ringing now and then and fading over many seconds;
+when a gust comes through, several neighbouring tubes ring together in a soft cluster, then it
+settles again. The tubes are tuned to a scale, so any combination sounds consonant.
+**Tuning** picks **Pentatonic major**, **Pentatonic minor**, a **Japanese-style in-scale**
+(with its gentle semitone colour) or **Low bamboo** (deep, short, wooden tocks), crossfading
+between them. **Tubes** sets how many hang in the set (3 to 8; a tube taken away rings out),
+**Wind** how strong and frequent the gusts are (0 leaves only the odd tone), **Space** how much
+of the open air you hear, and **Variation** crossfades to a different run of gusts and a
+slightly different set of tubes.
+
 **Distant Thunder** is a storm some miles away: mostly quiet, then now and again a long, low
 rumble that swells in over a second or two, rolls through a few overlapping peaks and dies
 away over many seconds, felt as much as heard. Nothing about it is sudden. The first rumble
