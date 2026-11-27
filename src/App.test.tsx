@@ -209,6 +209,38 @@ describe("App hash sync", () => {
   });
 });
 
+describe("App mix names", () => {
+  const heading = () => screen.getByRole("heading", { level: 1 });
+
+  it("shows a named mix's name in the header and the page title", () => {
+    renderMixer("#name=Night%20Drive&layers=alpha");
+    expect(heading().textContent).toBe("Night Drive");
+    expect(document.title).toBe("Night Drive · Aural Farm");
+  });
+
+  it("shows the app's name for an unnamed mix", () => {
+    renderMixer("#layers=alpha");
+    expect(heading().textContent).toBe("Aural Farm");
+    expect(document.title).toBe("Aural Farm");
+  });
+
+  it("keeps the name when the mix is edited, marking it (edited) until it's back as it was", () => {
+    renderMixer("#name=Night&layers=alpha");
+    fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "30" } });
+    expect(heading().textContent).toBe("Night (edited)");
+    expect(writtenHash()).toBe("#name=Night&layers=alpha&alpha.volume=30");
+    fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "70" } });
+    expect(heading().textContent).toBe("Night");
+  });
+
+  it("takes a pasted hash as the mix to compare against", () => {
+    renderMixer("#name=Night&layers=alpha");
+    fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "30" } });
+    setHash("#name=Day&layers=bravo");
+    expect(heading().textContent).toBe("Day");
+  });
+});
+
 describe("App shortcuts", () => {
   it("toggles the panel with H", () => {
     renderApp();
@@ -450,6 +482,12 @@ describe("App media session and wake lock", () => {
     expect(session.metadata?.artist).toBe("Aural Farm");
     fireEvent.click(screen.getAllByRole("button", { name: /^Remove/ })[1]);
     expect(session.metadata?.title).toBe("Test Tone");
+  });
+
+  it("shows a named mix's name in the session", async () => {
+    const { session } = renderWithSession("#name=Night&layers=test-tone,alpha");
+    await settle();
+    expect(session.metadata?.title).toBe("Night");
   });
 
   it("mirrors the engine's state and plays, pauses and stops from the session", async () => {

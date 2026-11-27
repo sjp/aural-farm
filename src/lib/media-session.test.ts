@@ -18,6 +18,11 @@ describe("mediaTitle", () => {
   it("falls back to the app's name for an empty mix", () => {
     expect(mediaTitle([])).toBe("Aural Farm");
   });
+
+  it("shows a named mix's name instead", () => {
+    expect(mediaTitle(["Rain", "Fireplace"], "Rainy Cabin")).toBe("Rainy Cabin");
+    expect(mediaTitle([], "Empty")).toBe("Empty");
+  });
 });
 
 describe("sessionPlaybackState", () => {

@@ -15,6 +15,7 @@ import type { SleepTimerControls } from "./SleepTimer";
 
 type PanelOptions = {
   mix?: Mix;
+  edited?: boolean;
   engineState?: EngineState;
   layerStates?: Record<string, LayerState>;
   preferences?: Preferences;
@@ -57,6 +58,7 @@ function renderPanel(initial: PanelOptions = {}) {
   const panel = () => (
     <ControlPanel
       mix={options.mix ?? defaultMix(catalogue, TEST_TONE_ID)}
+      edited={options.edited}
       engineState={options.engineState ?? "idle"}
       layerStates={options.layerStates ?? {}}
       preferences={preferences}
@@ -792,6 +794,27 @@ describe("Bottom sheet", () => {
       expect(onSheetOpenChange).toHaveBeenCalledTimes(1);
       expect(onSheetOpenChange).toHaveBeenCalledWith(false);
     });
+  });
+});
+
+describe("Mix name", () => {
+  const named = { ...mixOf("alpha", "bravo"), name: "Night" };
+
+  it("titles the card with the mix's name, and (edited) once changed", () => {
+    const { update } = renderPanel({ mix: named });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Night");
+    update({ edited: true });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Night (edited)");
+  });
+
+  it("never marks an unnamed mix (edited)", () => {
+    renderPanel({ mix: mixOf("alpha"), edited: true });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Aural Farm");
+  });
+
+  it("shows the name in the peek bar in place of the sounds", () => {
+    renderPanel({ layout: "sheet", mix: named, edited: true });
+    expect(document.querySelector(".peek-summary")?.textContent).toBe("Night (edited)");
   });
 });
 

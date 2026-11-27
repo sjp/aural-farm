@@ -17,6 +17,11 @@ export function levelBrightness(rms: number): number {
   return Math.min(1, Math.max(0, (db + 60) / 48));
 }
 
+/** The page's title: a named mix's name, then the app's. */
+export function pageTitle(mixName: string | undefined): string {
+  return mixName === undefined ? "Aural Farm" : `${mixName} · Aural Farm`;
+}
+
 /** The peek bar's summary of a mix: its sounds' names joined with " + ". */
 export function mixSummary(
   layers: readonly { id: string }[],

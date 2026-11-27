@@ -21,6 +21,7 @@ import { ParamControl } from "./ParamControl";
 import { countChanged } from "./sections";
 import { Section } from "./Section";
 import { FULL_MIX_HINT, layerNameId, levelBrightness, mixSummary } from "./mixer";
+
 import type { PanelLayout } from "./sheet";
 import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
@@ -101,6 +102,11 @@ function useLevelDots(
       }
     };
   }, [panel, meter, active]);
+}
+
+/** "(edited)", after a named mix's name once it has been changed. */
+function EditedMark({ edited, className }: { edited: boolean; className: string }) {
+  return edited ? <span className={className}> (edited)</span> : null;
 }
 
 /** "Add sound", which opens the sound picker, and a note once the mix is full. */
@@ -255,6 +261,8 @@ function Shortcuts({
 
 interface ControlPanelProps {
   mix: Mix;
+  /** Whether a named mix has been changed since it was loaded or saved. */
+  edited?: boolean | undefined;
   engineState: EngineState;
   /** The engine's state for each layer, by sound id. */
   layerStates: Readonly<Record<string, LayerState>>;
@@ -376,6 +384,7 @@ function DisplaySection({
 /** The control panel card: header and toolbar, one row per layer, Add sound, and the footer. */
 export function ControlPanel(props: ControlPanelProps): JSX.Element {
   const { mix, preferences, hover, solo } = props;
+  const edited = mix.name !== undefined && props.edited === true;
   const catalogue = props.sounds ?? registry;
   const panelRef = useRef<HTMLDivElement>(null);
   const [closed, setClosed] = useState(() => preferences.getSet(CLOSED_KEY));
@@ -551,7 +560,10 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
               <div className="panel-header-row">
                 {playButton}
                 {sleepTimer(true)}
-                <h1 className="panel-title">Aural Farm</h1>
+                <h1 className="panel-title">
+                  {mix.name ?? "Aural Farm"}
+                  <EditedMark edited={edited} className="panel-title-edited" />
+                </h1>
                 {toolbar}
               </div>
             )}
@@ -670,7 +682,10 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
           <div className="peek-bar">
             {playButton}
             {sleepTimer(false)}
-            <p className="peek-summary">{mixSummary(mix.layers, catalogue)}</p>
+            <p className="peek-summary">
+              {mix.name ?? mixSummary(mix.layers, catalogue)}
+              <EditedMark edited={edited} className="peek-edited" />
+            </p>
             {props.sleep?.remaining !== undefined && (
               <span className="peek-countdown">{formatCountdown(props.sleep.remaining)}</span>
             )}

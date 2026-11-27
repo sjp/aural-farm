@@ -26,6 +26,7 @@ import { ControlPanel, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
+import { pageTitle } from "./components/mixer";
 import { usePanelLayout } from "./components/sheet";
 import { useDocumentVisible } from "./hooks/useDocumentVisible";
 import { useExternalStore } from "./hooks/useExternalStore";
@@ -57,6 +58,7 @@ import {
   VOLUME_PARAM,
   type HashState,
   type Layer,
+  type Mix,
 } from "./mixes/mix";
 import type { SoundLoader } from "./sounds/loader";
 import { defaults } from "./sounds/params";
@@ -79,6 +81,11 @@ interface Toast {
   /** A button in the toast, such as Undo. */
   action: { label: string; run: () => void } | undefined;
   duration: number;
+}
+
+/** A mix as the full hash form writes it, to tell whether two mixes are the same. */
+function mixKey(mix: Mix, sounds: readonly SoundEntry[]): string {
+  return serialiseHash({ mix, panelHidden: false }, { full: true }, sounds);
 }
 
 /** Whether a key press belongs to a form field rather than to the shortcuts. */
@@ -229,6 +236,10 @@ export function App({
   useLayoutEffect(() => {
     stateRef.current = state;
   });
+  // What a named mix was when it was loaded or saved; any other mix of that name is "edited".
+  const [baseline, setBaseline] = useState(() => mixKey(initial.mix, sounds));
+  const currentKey = useMemo(() => mixKey(state.mix, sounds), [state.mix, sounds]);
+  const edited = state.mix.name !== undefined && currentKey !== baseline;
   const [preferences] = useState(() => givenPreferences ?? createPreferences());
   const [favourites] = useState(() => givenFavourites ?? createFavourites());
   const starred = useExternalStore(favourites.subscribe, favourites.get);
@@ -419,9 +430,13 @@ export function App({
     () =>
       mediaTitle(
         state.mix.layers.flatMap((layer) => sounds.find((s) => s.id === layer.id)?.name ?? []),
+        state.mix.name,
       ),
-    [state.mix.layers, sounds],
+    [state.mix.layers, state.mix.name, sounds],
   );
+  useEffect(() => {
+    document.title = pageTitle(state.mix.name);
+  }, [state.mix.name]);
   const sessionActions = useMemo(
     () => ({
       play: () => {
@@ -472,6 +487,7 @@ export function App({
       const next = parseHash(window.location.hash, sounds, defaultSoundId);
       if (serialiseHash(next, {}, sounds) !== serialiseHash(stateRef.current, {}, sounds)) {
         setState(next);
+        setBaseline(mixKey(next.mix, sounds));
       }
     };
     window.addEventListener("hashchange", onHashChange);
@@ -798,6 +814,7 @@ export function App({
         >
           <ControlPanel
             mix={state.mix}
+            edited={edited}
             engineState={engineState}
             layerStates={layerStates}
             onTogglePlay={togglePlay}

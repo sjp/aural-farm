@@ -39,8 +39,11 @@ const UNUSED_ACTIONS: readonly MediaSessionAction[] = [
   "nexttrack",
 ];
 
-/** The title the session shows: the sounds in the mix, joined with " + ". */
-export function mediaTitle(names: readonly string[]): string {
+/** The title the session shows: the mix's name, or else its sounds joined with " + ". */
+export function mediaTitle(names: readonly string[], mixName?: string): string {
+  if (mixName !== undefined) {
+    return mixName;
+  }
   return names.length === 0 ? ARTIST : names.join(" + ");
 }
 
