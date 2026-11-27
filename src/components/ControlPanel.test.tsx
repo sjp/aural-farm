@@ -3,46 +3,16 @@ import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { createPreferences, type Preferences } from "../lib/preferences";
 import { defaultMix, type Mix } from "../mixes/mix";
-import type { SoundLoader } from "../sounds/loader";
-import { sounds } from "../sounds/registry";
-import type { SoundDefinition } from "../sounds/types";
+import type { EngineState, LayerState } from "../audio/engine";
 import { act } from "../test/act";
 import { ControlPanel } from "./ControlPanel";
 import { LOADING_DELAY_MS } from "./LayerSection";
 
-const testTone = sounds[0];
-
-/** A loader whose loads finish only when the test says so. */
-function manualLoader() {
-  let settle: { resolve: (d: SoundDefinition) => void; reject: (e: Error) => void } | undefined;
-  const load = vi.fn<SoundLoader["load"]>(
-    () =>
-      new Promise<SoundDefinition>((resolve, reject) => {
-        settle = { resolve, reject };
-      }),
-  );
-  const loader: SoundLoader = {
-    get: () => undefined,
-    load,
-    prefetch: vi.fn<SoundLoader["prefetch"]>(),
-  };
-  return {
-    loader,
-    load,
-    resolve: async () => {
-      const definition = await testTone.load();
-      settle?.resolve(definition);
-    },
-    reject: () => {
-      settle?.reject(new Error("offline"));
-    },
-  };
-}
-
 function renderPanel(
   options: {
     mix?: Mix;
-    loader?: SoundLoader;
+    engineState?: EngineState;
+    layerStates?: Record<string, LayerState>;
     preferences?: Preferences;
     hover?: boolean;
     onFullscreen?: () => void;
@@ -55,19 +25,27 @@ function renderPanel(
     onCopyLink: vi.fn<() => void>(),
     onHide: vi.fn<() => void>(),
     onShortcutsOpenChange: vi.fn<(open: boolean) => void>(),
+    onTogglePlay: vi.fn<() => void>(),
+    onRetryLayer: vi.fn<(id: string) => void>(),
+    onRemoveLayer: vi.fn<(id: string) => void>(),
   };
-  const view = render(
+  const panel = (engineState: EngineState, layerStates: Record<string, LayerState>) => (
     <ControlPanel
       mix={options.mix ?? defaultMix()}
-      loader={options.loader ?? manualLoader().loader}
+      engineState={engineState}
+      layerStates={layerStates}
       preferences={options.preferences ?? createPreferences(() => undefined)}
       hover={options.hover ?? true}
       onFullscreen={options.onFullscreen}
       shortcutsOpen={false}
       {...handlers}
-    />,
+    />
   );
-  return { ...handlers, view };
+  const view = render(panel(options.engineState ?? "idle", options.layerStates ?? {}));
+  const rerender = (engineState: EngineState, layerStates: Record<string, LayerState>) => {
+    view.rerender(panel(engineState, layerStates));
+  };
+  return { ...handlers, view, rerender };
 }
 
 describe("ControlPanel", () => {
@@ -142,9 +120,8 @@ describe("ControlPanel", () => {
     expect(screen.getByText("The mix is empty.")).toBeTruthy();
   });
 
-  it("shows Loading… only for slow loads", async () => {
-    const { loader, resolve } = manualLoader();
-    renderPanel({ loader });
+  it("shows Loading… only for slow loads", () => {
+    const { rerender } = renderPanel({ layerStates: { "test-tone": "loading" } });
     act(() => {
       vi.advanceTimersByTime(LOADING_DELAY_MS - 1);
     });
@@ -153,27 +130,60 @@ describe("ControlPanel", () => {
       vi.advanceTimersByTime(1);
     });
     expect(screen.getByText("Loading…")).toBeTruthy();
-    await act(async () => {
-      await resolve();
-    });
+    rerender("idle", { "test-tone": "ready" });
     expect(screen.queryByText("Loading…")).toBeNull();
   });
 
-  it("offers a retry when a load fails", async () => {
-    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const { loader, load, reject } = manualLoader();
-    renderPanel({ loader });
-    await act(async () => {
-      reject();
-      await vi.runOnlyPendingTimersAsync();
+  it("shows a failed layer's message, with Retry and Remove", () => {
+    const { onRetryLayer, onRemoveLayer } = renderPanel({
+      layerStates: { "test-tone": "failed: offline" },
     });
-    expect(screen.getByRole("alert").textContent).toContain("Couldn't load Test Tone");
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    });
-    expect(load).toHaveBeenCalledTimes(2);
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(logged).toHaveBeenCalled();
-    logged.mockRestore();
+    expect(screen.getByRole("alert").textContent).toContain("Couldn't play Test Tone: offline");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetryLayer).toHaveBeenCalledWith("test-tone");
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(onRemoveLayer).toHaveBeenCalledWith("test-tone");
+  });
+});
+
+describe("Play button", () => {
+  it.each([
+    ["idle", "Play"],
+    ["paused", "Play"],
+    ["pausing", "Play"],
+    ["interrupted", "Play"],
+    ["playing", "Pause"],
+    ["starting", "Pause"],
+  ] as const)("in state %s offers %s", (engineState, label) => {
+    const { onTogglePlay } = renderPanel({ engineState });
+    const button = screen.getByRole("button", { name: label });
+    fireEvent.click(button);
+    expect(onTogglePlay).toHaveBeenCalled();
+  });
+
+  it("shows a spinner while starting", () => {
+    renderPanel({ engineState: "starting" });
+    const button = screen.getByRole("button", { name: "Pause" });
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.querySelector(".spinner")).not.toBeNull();
+  });
+
+  it("asks for a tap when autoplay is blocked", () => {
+    const { onTogglePlay } = renderPanel({ engineState: "blocked" });
+    fireEvent.click(screen.getByRole("button", { name: "Tap to play" }));
+    expect(onTogglePlay).toHaveBeenCalled();
+  });
+
+  it("says when audio isn't available", () => {
+    renderPanel({ engineState: "failed" });
+    expect(screen.getByRole("alert").textContent).toBe("Audio isn't available in this browser.");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Play" }).disabled).toBe(true);
+  });
+
+  it("is the first control in the header, with the shortcut in its tooltip", () => {
+    renderPanel();
+    const first = document.querySelector(".panel-header button");
+    expect(first?.getAttribute("aria-label")).toBe("Play");
+    expect(first?.getAttribute("title")).toBe("Play (Space)");
   });
 });

@@ -1,12 +1,22 @@
 import type { JSX } from "preact";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import {
+  createAudioEngine,
+  isPlaying,
+  type AudioEngine,
+  type EngineState,
+  type LayerState,
+} from "./audio/engine";
 import { ControlPanel } from "./components/ControlPanel";
-import { SlidersIcon } from "./components/icons";
+import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
+import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
+import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { copyText } from "./lib/clipboard";
 import { createPreferences, type Preferences } from "./lib/preferences";
+import { createStore } from "./lib/store";
 import { parseHash, serialiseHash, VOLUME_PARAM, type HashState, type Layer } from "./mixes/mix";
 import type { SoundLoader } from "./sounds/loader";
 import { defaults } from "./sounds/params";
@@ -37,6 +47,49 @@ function isTyping(target: EventTarget | null): boolean {
   );
 }
 
+/** Whether a Space press on `target` already does something there (presses a button, types). */
+function spaceIsTaken(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement) {
+    return target.type !== "range";
+  }
+  return (
+    isTyping(target) ||
+    (target instanceof HTMLElement && target.closest("button, a[href], summary") !== null)
+  );
+}
+
+/** Whether an input event landed on a control that toggles playback itself. */
+function onPlayToggle(event: Event): boolean {
+  return (
+    (event instanceof KeyboardEvent && event.key === " ") ||
+    (event.target instanceof Element && event.target.closest(`[${PLAY_TOGGLE_ATTRIBUTE}]`) !== null)
+  );
+}
+
+/** Input events that count as a user gesture, which lets a blocked context start. */
+const GESTURES = ["pointerdown", "pointerup", "keydown"] as const;
+
+/** What the engine reports, for the UI. */
+interface Playback {
+  state: EngineState;
+  layers: Readonly<Record<string, LayerState>>;
+}
+
+type EngineCallbacks = Pick<Parameters<typeof createAudioEngine>[0], "onState" | "onLayerState">;
+
+/** Makes the app's engine; tests pass a stand-in. */
+export type EngineFactory = (callbacks: EngineCallbacks) => AudioEngine;
+
+function browserEngine(loader: SoundLoader): EngineFactory {
+  return (callbacks) =>
+    createAudioEngine({
+      // The "playback" latency hint picks a larger buffer, which saves power.
+      createContext: () => new AudioContext({ latencyHint: "playback" }),
+      loader,
+      ...callbacks,
+    });
+}
+
 function fullscreenAvailable(): boolean {
   // Missing in some browsers (older iOS Safari), whatever the DOM types say.
   return (document.fullscreenEnabled as boolean | undefined) === true;
@@ -47,9 +100,15 @@ interface AppProps {
   initial: HashState;
   loader: SoundLoader;
   preferences?: Preferences;
+  createEngine?: EngineFactory;
 }
 
-export function App({ initial, loader, preferences: givenPreferences }: AppProps): JSX.Element {
+export function App({
+  initial,
+  loader,
+  preferences: givenPreferences,
+  createEngine,
+}: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
   const [preferences] = useState(() => givenPreferences ?? createPreferences());
   const [toast, setToast] = useState<Toast | null>(null);
@@ -59,6 +118,73 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
   const hover = useMediaQuery("(hover: hover)");
   const idle = useIdle(IDLE_MS);
   const touch = useTouchPointer();
+
+  const [playback] = useState(() => createStore<Playback>({ state: "idle", layers: {} }));
+  const [engine] = useState(() =>
+    (createEngine ?? browserEngine(loader))({
+      onState: (engineState) => {
+        playback.set({ ...playback.get(), state: engineState });
+      },
+      onLayerState: (id, layerState) => {
+        const current = playback.get();
+        playback.set({ ...current, layers: { ...current.layers, [id]: layerState } });
+      },
+    }),
+  );
+  const { state: engineState, layers: layerStates } = useExternalStore(
+    playback.subscribe,
+    playback.get,
+  );
+
+  useEffect(
+    () => () => {
+      engine.dispose();
+    },
+    [engine],
+  );
+
+  useEffect(() => {
+    engine.setMix(state.mix);
+  }, [engine, state.mix]);
+
+  // A fresh visit or a shared link starts playing. If the browser blocks that, the
+  // first tap, click or key press anywhere starts it instead.
+  useEffect(() => {
+    let active = true;
+    const onGesture = (event: Event) => {
+      if (playback.get().state !== "blocked") {
+        stopListening();
+      } else if (!onPlayToggle(event)) {
+        void engine.play();
+      }
+    };
+    const stopListening = () => {
+      for (const type of GESTURES) {
+        window.removeEventListener(type, onGesture, true);
+      }
+    };
+    const autoplay = async () => {
+      const result = await engine.play();
+      if (active && result === "blocked") {
+        for (const type of GESTURES) {
+          window.addEventListener(type, onGesture, true);
+        }
+      }
+    };
+    void autoplay();
+    return () => {
+      active = false;
+      stopListening();
+    };
+  }, [engine, playback]);
+
+  const togglePlay = useCallback(() => {
+    if (isPlaying(playback.get().state)) {
+      engine.pause();
+    } else {
+      void engine.play();
+    }
+  }, [engine, playback]);
 
   const stateRef = useRef(state);
   useLayoutEffect(() => {
@@ -158,6 +284,17 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
     [updateLayer],
   );
 
+  const onRemoveLayer = useCallback((id: string) => {
+    setState((s) => ({ ...s, mix: { ...s.mix, layers: s.mix.layers.filter((l) => l.id !== id) } }));
+  }, []);
+
+  const onRetryLayer = useCallback(
+    (id: string) => {
+      engine.retry(id);
+    },
+    [engine],
+  );
+
   const onResetAll = useCallback(() => {
     setState((s) => ({
       ...s,
@@ -177,7 +314,17 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) {
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      if (event.key === " ") {
+        if (!spaceIsTaken(event.target)) {
+          event.preventDefault();
+          togglePlay();
+        }
+        return;
+      }
+      if (isTyping(event.target)) {
         return;
       }
       const key = event.key.toLowerCase();
@@ -194,7 +341,7 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
     return () => {
       window.removeEventListener("keydown", onKey);
     };
-  }, [canFullscreen, hover, setPanelHidden, toggleFullscreen]);
+  }, [canFullscreen, hover, setPanelHidden, toggleFullscreen, togglePlay]);
 
   // The panel fades with the cursor when idle, except on touch (there's no pointer
   // to bring it back) and while the pointer rests on it.
@@ -217,7 +364,11 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
         >
           <ControlPanel
             mix={state.mix}
-            loader={loader}
+            engineState={engineState}
+            layerStates={layerStates}
+            onTogglePlay={togglePlay}
+            onRetryLayer={onRetryLayer}
+            onRemoveLayer={onRemoveLayer}
             preferences={preferences}
             hover={hover}
             onLayerChange={onLayerChange}
@@ -233,6 +384,17 @@ export function App({ initial, loader, preferences: givenPreferences }: AppProps
           />
         </div>
       </PanelErrorBoundary>
+      {engineState === "blocked" && panelHidden && (
+        <button
+          type="button"
+          className="play-prompt play-blocked"
+          onClick={togglePlay}
+          {...{ [PLAY_TOGGLE_ATTRIBUTE]: true }}
+        >
+          <PlayIcon />
+          Tap to play
+        </button>
+      )}
       {toast && (
         <div key={toast.id} className="toast" role="status">
           {toast.message}

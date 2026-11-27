@@ -22,6 +22,11 @@ npm run test:browser  # Playwright, in headless Chromium
 
 ## Using it
 
+The page starts playing as soon as it opens. If the browser blocks sound until you interact
+with the page, the Play button turns into **Tap to play**, and the first tap, click or key
+press anywhere starts it. Playback carries on in a background tab. Pausing fades the sound
+out and then suspends the audio, so nothing runs while paused.
+
 The control panel sits in the top-right corner and fades out, with the cursor, after a few
 seconds without input. It lists the mix's layers. Each layer has:
 
@@ -29,9 +34,10 @@ seconds without input. It lists the mix's layers. Each layer has:
 - the sound's own settings (sliders, toggles and lists), grouped into sections you can
   collapse, each with a button to reset it to its default.
 
-The header has **Copy link**, **Fullscreen** and **Hide**. The footer has **Reset all**,
-which puts every layer's settings and volume back to their defaults while keeping the
-layers.
+The header has **Play/Pause**, **Copy link**, **Fullscreen** and **Hide**. If a sound fails
+to load or crashes, its layer says so and offers **Retry** and **Remove**; the other layers
+keep playing. The footer has **Reset all**, which puts every layer's settings and volume
+back to their defaults while keeping the layers.
 
 The whole mix is kept in the URL hash, so a link reopens the same mix. Editing or pasting a
 hash applies it without a reload. Hiding the panel adds `panel=hidden`, and a page opened
@@ -42,11 +48,13 @@ with it starts with the panel and cursor hidden.
 
 ### Keyboard shortcuts
 
-| Key | Action                         |
-| --- | ------------------------------ |
-| `H` | Hide or show the control panel |
-| `F` | Toggle fullscreen              |
-| `?` | Show the keyboard shortcuts    |
+| Key     | Action                         |
+| ------- | ------------------------------ |
+| `Space` | Play or pause                  |
+| `H`     | Hide or show the control panel |
+| `F`     | Toggle fullscreen              |
+| `?`     | Show the keyboard shortcuts    |
 
-Shortcuts are ignored while a form field has focus. On touch devices, tap the corner button
+Shortcuts are ignored while a form field has focus (`Space` still works on a slider, but
+on a focused button it presses the button). On touch devices, tap the corner button
 to bring a hidden panel back.

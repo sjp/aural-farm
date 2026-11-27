@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { VOLUME_PARAM, type Layer } from "../mixes/mix";
-import { createLatest, type SoundLoader } from "../sounds/loader";
+import type { LayerState } from "../audio/engine";
 import type { SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
 import { ParamSections } from "./ParamSections";
@@ -12,53 +12,36 @@ import { Section } from "./Section";
 /** "Loading…" appears only for loads slower than this, so fast loads don't flash it. */
 export const LOADING_DELAY_MS = 300;
 
-type LoadStatus = "ready" | "loading" | "slow" | "error";
-
-/** Loads a sound's implementation, reporting progress; `retry` starts a failed load again. */
-function useSoundLoad(sound: SoundEntry, loader: SoundLoader): [LoadStatus, () => void] {
-  const [attempt, setAttempt] = useState(0);
-  const [status, setStatus] = useState<LoadStatus>(() =>
-    loader.get(sound.id) ? "ready" : "loading",
-  );
+/** Whether `active` has stayed true for `LOADING_DELAY_MS`. */
+function useSlow(active: boolean): boolean {
+  const [slow, setSlow] = useState(false);
   useEffect(() => {
-    if (loader.get(sound.id)) {
-      setStatus("ready");
+    setSlow(false);
+    if (!active) {
       return undefined;
     }
-    setStatus("loading");
-    const latest = createLatest<unknown>();
     const timer = setTimeout(() => {
-      setStatus((s) => (s === "loading" ? "slow" : s));
+      setSlow(true);
     }, LOADING_DELAY_MS);
-    latest.run(
-      loader.load(sound),
-      () => {
-        clearTimeout(timer);
-        setStatus("ready");
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        console.error(`Couldn't load ${sound.name}:`, error);
-        setStatus("error");
-      },
-    );
     return () => {
       clearTimeout(timer);
-      latest.cancel();
     };
-  }, [sound, loader, attempt]);
-  return [
-    status,
-    () => {
-      setAttempt((n) => n + 1);
-    },
-  ];
+  }, [active]);
+  return slow && active;
+}
+
+/** The message of a failed layer state, or undefined if it hasn't failed. */
+function failure(status: LayerState | undefined): string | undefined {
+  return status?.startsWith("failed: ") === true ? status.slice("failed: ".length) : undefined;
 }
 
 interface LayerSectionProps {
   layer: Layer;
   sound: SoundEntry;
-  loader: SoundLoader;
+  /** What the engine reports for this layer; undefined until it has looked at it. */
+  status: LayerState | undefined;
+  onRetry: () => void;
+  onRemove: () => void;
   open: boolean;
   onToggle: () => void;
   /** Names of this layer's collapsed param sections. */
@@ -72,7 +55,9 @@ interface LayerSectionProps {
 export function LayerSection({
   layer,
   sound,
-  loader,
+  status,
+  onRetry,
+  onRemove,
   open,
   onToggle,
   closedSections,
@@ -80,7 +65,8 @@ export function LayerSection({
   onVolumeChange,
   onParamChange,
 }: LayerSectionProps): JSX.Element {
-  const [status, retry] = useSoundLoad(sound, loader);
+  const slow = useSlow(status === undefined || status === "loading");
+  const error = failure(status);
   const changed =
     countChanged(sound.params, layer.params) + (layer.volume === VOLUME_PARAM.default ? 0 : 1);
   return (
@@ -92,17 +78,24 @@ export function LayerSection({
       changed={changed}
       note={sound.hint === undefined ? null : <p className="layer-hint">{sound.hint}</p>}
     >
-      {status === "slow" && (
+      {slow && (
         <p className="loading" role="status">
           Loading…
         </p>
       )}
-      {status === "error" && (
+      {error !== undefined && (
         <div className="sound-error" role="alert">
-          <p>Couldn't load {sound.name}</p>
-          <button type="button" onClick={retry}>
-            Retry
-          </button>
+          <p>
+            Couldn't play {sound.name}: {error}
+          </p>
+          <div className="sound-error-actions">
+            <button type="button" onClick={onRetry}>
+              Retry
+            </button>
+            <button type="button" onClick={onRemove}>
+              Remove
+            </button>
+          </div>
         </div>
       )}
       <div className="controls">

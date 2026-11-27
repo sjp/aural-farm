@@ -39,6 +39,11 @@ export type EngineState =
   /** The audio context couldn't be created. */
   | "failed";
 
+/** Whether `state` counts as playing, so that a toggle should pause. */
+export function isPlaying(state: EngineState): boolean {
+  return state === "playing" || state === "starting";
+}
+
 export type LayerState = "loading" | "ready" | `failed: ${string}`;
 
 /** Time constant of volume, mute and master glides, in seconds. */

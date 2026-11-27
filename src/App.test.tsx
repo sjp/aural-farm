@@ -1,31 +1,73 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS } from "./App";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS, type EngineFactory } from "./App";
+import type { AudioEngine, EngineState } from "./audio/engine";
 import { createPreferences } from "./lib/preferences";
-import { parseHash } from "./mixes/mix";
+import { parseHash, type Mix } from "./mixes/mix";
 import { createSoundLoader } from "./sounds/loader";
-import { sounds } from "./sounds/registry";
 import { act } from "./test/act";
 
-/** Shared, with every sound already loaded, so no layer shows "Loading…". */
 const loader = createSoundLoader();
 
-beforeAll(async () => {
-  await Promise.all(sounds.map((sound) => loader.load(sound)));
-});
+/**
+ * A stand-in engine: `play()` reaches `playResult`, `pause()` pauses, and every
+ * layer it is given is reported ready at once.
+ */
+function fakeEngine() {
+  let callbacks: Parameters<EngineFactory>[0] | undefined;
+  let state: EngineState = "idle";
+  const setState = (next: EngineState) => {
+    state = next;
+    callbacks?.onState(next);
+  };
+  const controls = { playResult: "playing" as EngineState };
+  const engine = {
+    get state() {
+      return state;
+    },
+    context: undefined,
+    play: vi.fn<AudioEngine["play"]>(() => {
+      setState(controls.playResult);
+      return Promise.resolve(state);
+    }),
+    pause: vi.fn<AudioEngine["pause"]>(() => {
+      setState("paused");
+    }),
+    setMix: vi.fn<(mix: Mix) => void>((mix) => {
+      for (const layer of mix.layers) {
+        callbacks?.onLayerState(layer.id, "ready");
+      }
+    }),
+    retry: vi.fn<AudioEngine["retry"]>(),
+    dispose: vi.fn<AudioEngine["dispose"]>(),
+  } satisfies AudioEngine;
+  const factory: EngineFactory = (given) => {
+    callbacks = given;
+    return engine;
+  };
+  return { engine, factory, controls, setState, callbacks: () => callbacks };
+}
 
-function renderApp(hash = "") {
+function renderApp(hash = "", fake = fakeEngine()) {
   window.history.replaceState(null, "", `/${hash}`);
   const replaceState = vi.spyOn(window.history, "replaceState");
-  render(
+  const view = render(
     <App
       initial={parseHash(window.location.hash)}
       loader={loader}
       preferences={createPreferences(() => undefined)}
+      createEngine={fake.factory}
     />,
   );
-  return { replaceState };
+  return { replaceState, ...fake, view };
+}
+
+/** Lets the autoplay attempt settle. */
+async function settle() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
 }
 
 function setHash(hash: string) {
@@ -218,5 +260,109 @@ describe("App toasts and idle", () => {
       vi.advanceTimersByTime(IDLE_MS);
     });
     expect(panelWrap()?.getAttribute("data-visible")).toBe("true");
+  });
+});
+
+describe("App playback", () => {
+  it("tries to play on start-up, after giving the engine the mix", async () => {
+    const { engine } = renderApp("#layers=test-tone&test-tone.volume=30");
+    await settle();
+    expect(engine.setMix).toHaveBeenCalledTimes(1);
+    expect(engine.setMix.mock.calls[0]?.[0].layers[0]?.volume).toBe(30);
+    expect(engine.play).toHaveBeenCalledTimes(1);
+    expect(engine.setMix.mock.invocationCallOrder[0]).toBeLessThan(
+      engine.play.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+  });
+
+  it("passes mix changes to the engine", async () => {
+    const { engine } = renderApp("#layers=test-tone");
+    await settle();
+    fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "40" } });
+    expect(engine.setMix.mock.lastCall?.[0].layers[0]?.volume).toBe(40);
+  });
+
+  it("toggles with the Play/Pause button", async () => {
+    const { engine } = renderApp();
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    expect(engine.pause).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Play" }));
+    expect(engine.play).toHaveBeenCalledTimes(2);
+  });
+
+  it("toggles with Space, unless Space presses a button there", async () => {
+    const { engine } = renderApp();
+    await settle();
+    fireEvent.keyDown(window, { key: " " });
+    expect(engine.pause).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(window, { key: " " });
+    expect(engine.play).toHaveBeenCalledTimes(2);
+    // A slider has no use for Space, so it still toggles there.
+    fireEvent.keyDown(screen.getByLabelText("Volume"), { key: " " });
+    expect(engine.pause).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Copy link" }), { key: " " });
+    expect(engine.play).toHaveBeenCalledTimes(2);
+  });
+
+  it("plays on the first input anywhere after autoplay was blocked", async () => {
+    const fake = fakeEngine();
+    fake.controls.playResult = "blocked";
+    const { engine, controls } = renderApp("", fake);
+    await settle();
+    expect(screen.getByRole("button", { name: "Tap to play" })).toBeTruthy();
+    // The Tap to play button handles its own click, so its pointerdown is skipped.
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Tap to play" }));
+    expect(engine.play).toHaveBeenCalledTimes(1);
+    controls.playResult = "playing";
+    fireEvent.pointerDown(document.body);
+    await settle();
+    expect(engine.play).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    // Once playing, input no longer starts anything.
+    fireEvent.keyDown(window, { key: "x" });
+    expect(engine.play).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a Tap to play prompt over the page when the panel is hidden", async () => {
+    const fake = fakeEngine();
+    fake.controls.playResult = "blocked";
+    const { engine, controls } = renderApp("#panel=hidden", fake);
+    await settle();
+    const prompt = document.querySelector<HTMLButtonElement>(".play-prompt");
+    expect(prompt?.textContent).toBe("Tap to play");
+    controls.playResult = "playing";
+    if (prompt) {
+      fireEvent.click(prompt);
+    }
+    await settle();
+    expect(engine.play).toHaveBeenCalledTimes(2);
+    expect(document.querySelector(".play-prompt")).toBeNull();
+  });
+
+  it("retries a failed layer and removes one", async () => {
+    const { engine, callbacks } = renderApp("#layers=test-tone");
+    await settle();
+    act(() => {
+      callbacks()?.onLayerState("test-tone", "failed: broke");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(engine.retry).toHaveBeenCalledWith("test-tone");
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(engine.setMix.mock.lastCall?.[0].layers).toEqual([]);
+    act(() => {
+      vi.advanceTimersByTime(HASH_DEBOUNCE_MS);
+    });
+    expect(window.location.hash).toBe("#layers=");
+  });
+
+  it("disposes the engine on unmount", async () => {
+    const { engine, view } = renderApp();
+    await settle();
+    act(() => {
+      view.unmount();
+    });
+    expect(engine.dispose).toHaveBeenCalled();
   });
 });

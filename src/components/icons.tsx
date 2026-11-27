@@ -48,3 +48,16 @@ export const ChevronIcon = () => (
     />
   </svg>
 );
+/** A filled icon, for the play and pause buttons. */
+function FilledIcon({ d }: { d: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path d={d} fill="currentColor" />
+    </svg>
+  );
+}
+
+export const PlayIcon = () => (
+  <FilledIcon d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z" />
+);
+export const PauseIcon = () => <FilledIcon d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />;

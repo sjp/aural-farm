@@ -1,18 +1,20 @@
 import type { JSX } from "preact";
 import { useEffect, useId, useRef, useState } from "preact/hooks";
+import type { EngineState, LayerState } from "../audio/engine";
 import type { Layer, Mix } from "../mixes/mix";
 import type { Preferences } from "../lib/preferences";
-import type { SoundLoader } from "../sounds/loader";
 import { getSound } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
 import { FullscreenIcon, HideIcon, LinkIcon } from "./icons";
 import { LayerSection } from "./LayerSection";
+import { PlayButton } from "./PlayButton";
 
 /** The preference holding collapsed sections: "<sound>" for a layer, "<sound>/<section>" inside one. */
 const CLOSED_KEY = "closedSections";
 
 /** Every keyboard shortcut, as shown in the popover. */
 const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
+  ["Space", "Play or pause"],
   ["H", "Hide or show the panel"],
   ["F", "Toggle fullscreen"],
   ["?", "Show these shortcuts"],
@@ -86,7 +88,12 @@ function Shortcuts({
 
 interface ControlPanelProps {
   mix: Mix;
-  loader: SoundLoader;
+  engineState: EngineState;
+  /** The engine's state for each layer, by sound id. */
+  layerStates: Readonly<Record<string, LayerState>>;
+  onTogglePlay: () => void;
+  onRetryLayer: (id: string) => void;
+  onRemoveLayer: (id: string) => void;
   preferences: Preferences;
   /** Whether the main pointer can hover: shortcut hints and the popover show only then. */
   hover: boolean;
@@ -103,7 +110,7 @@ interface ControlPanelProps {
 
 /** The control panel card: header and toolbar, one section per layer, and the footer. */
 export function ControlPanel(props: ControlPanelProps): JSX.Element {
-  const { mix, loader, preferences, hover } = props;
+  const { mix, preferences, hover } = props;
   const [closed, setClosed] = useState(() => preferences.getSet(CLOSED_KEY));
   const toggle = (key: string) => {
     const next = new Set(closed);
@@ -119,6 +126,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
     <div className="panel">
       <header className="panel-header">
         <div className="panel-header-row">
+          <PlayButton state={props.engineState} hover={hover} onToggle={props.onTogglePlay} />
           <h1 className="panel-title">Aural Farm</h1>
           <div className="panel-toolbar">
             <button
@@ -152,6 +160,11 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
             </button>
           </div>
         </div>
+        {props.engineState === "failed" && (
+          <p className="audio-error" role="alert">
+            Audio isn't available in this browser.
+          </p>
+        )}
       </header>
       <div className="panel-body">
         {mix.layers.length === 0 && <p className="hint">The mix is empty.</p>}
@@ -169,7 +182,13 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
               key={layer.id}
               layer={layer}
               sound={sound}
-              loader={loader}
+              status={props.layerStates[layer.id]}
+              onRetry={() => {
+                props.onRetryLayer(layer.id);
+              }}
+              onRemove={() => {
+                props.onRemoveLayer(layer.id);
+              }}
               open={!closed.has(layer.id)}
               onToggle={() => {
                 toggle(layer.id);

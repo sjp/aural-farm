@@ -110,6 +110,13 @@ body,
   }
 }
 
+.play-prompt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 /* The card */
 
 .panel {
@@ -216,6 +223,64 @@ body,
 
 .sound-error p {
   margin: 0;
+}
+
+.sound-error-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.audio-error {
+  margin: 6px 0 0;
+  color: var(--error);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Play and pause */
+
+.play-button {
+  margin-left: -6px;
+}
+
+.play-blocked {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  margin-right: 6px;
+  padding: 6px 14px 6px 10px;
+  border-color: transparent;
+  border-radius: 999px;
+  background: var(--accent);
+  font-weight: 600;
+  animation: play-pulse 2s ease-in-out infinite;
+}
+
+.play-blocked:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.12);
+}
+
+@keyframes play-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgb(91 140 255 / 25%);
+  }
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(255 255 255 / 25%);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Sections */
@@ -611,6 +676,14 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .play-blocked {
+    animation: none;
+  }
+
+  .spinner {
+    animation-duration: 2.4s;
+  }
+
   .panel-wrap,
   .panel-wrap[data-visible="false"],
   .show-panel,
