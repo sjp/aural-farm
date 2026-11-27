@@ -32,9 +32,15 @@
 import { describeError } from "../lib/errors";
 import type { Layer, Mix } from "../mixes/mix";
 import { createLatest, type SoundLoader } from "../sounds/loader";
-import { coerce } from "../sounds/params";
 import { getSound } from "../sounds/registry";
 import type { ParamValues, SoundDefinition, SoundInstance } from "../sounds/types";
+import {
+  createMasterChain,
+  layerGain,
+  soundParams,
+  volumeGain,
+  type MasterChain,
+} from "./mix-graph";
 import { getReverb, routeReverb, type ReverbKind } from "./reverb";
 
 export type EngineState =
@@ -76,10 +82,6 @@ export const BLOCKED_AFTER_MS = 500;
 const MIN_POLL_MS = 20;
 /** Samples a level analyser looks at: about 5 ms, enough for a meter. */
 const LEVEL_FFT_SIZE = 256;
-
-const HIGHPASS_HZ = 25;
-const HIGHPASS_Q = 0.7;
-const TRIM_DB = -1;
 
 interface EngineOptions {
   /** Makes the context, on the first `play()`. Injected so tests can pass a fake. */
@@ -151,20 +153,6 @@ function fadeParam(param: AudioParam, fade: Fade, to: number, seconds: number, n
   return { from, to, start: now, end: now + seconds };
 }
 
-/** A perceptual volume curve: 0–100 to a gain of 0–1. */
-const volumeGain = (volume: number) => (volume / 100) ** 2;
-
-const layerGain = (layer: Layer) => (layer.muted ? 0 : volumeGain(layer.volume));
-
-/** The layer's params, coerced against the sound's own schema. */
-function soundParams(definition: SoundDefinition, values: ParamValues): ParamValues {
-  const params: ParamValues = {};
-  for (const [key, def] of Object.entries(definition.params)) {
-    params[key] = coerce(def, values[key]);
-  }
-  return params;
-}
-
 function sameParams(a: ParamValues, b: ParamValues): boolean {
   return Object.keys(a).every((key) => a[key] === b[key]);
 }
@@ -207,12 +195,6 @@ interface LayerEntry {
   definition: SoundDefinition | undefined;
   load: ReturnType<typeof createLatest<SoundDefinition>>;
   voice: Voice | undefined;
-}
-
-interface MasterChain {
-  level: GainNode;
-  mute: GainNode;
-  fade: GainNode;
 }
 
 export function createAudioEngine(options: EngineOptions): AudioEngine {
@@ -625,28 +607,12 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     let ctx: AudioContext | undefined;
     try {
       ctx = options.createContext();
-      const level = ctx.createGain();
-      level.gain.value = volumeGain(mix.master);
-      const mute = ctx.createGain();
-      mute.gain.value = masterMuted ? 0 : 1;
-      const fade = ctx.createGain();
-      fade.gain.value = 0;
-      const highpass = ctx.createBiquadFilter();
-      highpass.type = "highpass";
-      highpass.frequency.value = HIGHPASS_HZ;
-      highpass.Q.value = HIGHPASS_Q;
-      // A limiter, as a safety net: default mixes should hardly touch it.
-      const limiter = ctx.createDynamicsCompressor();
-      limiter.threshold.value = -3;
-      limiter.knee.value = 0;
-      limiter.ratio.value = 20;
-      limiter.attack.value = 0.003;
-      limiter.release.value = 0.25;
-      const trim = ctx.createGain();
-      trim.gain.value = 10 ** (TRIM_DB / 20);
-      level.connect(mute).connect(fade).connect(highpass).connect(limiter).connect(trim);
-      connectOutput(ctx, trim);
-      master = { level, mute, fade };
+      const chain = createMasterChain(ctx);
+      chain.level.gain.value = volumeGain(mix.master);
+      chain.mute.gain.value = masterMuted ? 0 : 1;
+      chain.fade.gain.value = 0;
+      connectOutput(ctx, chain.output);
+      master = chain;
     } catch (error) {
       console.error("Couldn't start audio:", error);
       ctx?.close().catch(() => undefined);
