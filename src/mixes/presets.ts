@@ -5,10 +5,7 @@
  * keeps its sound when a default changes and reads plainly in review.
  *
  * A preset ships only once every sound it uses is registered (`presets.test.ts`
- * checks). Planned presets still waiting for their sounds, each to be added here
- * along with the last of its sounds:
- *
- *   Baby Sleep        Heartbeat, Brown Noise, Fan
+ * checks), and each is added along with the last of its sounds.
  */
 
 export interface Preset {
@@ -181,6 +178,19 @@ export const presets: readonly Preset[] = [
       "&binaural.carrier=220&binaural.mode=binaural&binaural.bed=0&binaural.seed=1" +
       "&drone.volume=70&drone.muted=0&drone.key=d&drone.brightness=30&drone.movement=35" +
       "&drone.space=55&drone.seed=1",
+  },
+  {
+    id: "baby-sleep",
+    name: "Baby Sleep",
+    description: "A slow, muffled heartbeat over soft brown noise and a fan's gentle hum.",
+    hash:
+      "#name=Baby%20Sleep&master=70&layers=heartbeat,brown-noise,fan" +
+      "&heartbeat.volume=75&heartbeat.muted=0&heartbeat.rate=62&heartbeat.muffle=70" +
+      "&heartbeat.bed=50&heartbeat.seed=1" +
+      "&brown-noise.volume=45&brown-noise.muted=0&brown-noise.tone=-35&brown-noise.width=75" +
+      "&brown-noise.movement=20&brown-noise.seed=1" +
+      "&fan.volume=35&fan.muted=0&fan.type=desk&fan.speed=35&fan.tone=30" +
+      "&fan.motor=15&fan.oscillate=0&fan.seed=1",
   },
   {
     id: "long-haul-flight",
