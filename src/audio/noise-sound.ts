@@ -58,13 +58,14 @@ const SUB_CUT: BiquadSpec = { type: "highpass", frequency: 30, Q: BUTTERWORTH_Q 
 
 /**
  * Fixed filters per colour: a low-pass at 12 kHz that keeps white from being
- * piercing; for brown, and for grey ahead of its equal-loudness shaping, a cut
- * below 30 Hz, so the deepest rumble (which the low shelf lifts 10 dB in grey)
- * doesn't eat the headroom.
+ * piercing; for pink and brown, and for grey ahead of its equal-loudness
+ * shaping, a cut below 30 Hz, so the deepest rumble (which the low shelf lifts
+ * 10 dB in grey) doesn't eat the headroom. Pink's slope reaches down to a few
+ * hertz, where it would otherwise wander like a slow DC offset.
  */
 export const SHAPING: Readonly<Record<NoiseSoundColour, readonly BiquadSpec[]>> = {
   white: [{ type: "lowpass", frequency: 12000, Q: BUTTERWORTH_Q }],
-  pink: [],
+  pink: [SUB_CUT],
   brown: [SUB_CUT],
   grey: [SUB_CUT, ...GREY_EQ],
 };
