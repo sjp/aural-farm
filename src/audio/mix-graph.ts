@@ -28,6 +28,9 @@ export function soundParams(definition: SoundDefinition, values: ParamValues): P
   return params;
 }
 
+/** A sound's seed: its `seed` param, or 0 for a sound without one. */
+export const seedOf = (params: ParamValues) => (typeof params.seed === "number" ? params.seed : 0);
+
 export interface MasterChain {
   /** Where layers and reverb returns connect: the master volume. */
   level: GainNode;

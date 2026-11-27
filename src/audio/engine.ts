@@ -37,6 +37,7 @@ import type { ParamValues, SoundDefinition, SoundInstance } from "../sounds/type
 import {
   createMasterChain,
   layerGain,
+  seedOf,
   soundParams,
   volumeGain,
   type MasterChain,
@@ -159,8 +160,6 @@ function sameParams(a: ParamValues, b: ParamValues): boolean {
 
 /** Reads the state afresh: it changes behind TypeScript's back across an await. */
 const isRunning = (ctx: BaseAudioContext) => ctx.state === "running";
-
-const seedOf = (params: ParamValues) => (typeof params.seed === "number" ? params.seed : 0);
 
 /** One reverb kind's bus for a layer: gains that follow the layer's level, solo and fade. */
 interface WetBus {
