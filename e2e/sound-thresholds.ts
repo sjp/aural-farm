@@ -149,6 +149,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { seat, engines: 100, vent: 100, chime: "sometimes" },
     })),
   },
+  train: {
+    // Flat out with every clack, rattling over points as often as it does, on each track.
+    extraSets: (["jointed", "welded"] as const).map((track) => ({
+      name: `${track}, fastest, every clack, points sometimes`,
+      params: { track, speed: 160, clacks: 100, points: "sometimes" },
+    })),
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({

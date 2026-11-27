@@ -20,6 +20,7 @@ import { quartersMeta } from "./quarters/quarters.meta";
 import { rainMeta } from "./rain/rain.meta";
 import { streamMeta } from "./stream/stream.meta";
 import { thunderMeta } from "./thunder/thunder.meta";
+import { trainMeta } from "./train/train.meta";
 import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
 import { windMeta } from "./wind/wind.meta";
 
@@ -40,6 +41,7 @@ export const sounds: readonly SoundEntry[] = [
   },
   { ...fanMeta, load: () => import("./fan/fan").then((m) => m.fan) },
   { ...airplaneMeta, load: () => import("./airplane/airplane").then((m) => m.airplane) },
+  { ...trainMeta, load: () => import("./train/train").then((m) => m.train) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
