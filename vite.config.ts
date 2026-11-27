@@ -14,6 +14,11 @@ import { configDefaults, defineConfig } from "vitest/config";
  * under script-src, and each one is bundled (through a `?worker&url` import) into a
  * self-contained file in assets/, so 'self' covers it. Loading one from a blob: or
  * data: URL would need those schemes added, so don't.
+ *
+ * Playing the output through an <audio> element needs no media-src either: its
+ * srcObject is a MediaStream from the audio graph, not a URL, so nothing is
+ * fetched. (Were it fetched, default-src 'self' would cover it.) The Media
+ * Session's artwork is the site's own icon, under 'self'.
  */
 const CSP = [
   "default-src 'self'",
