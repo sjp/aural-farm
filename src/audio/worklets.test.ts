@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { FakeAudioContext } from "../test/fake-audio";
-import { loadWorklet } from "./worklets";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FakeAudioContext, installFakeAudioGlobals } from "../test/fake-audio";
+import { withAudioScope } from "./scope";
+import { STOP_MESSAGE } from "./worklet-protocol";
+import { loadWorklet, startProcessor } from "./worklets";
 
 describe("loadWorklet", () => {
   it("adds a module once per context", async () => {
@@ -34,5 +36,44 @@ describe("loadWorklet", () => {
     const ctx = new FakeAudioContext();
     Object.defineProperty(ctx, "audioWorklet", { value: undefined });
     await expect(loadWorklet(ctx.asContext(), "a.js")).rejects.toThrow("secure pages");
+  });
+});
+
+describe("startProcessor", () => {
+  let uninstall: () => void = () => undefined;
+  beforeEach(() => {
+    uninstall = installFakeAudioGlobals();
+  });
+  afterEach(() => {
+    uninstall();
+  });
+
+  it("loads the module, then starts the processor with its options, offset and params", async () => {
+    const ctx = new FakeAudioContext();
+    ctx.advance(2);
+    let dispose: () => void = () => undefined;
+    const node = await withAudioScope(async (scope) => {
+      dispose = () => {
+        scope.dispose();
+      };
+      return startProcessor(ctx.asContext(), scope, "events.js", "events", {
+        channels: 2,
+        startAt: 5,
+        processorOptions: { seed: 3 },
+        parameterData: { rate: 40 },
+      });
+    });
+    expect(ctx.audioWorklet.modules).toEqual(["events.js"]);
+    const fake = ctx.nodes[0] as unknown as {
+      processor: string;
+      numberOfInputs: number;
+      port: { messages: unknown[] };
+    };
+    expect(fake).toBe(node);
+    expect(fake.processor).toBe("events");
+    expect(fake.numberOfInputs).toBe(0);
+    expect(node.parameters.get("rate")?.value).toBe(40);
+    dispose();
+    expect(fake.port.messages).toEqual([STOP_MESSAGE]);
   });
 });

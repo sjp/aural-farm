@@ -4,38 +4,19 @@
  * their own. Each processor is a thin wrapper that runs a kernel from a
  * `-dsp.ts` module on the absolute sample index.
  *
- * A processor keeps running until its node is disposed, which posts
- * `STOP_MESSAGE` on its port; then `process` returns false and the browser can collect it.
+ * Each processor keeps running until its node is disposed (see `StoppableProcessor`).
  */
 import { DRIFT_PROCESSOR, DriftGenerator, readDriftOptions } from "./drift-dsp";
 import { NOISE_PROCESSOR, NoiseGenerator, readNoiseOptions } from "./noise-dsp";
-import { STOP_MESSAGE } from "./worklet-protocol";
+import { StoppableProcessor } from "./worklet-processor";
 
 // AudioWorkletGlobalScope, which TypeScript's DOM types don't describe.
 declare const sampleRate: number;
 declare const currentFrame: number;
-declare class AudioWorkletProcessor {
-  readonly port: MessagePort;
-}
 declare function registerProcessor(
   name: string,
-  processor: new (options: AudioWorkletNodeOptions) => AudioWorkletProcessor,
+  processor: new (options: AudioWorkletNodeOptions) => StoppableProcessor,
 ): void;
-
-/** A processor that stops when its node posts `STOP_MESSAGE`. */
-class StoppableProcessor extends AudioWorkletProcessor {
-  protected stopped = false;
-
-  constructor() {
-    super();
-    this.port.addEventListener("message", (event: MessageEvent<unknown>) => {
-      if (event.data === STOP_MESSAGE) {
-        this.stopped = true;
-      }
-    });
-    this.port.start();
-  }
-}
 
 class NoiseProcessor extends StoppableProcessor {
   private readonly generator: NoiseGenerator;
