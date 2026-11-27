@@ -10,7 +10,6 @@
  *
  *   Café Study        Coffee Shop, Rain (light)
  *   City Night        Distant City (night), Rain (light)
- *   Server Hall       Server Room, Fan
  *   Deep Focus        Pink Noise, Binaural Beats, Drone Pad
  *   Meditation        Singing Bowls, Wind Chimes, Drone Pad
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
@@ -149,6 +148,17 @@ export const presets: readonly Preset[] = [
       "&airplane.vent=30&airplane.chime=off&airplane.seed=1" +
       "&brown-noise.volume=40&brown-noise.muted=0&brown-noise.tone=-30&brown-noise.width=80" +
       "&brown-noise.movement=15&brown-noise.seed=1",
+  },
+  {
+    id: "server-hall",
+    name: "Server Hall",
+    description: "Rows of humming server racks, cooled by an air conditioner's steady blow.",
+    hash:
+      "#name=Server%20Hall&master=70&layers=server-room,fan" +
+      "&server-room.volume=75&server-room.muted=0&server-room.airflow=60&server-room.racks=9" +
+      "&server-room.hvac=55&server-room.whine=10&server-room.disks=0&server-room.seed=1" +
+      "&fan.volume=45&fan.muted=0&fan.type=air-conditioner&fan.speed=55&fan.tone=35" +
+      "&fan.motor=30&fan.oscillate=0&fan.seed=1",
   },
   {
     id: "deep-brown",
