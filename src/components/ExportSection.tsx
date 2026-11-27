@@ -204,7 +204,7 @@ export function ExportSection({
           label="Format"
           choices={[
             { value: "wav", label: "WAV" },
-            { value: "compressed", label: "Compressed", disabled: codec === "none" },
+            { value: "compressed", label: "Compressed", disabled: compressedCodec === undefined },
           ]}
           value={wav ? "wav" : "compressed"}
           onChange={(next) => {
