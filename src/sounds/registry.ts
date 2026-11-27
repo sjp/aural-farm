@@ -8,6 +8,7 @@ import { airplaneMeta } from "./airplane/airplane.meta";
 import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
 import { cityMeta } from "./city/city.meta";
+import { bowlsMeta } from "./bowls/bowls.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { chimesMeta } from "./chimes/chimes.meta";
 import { clockMeta } from "./clock/clock.meta";
@@ -68,6 +69,7 @@ export const sounds: readonly SoundEntry[] = [
   { ...clockMeta, load: () => import("./clock/clock").then((m) => m.clock) },
   { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
   { ...chimesMeta, load: () => import("./chimes/chimes").then((m) => m.chimes) },
+  { ...bowlsMeta, load: () => import("./bowls/bowls").then((m) => m.bowls) },
   { ...thunderMeta, load: () => import("./thunder/thunder").then((m) => m.thunder) },
   {
     ...brownNoiseMeta,

@@ -280,6 +280,33 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     },
   },
+  bowls: {
+    // Every bowl, struck as often as they come, singing, with the most space, in the
+    // deepest and the highest keys.
+    extraSets: (["c", "b"] as const).map((root) => ({
+      name: `${root}, 5 bowls, every 10 s, rim singing, most space`,
+      params: { root, bowls: 5, interval: 10, rub: true, space: 100 },
+    })),
+    thresholds: {
+      levelToleranceDb: {
+        value: 6,
+        reason:
+          "A strike every 25 s on average, give or take 30 %, each ringing for half a minute, " +
+          "so a 30 s window holds one strike or two: seeds 1–3 read −24.6, −26.5 and −20.0 LUFS " +
+          "over their first 30 s. Over 5 minutes, the span that evens the strikes out, seeds " +
+          "1–4 read −23.8, −22.9, −23.6 and −23.5 LUFS, on the target.",
+      },
+      seedSwingDb: {
+        value: 8,
+        reason:
+          "Each tone wavers deeply as its split partials beat (0.4–3 Hz), so neighbouring 1.5 s " +
+          "windows of seeds 1–6 differ by 1–4 dB with no seed change at all, and by far more " +
+          "where a strike lands; both seeds' bowls are heard through the crossfade at their own " +
+          "points in the beat. The windows measure that, not the crossfade (the shared " +
+          "equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   thunder: {
     // The nearest, longest rumbles, as often as they come.
     extraSets: [
