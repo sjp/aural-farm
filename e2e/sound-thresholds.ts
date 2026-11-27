@@ -255,6 +255,31 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { setting, strength: 100, gustiness: 100, whistle: 100 },
     })),
   },
+  chimes: {
+    // Every tuning with the most tubes in the strongest wind, with the most space.
+    extraSets: (["major", "minor", "in-scale", "bamboo"] as const).map((tuning) => ({
+      name: `${tuning}, 8 tubes, strongest wind, most space`,
+      params: { tuning, tubes: 8, wind: 100, space: 100 },
+    })),
+    thresholds: {
+      levelToleranceDb: {
+        value: 9,
+        reason:
+          "The strikes follow gusts from a drift at 0.04 Hz, so a 30 s window catches a gust or " +
+          "a lull: seeds 1–3 read −24.7, −19.7 and −30.7 LUFS over their first 30 s. Over 5 " +
+          "minutes, the span that evens the gusts out, seeds 1–4 read −24.2, −23.1, −23.0 and " +
+          "−24.5 LUFS, on the target.",
+      },
+      seedSwingDb: {
+        value: 9,
+        reason:
+          "A few strikes a second at most, each ringing for seconds, so the 1.5 s windows either " +
+          "side of a seed change differ by however many strikes land in them, and both seeds' " +
+          "gusts are heard through the crossfade at their own times. The windows measure that, " +
+          "not the crossfade (the shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   thunder: {
     // The nearest, longest rumbles, as often as they come.
     extraSets: [
