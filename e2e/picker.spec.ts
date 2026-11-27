@@ -33,9 +33,7 @@ test("finds, adds, stars and closes with the keyboard alone", async ({ page }) =
   await search.press("*");
   await expect(page.getByRole("group", { name: "Favourites" })).toContainText("Brown Noise");
   // Neither the search nor the stars go in the hash.
-  // Starting a new layer can stall the page for a few seconds on a loaded machine
-  // (seen with several browsers rendering audio and software WebGL at once).
-  await expect(page).toHaveURL(/#layers=engine-core,brown-noise$/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/#layers=engine-core,brown-noise$/);
 
   // Esc clears the search, then the chips, then closes and returns to Add sound.
   await search.press("Escape");
