@@ -5,7 +5,8 @@
  * accumulated: a render that starts anywhere finds the same events.
  *
  * A period change re-anchors the schedule at the next event, so that event keeps
- * its time and the new spacing applies from there on: nothing jumps or repeats.
+ * its time (or comes sooner, if asked) and the new spacing applies from there
+ * on: nothing jumps or repeats.
  * After a change the schedule is no longer a function of absolute time alone,
  * which is fine for live edits; at fixed params it is.
  *
@@ -97,14 +98,17 @@ export class PeriodicSchedule {
 
   /**
    * Changes the period from the first event at or after `when`: that event keeps
-   * its time, and the events after it follow the new period.
+   * its time, but comes no later than `latest` (and never before `when`), and
+   * the events after it follow the new period. A `latest` of `when` plus the new
+   * period lets a much shorter period take effect soon, rather than after the
+   * long wait the old one had left.
    */
-  setPeriod(period: number, when: number): void {
+  setPeriod(period: number, when: number, latest = Number.POSITIVE_INFINITY): void {
     if (period === this.period) {
       return;
     }
     const next = this.nextIndex(when);
-    const time = this.timeOf(next);
+    const time = Math.min(this.timeOf(next), Math.max(when, latest));
     this.period = period;
     this.anchorIndex = next;
     // Solve for the anchor so event `next` lands where it was, with its new jitter.

@@ -76,6 +76,29 @@ describe("PeriodicSchedule", () => {
     }
   });
 
+  it("brings the next event forward to `latest` when it would come later", () => {
+    const schedule = new PeriodicSchedule(5, 1, 60, 0.3);
+    const next = schedule.nextIndex(1);
+    expect(schedule.timeOf(next)).toBeGreaterThan(11);
+    schedule.setPeriod(10, 1, 11);
+    const after = collect(schedule, 1, 100, 0.05);
+    expect(after.indices[0]).toBe(next);
+    expect(after.times[0]).toBeCloseTo(11, 9);
+    for (let i = 1; i < after.times.length; i++) {
+      const gap = (after.times[i] ?? 0) - (after.times[i - 1] ?? 0);
+      expect(gap).toBeGreaterThan(10 * 0.4 - 1e-9);
+      expect(gap).toBeLessThan(10 * 1.6 + 1e-9);
+    }
+  });
+
+  it("keeps the next event's time when it already comes before `latest`", () => {
+    const schedule = new PeriodicSchedule(5, 1, 10, 0.3);
+    const next = schedule.nextIndex(1);
+    const time = schedule.timeOf(next);
+    schedule.setPeriod(60, 1, 61);
+    expect(schedule.timeOf(next)).toBe(time);
+  });
+
   it("ignores a change to the same period", () => {
     const schedule = new PeriodicSchedule(3, 1, 1, 0.1);
     const t = schedule.timeOf(4);
