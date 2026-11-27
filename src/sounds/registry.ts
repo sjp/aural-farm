@@ -11,6 +11,7 @@ import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
 import { rainMeta } from "./rain/rain.meta";
+import { thunderMeta } from "./thunder/thunder.meta";
 import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
 import { windMeta } from "./wind/wind.meta";
 
@@ -30,6 +31,7 @@ export const sounds: readonly SoundEntry[] = [
     load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
   },
   { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
+  { ...thunderMeta, load: () => import("./thunder/thunder").then((m) => m.thunder) },
   {
     ...brownNoiseMeta,
     load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),

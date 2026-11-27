@@ -152,6 +152,28 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { setting, strength: 100, gustiness: 100, whistle: 100 },
     })),
   },
+  thunder: {
+    // The nearest, longest rumbles, as often as they come.
+    extraSets: [
+      { name: "storm, nearest, longest", params: { often: "storm", distance: 100, roll: 100 } },
+    ],
+    thresholds: {
+      targetLufs: {
+        value: -30,
+        reason:
+          "Rumbles come minutes apart, so no long-term level applies. A 30 s render from 0 holds " +
+          "exactly one rumble (the first, 1.5–2.5 s in), whose short-term loudness peaks about " +
+          "−21 to −24 LUFS: over the whole 30 s, with silence after it, that reads about −30.",
+      },
+      seedSwingDb: {
+        value: 50,
+        reason:
+          "The first rumble swells in from silence 1.5–2.5 s in, at a different moment for each " +
+          "seed, so the windows around a seed change measure silence against a rumble, not the " +
+          "crossfade (the shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
