@@ -448,3 +448,75 @@ describe("Play button", () => {
     expect(first?.getAttribute("title")).toBe("Play (Space)");
   });
 });
+
+describe("Display section", () => {
+  const display = { backdrop: "glow", brightness: 50, respond: true } as const;
+
+  function renderDisplay(preferences = createPreferences(() => undefined)) {
+    const onDisplayChange = vi.fn<(settings: object) => void>();
+    const handler = () => undefined;
+    render(
+      <ControlPanel
+        mix={defaultMix(catalogue, TEST_TONE_ID)}
+        engineState="idle"
+        layerStates={{}}
+        preferences={preferences}
+        hover
+        onFullscreen={undefined}
+        shortcutsOpen={false}
+        solo={new Set()}
+        masterMuted={false}
+        addOpen={false}
+        sounds={catalogue}
+        display={display}
+        onDisplayChange={onDisplayChange}
+        onLayerChange={handler}
+        onParamChange={handler}
+        onResetAll={handler}
+        onCopyLink={handler}
+        onHide={handler}
+        onShortcutsOpenChange={handler}
+        onTogglePlay={handler}
+        onRetryLayer={handler}
+        onRemoveLayer={handler}
+        onAddLayer={handler}
+        onMasterChange={handler}
+        onMasterMutedChange={handler}
+        onToggleSolo={handler}
+        onClearSolo={handler}
+        onAddOpenChange={handler}
+      />,
+    );
+    return { onDisplayChange, preferences };
+  }
+
+  it("sits at the bottom of the panel body, collapsed until opened, and remembers that", () => {
+    const { preferences } = renderDisplay();
+    const header = screen.getByRole("button", { name: "Display" });
+    expect(header.closest(".panel-body")?.lastElementChild).toBe(header.closest("section"));
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+    expect(preferences.get("displayOpen")).toBe("1");
+  });
+
+  it("offers Glow, Night and Off, Brightness and Respond to sound", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    const { onDisplayChange } = renderDisplay(preferences);
+    const modes = screen.getByRole("group", { name: "Backdrop" });
+    expect([...modes.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "Glow",
+      "Night",
+      "Off",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Night" }));
+    expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, backdrop: "night" });
+    fireEvent.input(screen.getByRole("slider", { name: "Brightness" }), {
+      target: { value: "20" },
+    });
+    expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, brightness: 20 });
+    fireEvent.click(screen.getByRole("switch", { name: "Respond to sound" }));
+    expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, respond: false });
+  });
+});

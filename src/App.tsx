@@ -8,7 +8,13 @@ import {
   type LayerState,
 } from "./audio/engine";
 import { tintWeights } from "./backdrop/colours";
-import { loadDisplay } from "./backdrop/settings";
+import {
+  backdropLabel,
+  loadDisplay,
+  nextBackdrop,
+  saveDisplay,
+  type DisplaySettings,
+} from "./backdrop/settings";
 import { Backdrop, type MasterMeter } from "./components/Backdrop";
 import { ControlPanel, FULL_MIX_HINT, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
@@ -205,7 +211,18 @@ export function App({
     [engine],
   );
 
-  const [display] = useState(() => loadDisplay(preferences));
+  const [display, setDisplay] = useState(() => loadDisplay(preferences));
+  const changeDisplay = useCallback(
+    (next: DisplaySettings) => {
+      setDisplay(next);
+      saveDisplay(preferences, next);
+    },
+    [preferences],
+  );
+  const displayRef = useRef(display);
+  useLayoutEffect(() => {
+    displayRef.current = display;
+  });
   const masterLevel = useMemo<MasterMeter>(
     () => ({ watch: engine.watchMasterLevel, get: engine.getMasterLevel }),
     [engine],
@@ -519,6 +536,10 @@ export function App({
         setPanelHidden(!stateRef.current.panelHidden);
       } else if (key === "f" && canFullscreen) {
         toggleFullscreen();
+      } else if (key === "d") {
+        const backdrop = nextBackdrop(displayRef.current.backdrop);
+        changeDisplay({ ...displayRef.current, backdrop });
+        showToast(`Backdrop: ${backdropLabel(backdrop)}`);
       } else if (event.key === "?" && hover) {
         setPanelHidden(false);
         setShortcutsOpen((open) => !open);
@@ -530,6 +551,7 @@ export function App({
     };
   }, [
     canFullscreen,
+    changeDisplay,
     hover,
     onToggleSolo,
     setPanelHidden,
@@ -597,6 +619,8 @@ export function App({
             levels={levels}
             levelsActive={!panelHidden && !fade && engineState === "playing"}
             sounds={sounds}
+            display={display}
+            onDisplayChange={changeDisplay}
           />
         </div>
       </PanelErrorBoundary>

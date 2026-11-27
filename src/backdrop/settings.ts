@@ -7,7 +7,7 @@ import { coerce, serialiseParams } from "../sounds/params";
 import type { ParamSchema, ParamValues } from "../sounds/types";
 
 /** The Display section's controls, drawn by the same code as a sound's params. */
-const DISPLAY_PARAMS = {
+export const DISPLAY_PARAMS = {
   backdrop: {
     kind: "select",
     label: "Backdrop",
@@ -22,7 +22,7 @@ const DISPLAY_PARAMS = {
   respond: { kind: "boolean", label: "Respond to sound", default: true },
 } as const satisfies ParamSchema;
 
-type DisplaySettings = ParamValues<typeof DISPLAY_PARAMS>;
+export type DisplaySettings = ParamValues<typeof DISPLAY_PARAMS>;
 
 export type BackdropMode = DisplaySettings["backdrop"];
 

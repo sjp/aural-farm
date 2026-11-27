@@ -601,6 +601,20 @@ describe("App mixer shortcuts", () => {
   it("lists every shortcut in the popover", () => {
     renderMixer("#layers=alpha");
     const keys = [...document.querySelectorAll(".shortcuts-popover kbd")].map((k) => k.textContent);
-    expect(keys).toEqual(["Space", "/", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "?"]);
+    expect(keys).toEqual(["Space", "/", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "D", "?"]);
+  });
+
+  it("cycles the backdrop Glow → Night → Off with D, saving it and saying so", () => {
+    renderMixer("#layers=alpha");
+    const backdrop = () => document.querySelector<HTMLElement>(".app")?.dataset.backdrop;
+    expect(backdrop()).toBe("glow");
+    fireEvent.keyDown(window, { key: "d" });
+    expect(backdrop()).toBe("night");
+    expect(screen.getByRole("status").textContent).toBe("Backdrop: Night");
+    fireEvent.keyDown(window, { key: "D" });
+    expect(backdrop()).toBe("off");
+    expect(document.querySelector(".backdrop")?.getAttribute("data-backdrop")).toBe("off");
+    fireEvent.keyDown(window, { key: "d" });
+    expect(backdrop()).toBe("glow");
   });
 });

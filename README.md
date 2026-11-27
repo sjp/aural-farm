@@ -95,6 +95,28 @@ cursor hidden.
 **Copy link** copies a link that spells out every setting, defaults included, plus
 `panel=hidden`, so the mix sounds the same even if a default changes later.
 
+### Backdrop
+
+Behind the panel, a few large, soft pools of colour drift slowly over a near-black
+background. Each layer adds its sound's tint, weighted by how loud the mixer makes it
+(volume, mute and solo), and colour changes ease in over two seconds; past five layers, the
+closest tints share a pool. An empty or paused mix fades to a dim neutral grey. While the
+mix plays, the glow breathes gently with the sound's level, so a throb or a swell shows.
+
+The **Display** section at the bottom of the panel (collapsed at first) sets it up for this
+device, and is remembered in the browser rather than the link:
+
+- **Backdrop:** **Glow**, **Night** (very dim and warm, for a dark bedroom) or **Off** (a
+  plain black background, and nothing drawn at all);
+- **Brightness:** 0–100, 50 by default;
+- **Respond to sound:** whether the glow breathes with the sound.
+
+The backdrop is meant to cost next to nothing: it draws a tiny image and scales it up, at
+most 30 frames a second while it breathes or changes colour and 2 a second for the drift
+alone, and not at all in a background tab. With reduced motion set in the system, it stands
+still and doesn't respond to sound. Without WebGL2 it shows a still gradient of the same
+colours.
+
 ### Sounds
 
 A fresh visit opens with **Starship Engine Core**: the deep, steady hum of a large engine
@@ -122,6 +144,7 @@ steady) and **Variation**, which crossfades to a different take on the same nois
 | `↑` / `↓`           | Master volume up or down by 5         |
 | `H`                 | Hide or show the control panel        |
 | `F`                 | Toggle fullscreen                     |
+| `D`                 | Backdrop: Glow, Night or Off          |
 | `?`                 | Show the keyboard shortcuts           |
 
 Shortcuts are ignored while a form field has focus (`Space` still works on a slider, but

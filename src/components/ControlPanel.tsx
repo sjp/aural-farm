@@ -2,6 +2,7 @@ import type { JSX } from "preact";
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 import { isPlaying, type EngineState, type LayerState } from "../audio/engine";
 import { MASTER_PARAM, MAX_LAYERS, type Layer, type Mix } from "../mixes/mix";
+import { DISPLAY_PARAMS, type DisplaySettings } from "../backdrop/settings";
 import type { Preferences } from "../lib/preferences";
 import { sounds as registry, type SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
@@ -14,11 +15,22 @@ import {
   SpeakerMutedIcon,
 } from "./icons";
 import { LayerSection } from "./LayerSection";
+import { ParamControl } from "./ParamControl";
+import { countChanged } from "./sections";
+import { Section } from "./Section";
 import { layerNameId, levelBrightness } from "./mixer";
 import { PlayButton } from "./PlayButton";
 
 /** The preference holding collapsed sections: "<sound>" for a layer, "<sound>/<section>" inside one. */
 const CLOSED_KEY = "closedSections";
+/** The preference that is "1" while the Display section is open; it starts closed. */
+const DISPLAY_OPEN_KEY = "displayOpen";
+/** The Display section's controls, in order. */
+const DISPLAY_KEYS = [
+  "backdrop",
+  "brightness",
+  "respond",
+] as const satisfies readonly (keyof DisplaySettings)[];
 
 /** Every keyboard shortcut, as shown in the popover. */
 const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
@@ -30,6 +42,7 @@ const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
   ["↑ ↓", "Master volume up or down"],
   ["H", "Hide or show the panel"],
   ["F", "Toggle fullscreen"],
+  ["D", "Backdrop: Glow, Night or Off"],
   ["?", "Show these shortcuts"],
 ];
 
@@ -324,6 +337,52 @@ interface ControlPanelProps {
   levelsActive?: boolean | undefined;
   /** Every sound, in Featured order: the registry, or a stand-in in tests. */
   sounds?: readonly SoundEntry[] | undefined;
+  /** The Display settings; the section shows only when they are given. */
+  display?: DisplaySettings | undefined;
+  onDisplayChange?: ((settings: DisplaySettings) => void) | undefined;
+}
+
+/** The Display section: how the backdrop looks on this device. Starts collapsed. */
+function DisplaySection({
+  settings,
+  preferences,
+  onChange,
+}: {
+  settings: DisplaySettings;
+  preferences: Preferences;
+  onChange: (settings: DisplaySettings) => void;
+}): JSX.Element {
+  const [open, setOpen] = useState(() => preferences.get(DISPLAY_OPEN_KEY) === "1");
+  return (
+    <Section
+      title="Display"
+      className="display-section"
+      open={open}
+      onToggle={() => {
+        setOpen(!open);
+        preferences.set(DISPLAY_OPEN_KEY, open ? "0" : "1");
+      }}
+      changed={countChanged(DISPLAY_PARAMS, settings)}
+    >
+      {DISPLAY_KEYS.map((key) => {
+        const def = DISPLAY_PARAMS[key];
+        return (
+          <ParamControl
+            key={key}
+            id={`display-${key}`}
+            def={def}
+            value={settings[key]}
+            onChange={(value) => {
+              onChange({ ...settings, [key]: value });
+            }}
+            onReset={() => {
+              onChange({ ...settings, [key]: def.default });
+            }}
+          />
+        );
+      })}
+    </Section>
+  );
 }
 
 /** The control panel card: header and toolbar, one row per layer, Add sound, and the footer. */
@@ -513,6 +572,13 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
           onOpenChange={props.onAddOpenChange}
           onAdd={add}
         />
+        {props.display && props.onDisplayChange && (
+          <DisplaySection
+            settings={props.display}
+            preferences={preferences}
+            onChange={props.onDisplayChange}
+          />
+        )}
       </div>
       <footer className="panel-footer">
         <div className="footer-actions">
