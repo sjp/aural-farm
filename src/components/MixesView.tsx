@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import { useEffect, useId, useRef, useState } from "preact/hooks";
+import { useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { MAX_NAME_LENGTH, sanitizeName } from "../mixes/mix";
 import { MAX_SAVED_MIXES } from "../mixes/mixes";
 import { CloseIcon, PencilIcon, TrashIcon } from "./icons";
@@ -95,7 +95,7 @@ function NameForm({
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(initial);
-  useEffect(() => {
+  useLayoutEffect(() => {
     inputRef.current?.focus({ preventScroll: true });
     inputRef.current?.select();
   }, []);
@@ -191,7 +191,8 @@ export function MixesView({
   const full = controls.saved.length >= MAX_SAVED_MIXES;
 
   // Moves focus once its target has rendered, so it isn't lost when a form or row goes.
-  useEffect(() => {
+  // Before paint, so a key pressed straight after (Escape after saving) still lands here.
+  useLayoutEffect(() => {
     if (!focusTarget) {
       return;
     }
