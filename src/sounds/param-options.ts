@@ -19,3 +19,19 @@ export const WAVE_OPTIONS = [
   { value: "sine", label: "Sine" },
   { value: "triangle", label: "Triangle" },
 ] as const satisfies readonly SelectOption[];
+
+/** The settings every noise colour shares. */
+export const NOISE_PARAMS = {
+  tone: { kind: "number", label: "Tone", min: -100, max: 100, step: 1, default: 0 },
+  width: { kind: "number", label: "Width", min: 0, max: 100, step: 1, default: 70, unit: "%" },
+  movement: {
+    kind: "number",
+    label: "Movement",
+    min: 0,
+    max: 100,
+    step: 1,
+    default: 20,
+    unit: "%",
+  },
+  seed: SEED_PARAM,
+} as const satisfies Record<string, NumberParam>;

@@ -4,7 +4,11 @@
  * hand-picked "Featured" order.
  */
 import type { SoundDefinition, SoundMeta } from "./types";
+import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
+import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
+import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
 import { testToneMeta } from "./test-tone/test-tone.meta";
+import { whiteNoiseMeta } from "./white-noise/white-noise.meta";
 
 export interface SoundEntry extends SoundMeta {
   load: () => Promise<SoundDefinition>;
@@ -12,6 +16,16 @@ export interface SoundEntry extends SoundMeta {
 
 export const sounds: readonly SoundEntry[] = [
   { ...testToneMeta, load: () => import("./test-tone/test-tone").then((m) => m.testTone) },
+  {
+    ...brownNoiseMeta,
+    load: () => import("./brown-noise/brown-noise").then((m) => m.brownNoise),
+  },
+  { ...pinkNoiseMeta, load: () => import("./pink-noise/pink-noise").then((m) => m.pinkNoise) },
+  {
+    ...whiteNoiseMeta,
+    load: () => import("./white-noise/white-noise").then((m) => m.whiteNoise),
+  },
+  { ...greyNoiseMeta, load: () => import("./grey-noise/grey-noise").then((m) => m.greyNoise) },
 ];
 
 /** The sound a fresh visit's mix holds. */
