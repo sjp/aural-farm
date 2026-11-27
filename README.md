@@ -17,6 +17,7 @@ npm run check         # linting, formatting and unused exports
 npm test              # vitest
 npm run test:browser  # Playwright, in headless Chromium, including the sound checks
 npm run render -- engine-core  # render a sound to a WAV file (see below)
+npm run icons         # redraw the app icons in public/ (commit the PNGs it writes)
 ```
 
 `npm run test:browser` needs Chromium once: `npx playwright install chromium`.

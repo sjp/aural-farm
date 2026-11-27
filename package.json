@@ -12,7 +12,8 @@
     "test": "vitest run --passWithNoTests",
     "test:browser": "playwright test",
     "test:perf": "vitest run --config vitest.perf.config.ts --passWithNoTests",
-    "render": "node scripts/render-sound.mjs"
+    "render": "node scripts/render-sound.mjs",
+    "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "mediabunny": "^1.66.5",
