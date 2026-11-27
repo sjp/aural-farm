@@ -11,7 +11,6 @@
  *   Engine Room       Starship Engine Core, Life Support
  *   Night Shift       Starship Engine Core (power 40), Starship Bridge (quiet), Crew Quarters
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
- *   Stormy Night      Rain (heavy), Distant Thunder, Wind
  *   Summer Night      Night Insects, Stream (quiet), Wind (light)
  *   Dawn Chorus       Birdsong (dawn), Stream
  *   Night Train       Train Carriage, Rain (on a window)
@@ -58,6 +57,19 @@ export const presets: readonly Preset[] = [
       "&ocean.shore=sand&ocean.seed=1" +
       "&wind.volume=55&wind.muted=0&wind.strength=25&wind.gustiness=40&wind.setting=field" +
       "&wind.whistle=0&wind.seed=1",
+  },
+  {
+    id: "stormy-night",
+    name: "Stormy Night",
+    description: "Heavy rain on the window and wind around the house, as a storm rumbles far off.",
+    hash:
+      "#name=Stormy%20Night&master=70&layers=rain,thunder,wind" +
+      "&rain.volume=70&rain.muted=0&rain.intensity=85&rain.surface=window&rain.distance=30" +
+      "&rain.bubbles=20&rain.seed=1" +
+      "&thunder.volume=80&thunder.muted=0&thunder.often=sometimes&thunder.distance=30" +
+      "&thunder.roll=60&thunder.seed=1" +
+      "&wind.volume=50&wind.muted=0&wind.strength=65&wind.gustiness=60&wind.setting=house" +
+      "&wind.whistle=30&wind.seed=1",
   },
   {
     id: "deep-brown",
