@@ -9,7 +9,6 @@
  * along with the last of its sounds:
  *
  *   Café Study        Coffee Shop, Rain (light)
- *   City Night        Distant City (night), Rain (light)
  *   Deep Focus        Pink Noise, Binaural Beats, Drone Pad
  *   Meditation        Singing Bowls, Wind Chimes, Drone Pad
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
@@ -137,6 +136,17 @@ export const presets: readonly Preset[] = [
       "&train.points=rarely&train.seed=1" +
       "&rain.volume=55&rain.muted=0&rain.intensity=40&rain.surface=window&rain.distance=20" +
       "&rain.bubbles=25&rain.seed=1",
+  },
+  {
+    id: "city-night",
+    name: "City Night",
+    description: "A city at night from an open window, light rain falling on the street below.",
+    hash:
+      "#name=City%20Night&master=70&layers=city,rain" +
+      "&city.volume=75&city.muted=0&city.time=night&city.traffic=50&city.rumble=60" +
+      "&city.signals=off&city.space=55&city.seed=1" +
+      "&rain.volume=50&rain.muted=0&rain.intensity=25&rain.surface=ground&rain.distance=45" +
+      "&rain.bubbles=30&rain.seed=1",
   },
   {
     id: "long-haul-flight",
