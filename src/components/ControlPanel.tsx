@@ -12,6 +12,7 @@ import {
   FullscreenIcon,
   HideIcon,
   LinkIcon,
+  MixesIcon,
   PlusIcon,
   SpeakerIcon,
   SpeakerMutedIcon,
@@ -23,6 +24,7 @@ import { Section } from "./Section";
 import { FULL_MIX_HINT, layerNameId, levelBrightness, mixSummary } from "./mixer";
 
 import type { PanelLayout } from "./sheet";
+import { MixesView, type MixesControls } from "./MixesView";
 import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
 import { SleepTimer, type SleepTimerControls } from "./SleepTimer";
@@ -64,8 +66,8 @@ export const LEVEL_RATE_HZ = 15;
 
 const NO_FAVOURITES: ReadonlySet<string> = new Set();
 
-/** Where focus goes after the layers change: a layer's name, or Add sound. */
-type FocusTarget = { layer: string } | "add";
+/** Where focus goes after the layers change or a view closes: a layer's name, Add sound, or Mixes. */
+type FocusTarget = { layer: string } | "add" | "mixes";
 
 /** Reads layer levels for the activity dots. */
 export interface LevelMeter {
@@ -316,6 +318,8 @@ interface ControlPanelProps {
   onSheetOpenChange?: ((open: boolean) => void) | undefined;
   /** The sleep timer; its clock button shows only when it is given. */
   sleep?: SleepTimerControls | undefined;
+  /** The presets and saved mixes; the Mixes button shows only when they are given. */
+  mixes?: MixesControls | undefined;
 }
 
 /** The Display section: how the backdrop looks on this device. Starts collapsed. */
@@ -404,8 +408,11 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
 
   const layout = props.layout ?? "card";
   const sheet = layout === "sheet";
+  const mixesOpen = props.mixes?.open === true;
+  /** Whether the sound picker or the Mixes view has taken over the panel. */
+  const takeover = props.addOpen || mixesOpen;
   // Collapsed, the sheet shows only its peek bar.
-  const expanded = !sheet || props.sheetOpen === true || props.addOpen;
+  const expanded = !sheet || props.sheetOpen === true || takeover;
 
   useLevelDots(panelRef, props.levels, props.levelsActive === true && expanded);
 
@@ -415,14 +422,16 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
       return;
     }
     const element =
-      focusTarget === "add"
-        ? panelRef.current?.querySelector<HTMLElement>(".add-button")
+      focusTarget === "add" || focusTarget === "mixes"
+        ? panelRef.current?.querySelector<HTMLElement>(
+            focusTarget === "add" ? ".add-button" : ".mixes-button",
+          )
         : document.getElementById(layerNameId(focusTarget.layer));
     if (element) {
       element.focus();
       setFocusTarget(null);
     }
-  }, [focusTarget, mix.layers, props.addOpen]);
+  }, [focusTarget, mix.layers, props.addOpen, mixesOpen]);
 
   const inMix = new Set(mix.layers.map((l) => l.id));
   const full = mix.layers.length >= MAX_LAYERS;
@@ -464,13 +473,32 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
     if (!open && props.addOpen) {
       props.onAddOpenChange(false);
     }
+    if (!open && mixesOpen) {
+      props.mixes?.onOpenChange(false);
+    }
     props.onSheetOpenChange?.(open);
   };
   const openPicker = () => {
     if (sheet) {
       props.onSheetOpenChange?.(true);
     }
+    if (mixesOpen) {
+      props.mixes?.onOpenChange(false);
+    }
     props.onAddOpenChange(true);
+  };
+  const toggleMixes = () => {
+    if (mixesOpen) {
+      props.mixes?.onOpenChange(false);
+      return;
+    }
+    if (sheet) {
+      props.onSheetOpenChange?.(true);
+    }
+    if (props.addOpen) {
+      props.onAddOpenChange(false);
+    }
+    props.mixes?.onOpenChange(true);
   };
 
   const playButton = (
@@ -498,6 +526,18 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
     );
   const toolbar = (
     <div className="panel-toolbar">
+      {props.mixes && (
+        <button
+          type="button"
+          className="icon-button mixes-button"
+          aria-label="Mixes"
+          aria-expanded={mixesOpen}
+          title={hint("Mixes", "P")}
+          onClick={toggleMixes}
+        >
+          <MixesIcon />
+        </button>
+      )}
       <button
         type="button"
         className="icon-button"
@@ -551,6 +591,15 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
             closePicker("add");
           }}
           onPrefetch={props.onPrefetch}
+        />
+      ) : props.mixes && mixesOpen ? (
+        <MixesView
+          controls={props.mixes}
+          hover={hover}
+          onClose={() => {
+            props.mixes?.onOpenChange(false);
+            setFocusTarget("mixes");
+          }}
         />
       ) : (
         <>
@@ -677,7 +726,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
         panelRef={panelRef}
         open={expanded}
         onOpenChange={setSheetOpen}
-        picker={props.addOpen}
+        picker={takeover}
         bar={
           <div className="peek-bar">
             {playButton}
@@ -723,7 +772,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
   }
 
   return (
-    <div ref={panelRef} className="panel" data-layout={layout} data-picker={props.addOpen}>
+    <div ref={panelRef} className="panel" data-layout={layout} data-picker={takeover}>
       {content}
     </div>
   );

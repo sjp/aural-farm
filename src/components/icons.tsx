@@ -23,6 +23,11 @@ export const FullscreenIcon = () => <Icon d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5
 export const ClockIcon = () => (
   <Icon d="M12 7.5V12l3 2M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0z" />
 );
+export const MixesIcon = () => <Icon d="M5 6h14M5 12h14M5 18h8M17 16v5M14.5 18.5h5" />;
+export const PencilIcon = () => <Icon d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" size={16} />;
+export const TrashIcon = () => (
+  <Icon d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13M10.5 11v5.5M13.5 11v5.5" size={16} />
+);
 export const HideIcon = () => <Icon d="M9 6l6 6-6 6" />;
 export const SlidersIcon = () => (
   <Icon d="M4 7h10M18 7h2M4 17h2M10 17h10M16 4v6M8 14v6" size={20} />

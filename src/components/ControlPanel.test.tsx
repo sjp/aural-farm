@@ -11,6 +11,7 @@ import { ControlPanel, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
 import { FULL_MIX_HINT } from "./mixer";
 import { LOADING_DELAY_MS } from "./LayerSection";
 import type { PanelLayout } from "./sheet";
+import type { MixesControls } from "./MixesView";
 import type { SleepTimerControls } from "./SleepTimer";
 
 type PanelOptions = {
@@ -32,6 +33,7 @@ type PanelOptions = {
   layout?: PanelLayout;
   sheetOpen?: boolean;
   sleep?: SleepTimerControls;
+  mixes?: MixesControls;
 };
 
 function renderPanel(initial: PanelOptions = {}) {
@@ -76,6 +78,7 @@ function renderPanel(initial: PanelOptions = {}) {
       layout={options.layout}
       sheetOpen={options.sheetOpen}
       sleep={options.sleep}
+      mixes={options.mixes}
       {...handlers}
     />
   );
@@ -815,6 +818,87 @@ describe("Mix name", () => {
   it("shows the name in the peek bar in place of the sounds", () => {
     renderPanel({ layout: "sheet", mix: named, edited: true });
     expect(document.querySelector(".peek-summary")?.textContent).toBe("Night (edited)");
+  });
+});
+
+describe("Mixes view", () => {
+  const mixes = (change: Partial<MixesControls> = {}): MixesControls => ({
+    open: false,
+    onOpenChange: vi.fn<MixesControls["onOpenChange"]>(),
+    presets: [
+      {
+        name: "Engine Hum",
+        description: "A hum.",
+        sounds: [{ id: "a", tint: "#123456" }],
+        current: false,
+      },
+    ],
+    saved: [],
+    suggestedName: "Test Tone",
+    canSave: true,
+    findSaved: () => undefined,
+    onApplyPreset: vi.fn<MixesControls["onApplyPreset"]>(),
+    onApplySaved: vi.fn<MixesControls["onApplySaved"]>(),
+    onSave: vi.fn<MixesControls["onSave"]>(),
+    onRename: vi.fn<MixesControls["onRename"]>(),
+    onDelete: vi.fn<MixesControls["onDelete"]>(),
+    onExport: vi.fn<MixesControls["onExport"]>(),
+    onImport: vi.fn<MixesControls["onImport"]>(),
+    importConflicts: undefined,
+    onImportAnswer: vi.fn<MixesControls["onImportAnswer"]>(),
+    ...change,
+  });
+
+  it("shows no Mixes button unless given the mixes", () => {
+    renderPanel();
+    expect(screen.queryByRole("button", { name: "Mixes" })).toBeNull();
+  });
+
+  it("opens from the Mixes button in the header", () => {
+    const controls = mixes();
+    renderPanel({ mixes: controls });
+    const button = screen.getByRole("button", { name: "Mixes" });
+    expect(button.closest(".panel-header-row")).not.toBeNull();
+    expect(button.getAttribute("title")).toBe("Mixes (P)");
+    fireEvent.click(button);
+    expect(controls.onOpenChange).toHaveBeenCalledWith(true);
+  });
+
+  it("takes over the panel while open, and closing returns focus to the Mixes button", () => {
+    const controls = mixes({ open: true });
+    const { update } = renderPanel({ mixes: controls });
+    expect(document.querySelector<HTMLElement>(".panel")?.dataset.picker).toBe("true");
+    expect(screen.getByRole("heading", { name: "Mixes" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Presets" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add sound" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close mixes" }));
+    expect(controls.onOpenChange).toHaveBeenCalledWith(false);
+    update({ mixes: { ...controls, open: false } });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Mixes" }));
+  });
+
+  it("gives way to the sound picker", () => {
+    const controls = mixes({ open: true });
+    renderPanel({ mixes: controls, addOpen: true });
+    expect(screen.getByRole("combobox", { name: "Search sounds" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Mixes" })).toBeNull();
+  });
+
+  it("opens from the expanded sheet's bar", () => {
+    const controls = mixes();
+    const { onAddOpenChange } = renderPanel({ mixes: controls, layout: "sheet", sheetOpen: true });
+    fireEvent.click(screen.getByRole("button", { name: "Mixes" }));
+    expect(controls.onOpenChange).toHaveBeenCalledWith(true);
+    expect(onAddOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("expands the sheet, and collapsing the sheet closes it", () => {
+    const controls = mixes({ open: true });
+    const { onSheetOpenChange } = renderPanel({ mixes: controls, layout: "sheet" });
+    expect(document.querySelector<HTMLElement>(".panel")?.dataset.sheet).toBe("expanded");
+    fireEvent.click(screen.getByRole("button", { name: "Collapse mixer" }));
+    expect(controls.onOpenChange).toHaveBeenCalledWith(false);
+    expect(onSheetOpenChange).toHaveBeenCalledWith(false);
   });
 });
 

@@ -1375,6 +1375,106 @@ kbd {
   color: #f2c14e;
 }
 
+/* Mixes view: presets and saved mixes, taking over the panel like the picker. */
+
+.mix-save {
+  margin-top: 10px;
+}
+
+.mix-save-hint {
+  padding: 6px 0 0;
+}
+
+.mix-option {
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.mix-option:hover:not(:disabled) {
+  background: none;
+}
+
+.mix-option[aria-current="true"] {
+  background: rgb(91 140 255 / 12%);
+}
+
+.mix-dots {
+  display: flex;
+  flex: none;
+  width: 34px;
+}
+
+.mix-dots .layer-dot + .layer-dot {
+  margin-left: -4px;
+}
+
+.mix-action {
+  color: var(--muted);
+}
+
+.mix-name-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.mix-name-input {
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+  font: inherit;
+}
+
+.mix-name-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.mix-form-actions {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.mix-form-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--error);
+  font-size: 12px;
+}
+
+.mix-question {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 6%);
+  font-size: 13px;
+}
+
+.mix-question p {
+  margin: 0 0 8px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.mix-renaming {
+  padding: 6px 8px;
+}
+
+.mix-renaming:hover {
+  background: none;
+}
+
 /* Bottom sheet (narrow screens): a peek bar while collapsed, about 70% of the
    height when expanded. Collapsed, the whole sheet slides down so only its top
    bar shows; the drag handle moves it with the finger (an inline transform). */
