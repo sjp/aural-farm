@@ -204,6 +204,9 @@ body,
   flex: 1;
   min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 16px;
   font-weight: 650;
 }
@@ -1397,5 +1400,33 @@ kbd {
   .peek-expand svg,
   .sheet-content {
     transition: none;
+  }
+}
+
+/* Touch-sized mixer rows and picker rows. These come last, after the rules they
+   override. */
+@media (pointer: coarse) {
+  .layer-toggle,
+  .picker-star {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* With touch-sized buttons, a row's actions wrap under its name rather than
+     squeezing it to nothing. */
+  .layer-row {
+    flex-wrap: wrap;
+  }
+
+  .layer-name {
+    flex-basis: 96px;
+  }
+
+  .layer-actions {
+    margin-left: auto;
+  }
+
+  .picker-option {
+    min-height: 48px;
   }
 }
