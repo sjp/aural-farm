@@ -123,6 +123,42 @@ describe("serialiseHash", () => {
   });
 });
 
+describe("mute and solo in the hash", () => {
+  const layer = (id: string, muted: boolean) => ({ id, volume: 70, muted, params: {} });
+
+  it.each([
+    [false, false],
+    [false, true],
+    [true, false],
+    [true, true],
+  ])("round-trips a mute of %s and %s", (first, second) => {
+    const state = {
+      mix: { master: 70, layers: [layer("a", first), layer("b", second)] },
+      panelHidden: false,
+    };
+    for (const full of [false, true]) {
+      expect(parse(serialiseHash(state, { full }, catalogue))).toEqual(state);
+    }
+  });
+
+  it("never writes a solo: it lives outside the mix", () => {
+    // Even a mix object carrying extra fields, as a soloed layer might in the UI,
+    // writes only the mix's own keys.
+    const layers = [{ ...layer("a", false), soloed: true }, layer("b", true)];
+    const state = { mix: { master: 70, layers, solo: ["a"] }, panelHidden: false };
+    for (const full of [false, true]) {
+      expect(serialiseHash(state, { full }, catalogue)).not.toMatch(/solo/);
+    }
+  });
+
+  it("ignores a solo key in a pasted hash", () => {
+    expect(parse("#layers=a,b&a.solo=1&solo=a").mix.layers).toEqual([
+      layer("a", false),
+      layer("b", false),
+    ]);
+  });
+});
+
 /** Mixes for every sound: at its defaults, and at each select option and slider extreme. */
 function variants(sound: (typeof sounds)[number]): [string, ParamValues][] {
   const base = defaults(sound.params);
