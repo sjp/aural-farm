@@ -171,6 +171,24 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { time: "day", traffic: 100, rumble: 100, signals: "occasional", space },
     })),
   },
+  "coffee-shop": {
+    // The fullest room at its busiest clatter, with the most and the least reverb.
+    extraSets: [0, 100].map((room) => ({
+      name: `fullest, busiest clatter, room ${String(room)}`,
+      params: { crowd: 12, clatter: 100, room },
+    })),
+    thresholds: {
+      seedSwingDb: {
+        value: 4,
+        reason:
+          "Talk comes in turns: the nearest one or two people set most of the level, and a " +
+          "phrase is 2.5 s, so the 1.5 s level either side of any moment swings by 2–4 dB " +
+          "with who is talking (seeds 1–6 swing 2.0–5.1 dB over 8 s with no seed change at " +
+          "all). The windows around a seed change measure that, not the crossfade (the " +
+          "shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   clock: {
     // Each clock at its crispest, with the most room and the chime on.
     extraSets: (["mantel", "wall", "grandfather"] as const).map((clock) => ({

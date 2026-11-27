@@ -10,6 +10,7 @@ import { bridgeMeta } from "./bridge/bridge.meta";
 import { cityMeta } from "./city/city.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { clockMeta } from "./clock/clock.meta";
+import { coffeeShopMeta } from "./coffee-shop/coffee-shop.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fanMeta } from "./fan/fan.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
@@ -50,6 +51,10 @@ export const sounds: readonly SoundEntry[] = [
   { ...airplaneMeta, load: () => import("./airplane/airplane").then((m) => m.airplane) },
   { ...trainMeta, load: () => import("./train/train").then((m) => m.train) },
   { ...cityMeta, load: () => import("./city/city").then((m) => m.city) },
+  {
+    ...coffeeShopMeta,
+    load: () => import("./coffee-shop/coffee-shop").then((m) => m.coffeeShop),
+  },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
