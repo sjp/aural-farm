@@ -8,7 +8,6 @@
  * checks). Planned presets still waiting for their sounds, each to be added here
  * along with the last of its sounds:
  *
- *   Deep Focus        Pink Noise, Binaural Beats, Drone Pad
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
  */
 
@@ -169,6 +168,19 @@ export const presets: readonly Preset[] = [
       "&drone.space=60&drone.seed=1" +
       "&chimes.volume=50&chimes.muted=0&chimes.tuning=major&chimes.tubes=5&chimes.wind=20" +
       "&chimes.space=40&chimes.seed=1",
+  },
+  {
+    id: "deep-focus",
+    name: "Deep Focus",
+    description: "A soft hush over a warm, slow chord, and two quiet tones pulsing gently.",
+    hash:
+      "#name=Deep%20Focus&master=70&layers=pink-noise,binaural,drone" +
+      "&pink-noise.volume=60&pink-noise.muted=0&pink-noise.tone=-20&pink-noise.width=70" +
+      "&pink-noise.movement=20&pink-noise.seed=1" +
+      "&binaural.volume=65&binaural.muted=0&binaural.preset=alpha&binaural.beat=10" +
+      "&binaural.carrier=220&binaural.mode=binaural&binaural.bed=0&binaural.seed=1" +
+      "&drone.volume=70&drone.muted=0&drone.key=d&drone.brightness=30&drone.movement=35" +
+      "&drone.space=55&drone.seed=1",
   },
   {
     id: "long-haul-flight",
