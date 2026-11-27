@@ -314,6 +314,12 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { key, brightness: 100, movement: 100, space: 100 },
     })),
   },
+  heartbeat: {
+    // The fastest, clearest beat over the fullest flow: its loudest.
+    extraSets: [
+      { name: "fastest, clearest, fullest flow", params: { rate: 90, muffle: 0, bed: 100 } },
+    ],
+  },
   binaural: {
     // The fastest custom beat at the highest and lowest tones, with the fullest bed, in each mode.
     extraSets: (["binaural", "isochronic"] as const).flatMap((mode) =>

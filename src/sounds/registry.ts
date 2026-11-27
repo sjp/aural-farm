@@ -17,6 +17,7 @@ import { coffeeShopMeta } from "./coffee-shop/coffee-shop.meta";
 import { droneMeta } from "./drone/drone.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fanMeta } from "./fan/fan.meta";
+import { heartbeatMeta } from "./heartbeat/heartbeat.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { insectsMeta } from "./insects/insects.meta";
@@ -69,6 +70,10 @@ export const sounds: readonly SoundEntry[] = [
     load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
   },
   { ...clockMeta, load: () => import("./clock/clock").then((m) => m.clock) },
+  {
+    ...heartbeatMeta,
+    load: () => import("./heartbeat/heartbeat").then((m) => m.heartbeat),
+  },
   { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
   { ...chimesMeta, load: () => import("./chimes/chimes").then((m) => m.chimes) },
   { ...bowlsMeta, load: () => import("./bowls/bowls").then((m) => m.bowls) },
