@@ -13,6 +13,7 @@ import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
 import { insectsMeta } from "./insects/insects.meta";
 import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
+import { quartersMeta } from "./quarters/quarters.meta";
 import { rainMeta } from "./rain/rain.meta";
 import { streamMeta } from "./stream/stream.meta";
 import { thunderMeta } from "./thunder/thunder.meta";
@@ -29,6 +30,7 @@ export const sounds: readonly SoundEntry[] = [
     load: () => import("./engine-core/engine-core").then((m) => m.engineCore),
   },
   { ...bridgeMeta, load: () => import("./bridge/bridge").then((m) => m.bridge) },
+  { ...quartersMeta, load: () => import("./quarters/quarters").then((m) => m.quarters) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },

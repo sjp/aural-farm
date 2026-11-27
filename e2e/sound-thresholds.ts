@@ -121,6 +121,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     ],
   },
+  quarters: {
+    // Everything up, at the airiest and the darkest Warmth.
+    extraSets: [0, 100].map((warmth) => ({
+      name: `everything up, warmth ${String(warmth)}`,
+      params: { air: 100, hum: 100, hull: 100, warmth },
+    })),
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
