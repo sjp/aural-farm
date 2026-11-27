@@ -11,7 +11,6 @@
  *   Engine Room       Starship Engine Core, Life Support
  *   Night Shift       Starship Engine Core (power 40), Starship Bridge (quiet), Crew Quarters
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
- *   Dawn Chorus       Birdsong (dawn), Stream
  *   Night Train       Train Carriage, Rain (on a window)
  *   Long-haul Flight  Airplane Cabin, Brown Noise
  *   Café Study        Coffee Shop, Rain (light)
@@ -69,6 +68,17 @@ export const presets: readonly Preset[] = [
       "&thunder.roll=60&thunder.seed=1" +
       "&wind.volume=50&wind.muted=0&wind.strength=65&wind.gustiness=60&wind.setting=house" +
       "&wind.whistle=30&wind.seed=1",
+  },
+  {
+    id: "dawn-chorus",
+    name: "Dawn Chorus",
+    description: "Songbirds near and far greeting the day, over a gentle brook.",
+    hash:
+      "#name=Dawn%20Chorus&master=70&layers=birdsong,stream" +
+      "&birdsong.volume=75&birdsong.muted=0&birdsong.time=dawn&birdsong.density=55" +
+      "&birdsong.distance=40&birdsong.seed=1" +
+      "&stream.volume=60&stream.muted=0&stream.flow=45&stream.size=30&stream.distance=35" +
+      "&stream.seed=1",
   },
   {
     id: "summer-night",
