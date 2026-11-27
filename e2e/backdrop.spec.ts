@@ -82,3 +82,13 @@ test("Off shows the plain background", async ({ page }) => {
   await expect(page.locator('.backdrop[data-backdrop="off"]')).toBeAttached();
   await expect(page.locator("canvas")).toHaveCount(0);
 });
+
+test("Night dims the panel too", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".panel-wrap")).toHaveCSS("filter", "none");
+  await page.evaluate(() => {
+    localStorage.setItem("aural-farm.display.backdrop", "night");
+  });
+  await page.reload();
+  await expect(page.locator(".panel-wrap")).toHaveCSS("filter", "brightness(0.6)");
+});

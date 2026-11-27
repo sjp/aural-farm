@@ -1403,6 +1403,12 @@ kbd {
   }
 }
 
+/* Night: the panel dims along with the backdrop, for a dark bedroom. */
+.app[data-backdrop="night"] .panel-wrap,
+.app[data-backdrop="night"] .show-panel {
+  filter: brightness(0.6);
+}
+
 /* Touch-sized mixer rows and picker rows. These come last, after the rules they
    override. */
 @media (pointer: coarse) {
