@@ -12,7 +12,7 @@ import { wavBytes } from "./wav";
 
 type ExportType = "clip" | "loop";
 type ExportFormat = "wav" | "compressed";
-type CompressedCodec = "opus" | "aac";
+export type CompressedCodec = "opus" | "aac";
 
 /** Clip lengths, in minutes. */
 const CLIP_MINUTES = [1, 5, 10, 15, 30, 45, 60] as const;

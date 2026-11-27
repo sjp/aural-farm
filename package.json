@@ -15,6 +15,7 @@
     "render": "node scripts/render-sound.mjs"
   },
   "dependencies": {
+    "mediabunny": "^1.66.5",
     "preact": "^11.2.0"
   },
   "devDependencies": {
