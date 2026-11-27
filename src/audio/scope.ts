@@ -4,7 +4,7 @@
  * it all, and a throw part-way through building releases what was built so far.
  */
 
-interface Disposable {
+export interface Disposable {
   dispose: () => void;
 }
 
