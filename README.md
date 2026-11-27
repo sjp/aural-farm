@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **Long-haul Flight**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -317,6 +317,17 @@ gliding like a real one: the air grows louder and brighter and the blades and mo
 **Tone** makes the air darker or brighter, **Motor** sets the motor's level (0 is off), and
 **Oscillate** turns a desk or box fan slowly side to side, panning and swelling as it faces
 the bed. **Variation** crossfades to a different noise and flutter drift.
+
+**Server Room** is the aisle between two rows of server racks: a wall of air from hundreds of
+small fans, their tones crowding into a dense, faintly shimmering chord that never quite
+settles, as neighbouring fans spinning at very slightly different speeds beat slowly against
+each other. Underneath, the building's cooling units rumble and a compressor hums; very
+faintly above, power supplies whine, coming and going. **Airflow** sets the fan air's level
+(it never goes fully silent), **Racks** how many fan tones there are (1 is a single machine,
+12 a hall: thicker, not louder), **Cooling** the rumble and hum (0 is off), **Whine** the
+coil whine (0 is off; never more than faint), and **Disk ticks** adds, every seven seconds or so, a
+quick burst of soft disk-seek ticks. **Variation** crossfades to different fan speeds, pans
+and drifts. With an air conditioner from Fan, it makes the **Server Hall** preset.
 
 **Airplane Cabin** is a window seat on a long night flight, lights dimmed, a jet airliner at
 cruise: the broad, enveloping roar of air over the fuselage and the engines through the
