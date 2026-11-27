@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Ambient and background sound, synthesised live in your browser. Mix rain, engines, noise and more, tune each layer, and share the mix as a link."
+    />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#000000" />
+    <title>Aural Farm</title>
+  </head>
+  <body>
+    <!-- Before #root: the body clips overflow, so anything after the full-height root is hidden. -->
+    <noscript>
+      <p>Aural Farm needs JavaScript and the Web Audio API to synthesise its sounds.</p>
+    </noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

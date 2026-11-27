@@ -1,6 +1,6 @@
 {
-  "name": "zoomer-devcontainer",
-  "owner": { "name": "zoomer" },
+  "name": "aural-farm-devcontainer",
+  "owner": { "name": "aural-farm" },
   "plugins": [
     {
       "name": "ts7-lsp",
