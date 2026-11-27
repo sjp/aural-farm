@@ -4,8 +4,14 @@
  *
  *   layer: sound → level (volume × mute) → fade ─┐
  *   layer: sound → level (volume × mute) → fade ─┤
+ *   shared reverb (one convolver per kind) ───────┤
  *                                                 └→ master level → master fade
  *        → high-pass 25 Hz → limiter → trim −1 dB → output (→ destination)
+ *
+ * A sound's reverb sends go to its layer's reverb bus: for each kind it uses, a
+ * level and fade gain pair that copies the layer's own automation, feeding the
+ * shared convolver. So a layer's volume, mute and fades apply to what it sends
+ * to the reverb as well.
  *
  * Each sound is crash-isolated: a throw in `create` or `update`, or a crashed
  * worklet, fails that layer alone, and `retry` builds it again. The context is
@@ -22,6 +28,7 @@ import { createLatest, type SoundLoader } from "../sounds/loader";
 import { coerce } from "../sounds/params";
 import { getSound } from "../sounds/registry";
 import type { ParamValues, SoundDefinition, SoundInstance } from "../sounds/types";
+import { getReverb, routeReverb, type ReverbKind } from "./reverb";
 
 export type EngineState =
   /** No context yet: nothing has asked to play. */
@@ -144,10 +151,18 @@ const isRunning = (ctx: BaseAudioContext) => ctx.state === "running";
 
 const seedOf = (params: ParamValues) => (typeof params.seed === "number" ? params.seed : 0);
 
+/** One reverb kind's bus for a layer: gains that follow the layer's level and fade. */
+interface WetBus {
+  level: GainNode;
+  fade: GainNode;
+}
+
 /** A built (or building) layer: its gain stages and the running sound. */
 interface Voice {
   level: GainNode;
   fade: GainNode;
+  /** The layer's reverb buses, made when its sound first sends to each kind. */
+  wet: Map<ReverbKind, WetBus>;
   fadeState: Fade;
   levelTarget: number;
   /** Undefined while an async `create` is still running. */
@@ -184,6 +199,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   let context: AudioContext | undefined;
   let master: MasterChain | undefined;
   let masterFade = still(0);
+  /** Reverb kinds whose shared convolver feeds the master bus. */
+  const reverbReturns = new Set<ReverbKind>();
   let mix: Mix = { master: 100, layers: [] };
   /** Whether the user wants sound: set by `play()`, cleared by `pause()`. */
   let wantPlaying = false;
@@ -267,6 +284,53 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
     voice.level.disconnect();
     voice.fade.disconnect();
+    for (const bus of voice.wet.values()) {
+      bus.level.disconnect();
+      bus.fade.disconnect();
+    }
+  };
+
+  /** Fades a voice (and its reverb buses) to `to` over `seconds`. */
+  const fadeVoice = (voice: Voice, to: number, seconds: number, now: number) => {
+    const from = voice.fadeState;
+    voice.fadeState = fadeParam(voice.fade.gain, from, to, seconds, now);
+    for (const bus of voice.wet.values()) {
+      fadeParam(bus.fade.gain, from, to, seconds, now);
+    }
+  };
+
+  /** The input of `voice`'s reverb bus for `kind`, made on first use. */
+  const wetInput = (voice: Voice, kind: ReverbKind): AudioNode => {
+    const existing = voice.wet.get(kind);
+    if (existing) {
+      return existing.level;
+    }
+    if (voice.released) {
+      // A send made by a sound that is going away: its gains are disconnected already.
+      return voice.level;
+    }
+    const ctx = context;
+    if (!ctx || !master) {
+      throw new Error("The audio engine has no context");
+    }
+    const now = ctx.currentTime;
+    const level = ctx.createGain();
+    level.gain.value = voice.level.gain.value;
+    level.gain.setTargetAtTime(voice.levelTarget, now, GLIDE_TAU);
+    const fade = ctx.createGain();
+    fade.gain.value = fadeValue(voice.fadeState, now);
+    if (voice.fadeState.end > now) {
+      fade.gain.setValueAtTime(fadeValue(voice.fadeState, now), now);
+      fade.gain.linearRampToValueAtTime(voice.fadeState.to, voice.fadeState.end);
+    }
+    const convolver = getReverb(ctx, kind);
+    if (!reverbReturns.has(kind)) {
+      convolver.connect(master.level);
+      reverbReturns.add(kind);
+    }
+    level.connect(fade).connect(convolver);
+    voice.wet.set(kind, { level, fade });
+    return level;
   };
 
   const fail = (entry: LayerEntry, error: unknown) => {
@@ -302,6 +366,9 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
     voice.levelTarget = target;
     voice.level.gain.setTargetAtTime(target, context.currentTime, GLIDE_TAU);
+    for (const bus of voice.wet.values()) {
+      bus.level.gain.setTargetAtTime(target, context.currentTime, GLIDE_TAU);
+    }
   };
 
   /** Takes a freshly created sound into the mix and fades it in. */
@@ -316,13 +383,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       return;
     }
     voice.instance = instance;
-    voice.fadeState = fadeParam(
-      voice.fade.gain,
-      voice.fadeState,
-      1,
-      LAYER_FADE_IN,
-      context.currentTime,
-    );
+    fadeVoice(voice, 1, LAYER_FADE_IN, context.currentTime);
     setLayerState(entry, "ready");
     // Params may have changed while an async create ran.
     applyParams(entry);
@@ -344,6 +405,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     const voice: Voice = {
       level,
       fade,
+      wet: new Map(),
       fadeState: still(0),
       levelTarget,
       instance: undefined,
@@ -351,6 +413,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       released: false,
     };
     entry.voice = voice;
+    routeReverb(level, (kind) => wetInput(voice, kind));
     const onError = (error: unknown) => {
       if (entry.voice === voice) {
         fail(entry, error);
@@ -449,13 +512,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       release(voice);
       return;
     }
-    voice.fadeState = fadeParam(
-      voice.fade.gain,
-      voice.fadeState,
-      0,
-      LAYER_FADE_OUT,
-      context.currentTime,
-    );
+    fadeVoice(voice, 0, LAYER_FADE_OUT, context.currentTime);
     leaving.add(voice);
     whenClockPasses(voice.fadeState.end, () => {
       release(voice);
