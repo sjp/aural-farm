@@ -11,7 +11,6 @@
  *   Engine Room       Starship Engine Core, Life Support
  *   Night Shift       Starship Engine Core (power 40), Starship Bridge (quiet), Crew Quarters
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
- *   Summer Night      Night Insects, Stream (quiet), Wind (light)
  *   Dawn Chorus       Birdsong (dawn), Stream
  *   Night Train       Train Carriage, Rain (on a window)
  *   Long-haul Flight  Airplane Cabin, Brown Noise
@@ -70,6 +69,19 @@ export const presets: readonly Preset[] = [
       "&thunder.roll=60&thunder.seed=1" +
       "&wind.volume=50&wind.muted=0&wind.strength=65&wind.gustiness=60&wind.setting=house" +
       "&wind.whistle=30&wind.seed=1",
+  },
+  {
+    id: "summer-night",
+    name: "Summer Night",
+    description: "Crickets on a warm night, a quiet brook nearby and a breeze in the trees.",
+    hash:
+      "#name=Summer%20Night&master=70&layers=insects,stream,wind" +
+      "&insects.volume=75&insects.muted=0&insects.count=6&insects.warmth=22&insects.distance=40" +
+      "&insects.katydids=0&insects.seed=1" +
+      "&stream.volume=50&stream.muted=0&stream.flow=35&stream.size=25&stream.distance=50" +
+      "&stream.seed=1" +
+      "&wind.volume=45&wind.muted=0&wind.strength=25&wind.gustiness=35&wind.setting=trees" +
+      "&wind.whistle=0&wind.seed=1",
   },
   {
     id: "deep-brown",
