@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
+  **Night Shift**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -284,6 +284,16 @@ or Sometimes, every 2), **Alert** a soft, slow falling two-note tone every 6 sec
 default and gentle enough to sleep through, and **Variation** crossfades to a different set
 of console phrases and places while the hum plays on. A change of Activity or Doors applies
 from the next phrase or door.
+
+**Crew Quarters** is a small starship cabin at night, heard from the bunk with the lights
+down, everything on the other side of a wall: a low, soft rumble of air from a vent, a faint,
+deep engine hum through the hull, and a few dull resonances of the structure that swell and
+fade over minutes. Nothing happens in it, which is the point: it is made for sleep, and sits
+under Starship Engine Core and Starship Bridge in a mix (the **Night Shift** preset).
+**Ventilation** sets the vent's level (it never goes fully silent: it is the bed), **Engine
+hum** the hum's level (0 is off), **Hull** how much the structure resonates (0 is none),
+**Warmth** how dark and muffled the room sounds without changing its level, and
+**Variation** crossfades to different resonances and slow drifts while the hum plays on.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
