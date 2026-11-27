@@ -65,8 +65,8 @@ fades it out and then suspends the audio, so nothing runs while paused.
 The control panel sits in the top-right corner and fades out, with the cursor, after a few
 seconds without input. It is a mixer for up to eight sounds, played at once.
 
-The header has **Play/Pause**, the **sleep timer**, **Copy link**, **Fullscreen** and
-**Hide**, and under them the
+The header has **Play/Pause**, the **sleep timer**, the mix's name (or "Aural Farm"),
+**Mixes**, **Copy link**, **Fullscreen** and **Hide**, and under them the
 **master volume**, with a speaker button that mutes everything. Each layer of the mix is a
 row with:
 
@@ -113,6 +113,31 @@ cursor hidden.
 **Copy link** copies a link that spells out every setting, defaults included, plus
 `panel=hidden`, so the mix sounds the same even if a default changes later.
 
+### Mixes and presets
+
+**Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
+
+- **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**, **Deep
+  Brown**, **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
+- **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
+  (which offers **Undo** for a few seconds).
+
+Each row shows the mix's name, a line about it and the tints of its sounds, and the mix that
+is playing is marked. Picking a row crossfades to that mix: sounds in both mixes glide to
+their new settings, and the others fade in or out. If the mix it replaces isn't saved
+anywhere, a toast offers **Undo**. Solo is cleared; muting everything is left as it is.
+
+**Save mix…** asks for a name (up to 40 characters, emoji welcome), offering the mix's name
+or its sounds. Saving under a name already used asks before replacing that mix, and up to
+100 mixes can be saved. A named mix shows its name in the header, the peek bar, the page's
+title and on the lock screen. The name is part of the link (`name=`), and changing the mix
+afterwards keeps it, marked **(edited)**.
+
+Saved mixes are kept in this browser only, shared between its tabs and never sent anywhere;
+share one with **Copy link**. Since browser storage can be cleared, **Export my mixes**
+downloads them as `aural-farm-mixes.json`, and **Import…** reads such a file back, adding
+its mixes and asking before replacing any of yours with the same name.
+
 ### Sleep timer
 
 The clock button next to Play opens the sleep timer, for falling asleep to a mix: choose
@@ -135,7 +160,7 @@ opens, and it is never part of a link.
 ### Phones and tablets
 
 On a narrow screen (a phone held upright) the panel is a **bottom sheet**. Collapsed, it
-shows a peek bar with Play/Pause, the sleep timer, the mix's sounds (and the time left on a
+shows a peek bar with Play/Pause, the sleep timer, the mix's name or sounds (and the time left on a
 running timer), **Add sound** and an expand button.
 Drag the handle up (or tap the bar) to expand it to about two thirds of the screen, with the
 master volume at the top and **Copy link**, **Fullscreen** and **Hide** in the bar; drag it
@@ -206,6 +231,7 @@ steady) and **Variation**, which crossfades to a different take on the same nois
 | ------------------- | -------------------------------------- |
 | `Space`             | Play or pause                          |
 | `/`                 | Add a sound (opens the picker)         |
+| `P`                 | Presets and saved mixes                |
 | `S`                 | Star or unstar the focused layer       |
 | `1`–`8`             | Mute or unmute layer N                 |
 | `Shift+1`–`Shift+8` | Solo or unsolo layer N                 |
