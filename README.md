@@ -273,6 +273,18 @@ and how strongly the throb swells; depth 0 is a steady hum), **Room** (metallic 
 and reverb), **Hiss** (faint ventilation air on top) and **Variation**, which crossfades to
 different slow drifts and room detail while the hum plays on.
 
+**Starship Bridge** is the quiet background of a large, carpeted command room on a ship
+cruising smoothly: a warm room tone with steady ventilation, a very low, distant engine hum
+felt more than heard, and now and then a short, soft blip or a little two- to four-note
+phrase from a console somewhere in the room. **Activity** sets how often the consoles chirp
+(Quiet, about once every 15 seconds; Normal, every 6; Busy, every 2), **Engine hum** the
+hum's level (0 is off), **Ventilation** the band of air over the room tone, **Doors** adds
+the rare soft whoosh of a door opening off to one side (Off, Rarely, about every 6 minutes,
+or Sometimes, every 2), **Alert** a soft, slow falling two-note tone every 6 seconds, off by
+default and gentle enough to sleep through, and **Variation** crossfades to a different set
+of console phrases and places while the hum plays on. A change of Activity or Doors applies
+from the next phrase or door.
+
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
 sparse drizzle to a downpour, **Surface** sets what the rain lands on (open ground with
