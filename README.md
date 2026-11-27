@@ -126,6 +126,15 @@ swipe over a slider scrolls the panel: a slider moves only when dragged sideways
 The panel doesn't fade after touch input, and the keyboard hints are left out. With the
 **Night** backdrop, the panel dims too.
 
+### Background playback and media controls
+
+The mix keeps playing with the screen locked or another app open. On phones and tablets the
+sound plays through a hidden audio element, so the system treats it as media: it plays with
+iPhone's silent switch on, and the lock screen and notification shade show the mix's sounds
+with Play and Pause. Media keys and desktop media controls play and pause it too. If
+another app takes the audio, the mix pauses and stays paused; after a phone call it resumes
+by itself where the browser says the call has ended. While paused, nothing runs.
+
 ### Backdrop
 
 Behind the panel, a few large, soft pools of colour drift slowly over a near-black
@@ -140,7 +149,13 @@ device, and is remembered in the browser rather than the link:
 - **Backdrop:** **Glow**, **Night** (very dim and warm, for a dark bedroom) or **Off** (a
   plain black background, and nothing drawn at all);
 - **Brightness:** 0–100, 50 by default;
-- **Respond to sound:** whether the glow breathes with the sound.
+- **Respond to sound:** whether the glow breathes with the sound;
+- **Keep screen on:** keeps the screen from sleeping while the mix plays, for watching the
+  backdrop (shown only where the browser can do it);
+- **Advanced → Audio output:** **Auto**, **Direct** or **Media element**. Auto plays
+  through the hidden audio element on touch devices and straight to the speakers elsewhere.
+  It's an escape hatch for a device where the automatic choice misbehaves, and a change
+  applies once the page is reloaded.
 
 The backdrop is meant to cost next to nothing: it draws a tiny image and scales it up, at
 most 30 frames a second while it breathes or changes colour and 2 a second for the drift
