@@ -4,6 +4,7 @@
  * hand-picked "Featured" order.
  */
 import type { SoundDefinition, SoundMeta } from "./types";
+import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
@@ -29,6 +30,7 @@ export const sounds: readonly SoundEntry[] = [
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
+  { ...birdsongMeta, load: () => import("./birdsong/birdsong").then((m) => m.birdsong) },
   { ...insectsMeta, load: () => import("./insects/insects").then((m) => m.insects) },
   {
     ...fireplaceMeta,

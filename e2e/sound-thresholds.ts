@@ -203,6 +203,23 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     },
   },
+  birdsong: {
+    // Every time of day at its busiest, close up.
+    extraSets: (["dawn", "morning", "day"] as const).map((time) => ({
+      name: `${time}, busiest and closest`,
+      params: { time, density: 100, distance: 0 },
+    })),
+    thresholds: {
+      seedSwingDb: {
+        value: 12,
+        reason:
+          "Birdsong is phrases with silences between, and the nearest bird or two set most of " +
+          "the level, so the 1.5 s level either side of any moment swings by 10 dB or more with " +
+          "whether a near bird happens to be singing. The windows around a seed change measure " +
+          "that, not the crossfade (the shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
