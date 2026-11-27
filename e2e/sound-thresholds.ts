@@ -128,6 +128,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { air: 100, hum: 100, hull: 100, warmth },
     })),
   },
+  "life-support": {
+    // Everything up, valves often, at the shortest and longest pump cycles.
+    extraSets: [15, 60].map((pumpCycle) => ({
+      name: `everything up, valves often, ${String(pumpCycle)} s cycle`,
+      params: { flow: 100, pump: 100, hum: 100, valves: "often", pumpCycle },
+    })),
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
