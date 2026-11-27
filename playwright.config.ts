@@ -20,7 +20,13 @@ export default defineConfig({
     baseURL: `http://localhost:${String(PORT)}`,
     browserName: "chromium",
     // Software WebGL, so the backdrop draws on machines and CI runners without a GPU.
-    launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+    // The page itself is composited in software: composited through SwiftShader, a
+    // page's main thread blocks about 1 s after each navigation (while Chromium tears
+    // down the previous document's compositor) until SwiftShader drains its queue,
+    // which takes several seconds when parallel browsers starve it of CPU.
+    launchOptions: {
+      args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--disable-gpu-compositing"],
+    },
   },
   projects: [
     { name: "browser", testIgnore: /sound-cost\.spec\.ts$/ },
