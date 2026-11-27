@@ -29,6 +29,8 @@ const COLUMNS: readonly (readonly [string, string])[] = [
   ["seed click", "seedClickDb"],
   ["seed swing", "seedSwingDb"],
   ["cost %", "costPercent"],
+  ["limiter <1 dB", "limiterClear"],
+  ["max GR", "worstReductionDb"],
   ["budget", "cost"],
 ];
 

@@ -5,7 +5,7 @@ import { sounds, type SoundEntry } from "../src/sounds/registry";
 import type { ParamValues } from "../src/sounds/types";
 import { paramSets } from "../src/test/param-sets";
 import type { Measurements, SoundSpec } from "./harness";
-import { silentSet, threshold, THRESHOLDS } from "./sound-thresholds";
+import { extraSets, silentSet, threshold, THRESHOLDS } from "./sound-thresholds";
 
 /**
  * Every registered sound rendered in a real browser, through the registry's
@@ -128,7 +128,12 @@ for (const sound of sounds) {
       await test.step("peaks and level at every param set", async () => {
         let worstPeak = -Infinity;
         const range = [Infinity, -Infinity];
-        for (const set of paramSets(sound.params)) {
+        const base = defaults(sound.params);
+        const sets = [
+          ...paramSets(sound.params),
+          ...extraSets(id).map((set) => ({ name: set.name, params: { ...base, ...set.params } })),
+        ];
+        for (const set of sets) {
           const m = await measure(page, { id, seconds: 10, params: set.params });
           worstPeak = Math.max(worstPeak, m.peakDb);
           range[0] = Math.min(range[0] ?? Infinity, m.loudness);

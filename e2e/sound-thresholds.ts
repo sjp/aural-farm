@@ -3,7 +3,7 @@
  * that are allowed to miss one, each with its reason. A sound that needs an
  * exception gets it here, never in the spec.
  */
-import type { SoundMeta } from "../src/sounds/types";
+import type { ParamValues, SoundMeta } from "../src/sounds/types";
 
 const CI = (process.env.CI ?? "") !== "";
 
@@ -82,6 +82,11 @@ interface Exception {
 }
 
 interface SoundExceptions {
+  /**
+   * Param combinations to check along with `paramSets`, which changes one param
+   * at a time: settings that together make the sound loudest or strangest.
+   */
+  extraSets?: readonly { name: string; params: ParamValues }[];
   /** Thresholds this sound is held to instead of the ones above. */
   thresholds?: Partial<Record<ThresholdName, Exception>>;
   /** Param sets (as `paramSets` names them, e.g. "volume=min") meant to be silent, with why. */
@@ -97,6 +102,16 @@ const NOISE_SUB_BASS: Exception = {
 };
 
 const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
+  "engine-core": {
+    extraSets: [
+      { name: "power, pulse depth=max", params: { power: 100, pulseDepth: 100 } },
+      {
+        name: "everything up, fastest pulse",
+        params: { power: 100, pulseDepth: 100, pulseRate: 1.6, room: 100, hiss: 100 },
+      },
+      { name: "highest pitch, full power", params: { pitch: 72, power: 100, pulseDepth: 100 } },
+    ],
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
@@ -105,6 +120,11 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
 /** The pass mark `id` is held to for `name`. */
 export function threshold(id: string, name: ThresholdName): number {
   return EXCEPTIONS[id]?.thresholds?.[name]?.value ?? THRESHOLDS[name];
+}
+
+/** The param combinations `id` is checked with beyond one change at a time. */
+export function extraSets(id: string): readonly { name: string; params: ParamValues }[] {
+  return EXCEPTIONS[id]?.extraSets ?? [];
 }
 
 /** Whether `id`'s param set `set` is meant to be silent. */
