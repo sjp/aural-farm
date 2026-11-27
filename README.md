@@ -120,7 +120,8 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Seaside**, **Deep Brown**, **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
+  **Seaside**, **Stormy Night**, **Deep Brown**, **Soft Pink** and **Masking Blend**. More
+  arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
 
@@ -303,6 +304,16 @@ whistle that rises a little with each gust. **Strength** goes from a light breez
 field; trees, with a flutter of leaves; or a house, heard muffled from inside, with moans at
 the gaps; a change crossfades, with the gusts carrying on through it), **Whistle** sets how
 much it whistles, and **Variation** crossfades to a different run of gusts.
+
+**Distant Thunder** is a storm some miles away: mostly quiet, then now and again a long, low
+rumble that swells in over a second or two, rolls through a few overlapping peaks and dies
+away over many seconds, felt as much as heard. Nothing about it is sudden. The first rumble
+rolls in a couple of seconds after the audio starts (the first Play); after that they come
+at random. **How often** sets the mean gap between rumbles (Rarely, about 8 minutes;
+Sometimes, 3; Often, a little over 1; Storm, 30 seconds), **Distance** goes from far and low
+to nearer, brighter and quicker, with a muffled crack at the start of each rumble from 60
+up, **Roll** from short grumbles to long rolling rumbles, and **Variation** picks a different
+run of rumbles. A change applies from the next rumble, never to one already sounding.
 
 The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
 noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
