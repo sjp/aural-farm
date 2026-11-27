@@ -378,6 +378,27 @@ body,
   display: none;
 }
 
+.display-advanced {
+  margin-top: 12px;
+}
+
+.display-advanced .section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.display-advanced .section-body[hidden] {
+  display: none;
+}
+
+.display-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .layer .section-body > .controls + .controls,
 .layer .section-body > .controls + .panel-section {
   margin-top: 12px;

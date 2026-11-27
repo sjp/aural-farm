@@ -35,7 +35,10 @@ const DISPLAY_KEYS = [
   "backdrop",
   "brightness",
   "respond",
+  "keepAwake",
 ] as const satisfies readonly (keyof DisplaySettings)[];
+/** The controls in the Display section's Advanced part, collapsed until opened. */
+const ADVANCED_DISPLAY_KEYS = ["audioOutput"] as const satisfies readonly (keyof DisplaySettings)[];
 
 /** Every keyboard shortcut, as shown in the popover. */
 const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
@@ -293,6 +296,8 @@ interface ControlPanelProps {
   /** The Display settings; the section shows only when they are given. */
   display?: DisplaySettings | undefined;
   onDisplayChange?: ((settings: DisplaySettings) => void) | undefined;
+  /** Whether the browser can keep the screen on (the Screen Wake Lock API). */
+  wakeLock?: boolean | undefined;
   /** How the panel is laid out for the screen; a floating card by default. */
   layout?: PanelLayout | undefined;
   /** Whether the bottom sheet is expanded. The sound picker expands it too. */
@@ -305,12 +310,33 @@ function DisplaySection({
   settings,
   preferences,
   onChange,
+  wakeLock,
 }: {
   settings: DisplaySettings;
   preferences: Preferences;
   onChange: (settings: DisplaySettings) => void;
+  /** Whether the browser can keep the screen on; Keep screen on shows only where it can. */
+  wakeLock: boolean;
 }): JSX.Element {
   const [open, setOpen] = useState(() => preferences.get(DISPLAY_OPEN_KEY) === "1");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const control = (key: keyof DisplaySettings) => {
+    const def = DISPLAY_PARAMS[key];
+    return (
+      <ParamControl
+        key={key}
+        id={`display-${key}`}
+        def={def}
+        value={settings[key]}
+        onChange={(value) => {
+          onChange({ ...settings, [key]: value });
+        }}
+        onReset={() => {
+          onChange({ ...settings, [key]: def.default });
+        }}
+      />
+    );
+  };
   return (
     <Section
       title="Display"
@@ -322,23 +348,22 @@ function DisplaySection({
       }}
       changed={countChanged(DISPLAY_PARAMS, settings)}
     >
-      {DISPLAY_KEYS.map((key) => {
-        const def = DISPLAY_PARAMS[key];
-        return (
-          <ParamControl
-            key={key}
-            id={`display-${key}`}
-            def={def}
-            value={settings[key]}
-            onChange={(value) => {
-              onChange({ ...settings, [key]: value });
-            }}
-            onReset={() => {
-              onChange({ ...settings, [key]: def.default });
-            }}
-          />
-        );
-      })}
+      {DISPLAY_KEYS.filter((key) => key !== "keepAwake" || wakeLock).map((key) => control(key))}
+      <Section
+        title="Advanced"
+        className="display-advanced"
+        open={advancedOpen}
+        onToggle={() => {
+          setAdvancedOpen(!advancedOpen);
+        }}
+        changed={countChanged(DISPLAY_PARAMS, settings, ADVANCED_DISPLAY_KEYS)}
+      >
+        {ADVANCED_DISPLAY_KEYS.map((key) => control(key))}
+        <p className="display-note">
+          Media element keeps sound playing on a locked phone and shows lock-screen controls. Direct
+          has less delay. A change applies once the page is reloaded.
+        </p>
+      </Section>
     </Section>
   );
 }
@@ -589,6 +614,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
                 settings={props.display}
                 preferences={preferences}
                 onChange={props.onDisplayChange}
+                wakeLock={props.wakeLock === true}
               />
             )}
           </div>

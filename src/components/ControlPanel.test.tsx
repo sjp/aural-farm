@@ -520,9 +520,15 @@ describe("Play button", () => {
 });
 
 describe("Display section", () => {
-  const display = { backdrop: "glow", brightness: 50, respond: true } as const;
+  const display = {
+    backdrop: "glow",
+    brightness: 50,
+    respond: true,
+    keepAwake: false,
+    audioOutput: "auto",
+  } as const;
 
-  function renderDisplay(preferences = createPreferences(() => undefined)) {
+  function renderDisplay(preferences = createPreferences(() => undefined), wakeLock = false) {
     const onDisplayChange = vi.fn<(settings: object) => void>();
     const handler = () => undefined;
     render(
@@ -540,6 +546,7 @@ describe("Display section", () => {
         sounds={catalogue}
         display={display}
         onDisplayChange={onDisplayChange}
+        wakeLock={wakeLock}
         onLayerChange={handler}
         onParamChange={handler}
         onResetAll={handler}
@@ -588,6 +595,38 @@ describe("Display section", () => {
     expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, brightness: 20 });
     fireEvent.click(screen.getByRole("switch", { name: "Respond to sound" }));
     expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, respond: false });
+  });
+
+  it("offers Keep screen on only where the browser can keep the screen on", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    const { onDisplayChange } = renderDisplay(preferences, true);
+    fireEvent.click(screen.getByRole("switch", { name: "Keep screen on" }));
+    expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, keepAwake: true });
+  });
+
+  it("leaves Keep screen on out where the browser can't keep the screen on", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    renderDisplay(preferences, false);
+    expect(screen.queryByRole("switch", { name: "Keep screen on" })).toBeNull();
+  });
+
+  it("keeps the audio output under a collapsed Advanced", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    const { onDisplayChange } = renderDisplay(preferences);
+    const advanced = screen.getByRole("button", { name: "Advanced" });
+    expect(advanced.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(advanced);
+    const output = screen.getByRole<HTMLSelectElement>("combobox", { name: "Audio output" });
+    expect([...output.options].map((o) => o.textContent)).toEqual([
+      "Auto",
+      "Direct",
+      "Media element",
+    ]);
+    fireEvent.change(output, { target: { value: "media" } });
+    expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, audioOutput: "media" });
   });
 });
 

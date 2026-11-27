@@ -1,6 +1,8 @@
 /**
- * The Display settings: how the backdrop looks on this device. They live in the
- * preferences, not the URL hash, since they describe the device rather than the mix.
+ * The Display settings: how the backdrop looks on this device, whether it keeps
+ * the screen on, and (under Advanced) how audio reaches the speakers. They live in
+ * the preferences, not the URL hash, since they describe the device rather than
+ * the mix.
  */
 import type { Preferences } from "../lib/preferences";
 import { coerce, serialiseParams } from "../sounds/params";
@@ -20,6 +22,19 @@ export const DISPLAY_PARAMS = {
   },
   brightness: { kind: "number", label: "Brightness", min: 0, max: 100, step: 1, default: 50 },
   respond: { kind: "boolean", label: "Respond to sound", default: true },
+  keepAwake: { kind: "boolean", label: "Keep screen on", default: false },
+  /** A support escape hatch for `chooseOutputRoute`: "auto" lets it decide. */
+  audioOutput: {
+    kind: "select",
+    label: "Audio output",
+    options: [
+      { value: "auto", label: "Auto" },
+      { value: "direct", label: "Direct" },
+      { value: "media", label: "Media element" },
+    ],
+    default: "auto",
+    group: "Advanced",
+  },
 } as const satisfies ParamSchema;
 
 export type DisplaySettings = ParamValues<typeof DISPLAY_PARAMS>;
@@ -31,12 +46,15 @@ const PREFIX = "display.";
 /** The stored settings; anything missing or unreadable takes its default. */
 export function loadDisplay(preferences: Preferences): DisplaySettings {
   const read = (key: keyof DisplaySettings) => preferences.get(PREFIX + key) ?? undefined;
-  const { backdrop, brightness, respond } = DISPLAY_PARAMS;
+  const { backdrop, brightness, respond, keepAwake, audioOutput } = DISPLAY_PARAMS;
   const mode = read("backdrop");
+  const output = read("audioOutput");
   return {
     backdrop: backdrop.options.find((o) => o.value === mode)?.value ?? backdrop.default,
     brightness: Number(coerce(brightness, read("brightness"))),
     respond: coerce(respond, read("respond")) === true,
+    keepAwake: coerce(keepAwake, read("keepAwake")) === true,
+    audioOutput: audioOutput.options.find((o) => o.value === output)?.value ?? audioOutput.default,
   };
 }
 
