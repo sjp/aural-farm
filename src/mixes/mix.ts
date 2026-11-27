@@ -13,7 +13,7 @@ import type { NumberParam, ParamValues, SoundMeta } from "../sounds/types";
 export const MAX_LAYERS = 8;
 
 /** A layer's volume, 0–100. */
-const VOLUME_PARAM = {
+export const VOLUME_PARAM = {
   kind: "number",
   label: "Volume",
   min: 0,
@@ -28,7 +28,7 @@ const MASTER_PARAM = {
   label: "Master volume",
 } as const satisfies NumberParam;
 
-interface Layer {
+export interface Layer {
   /** The sound's id; a mix holds each sound at most once. */
   id: string;
   volume: number;
@@ -43,7 +43,7 @@ export interface Mix {
 }
 
 /** Everything the URL hash holds. */
-interface HashState {
+export interface HashState {
   mix: Mix;
   panelHidden: boolean;
 }

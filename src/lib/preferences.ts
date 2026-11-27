@@ -9,7 +9,7 @@ export type PreferenceStorage = Pick<Storage, "getItem" | "setItem">;
 
 const PREFIX = "aural-farm.";
 
-interface Preferences {
+export interface Preferences {
   get: (key: string) => string | null;
   set: (key: string, value: string) => void;
   /** A set of strings stored as a JSON array; anything unreadable reads as empty. */

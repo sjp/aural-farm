@@ -75,7 +75,7 @@ export function coerce(def: ParamDef, raw: unknown): ParamValue {
   }
 }
 
-function isDefault(def: ParamDef, value: ParamValue): boolean {
+export function isDefault(def: ParamDef, value: ParamValue): boolean {
   return value === def.default;
 }
 

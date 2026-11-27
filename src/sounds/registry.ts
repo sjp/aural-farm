@@ -6,7 +6,7 @@
 import type { SoundDefinition, SoundMeta } from "./types";
 import { testToneMeta } from "./test-tone/test-tone.meta";
 
-interface SoundEntry extends SoundMeta {
+export interface SoundEntry extends SoundMeta {
   load: () => Promise<SoundDefinition>;
 }
 

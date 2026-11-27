@@ -7,7 +7,7 @@ interface Loadable {
   load: () => Promise<SoundDefinition>;
 }
 
-interface SoundLoader {
+export interface SoundLoader {
   /** The definition, if it has finished loading. */
   get: (id: string) => SoundDefinition | undefined;
   /** Loads once per id; a failed load is forgotten so it can be retried. */
