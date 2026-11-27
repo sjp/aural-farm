@@ -307,6 +307,17 @@ minutes, Sometimes, every 90 seconds, or Often, every 40), **Hum** the hum's lev
 and **Variation** crossfades to different valve timings and slow drifts while the pump and
 hum play on. It sits under Starship Engine Core in the **Engine Room** preset.
 
+**Fan** is a fan running in a bedroom, heard from the bed, for sleep and masking. The air is
+the point; the blades and motor are just enough to make it a real fan rather than plain
+noise. **Fan** picks the kind, crossfading between them: a **Desk fan** (small and fast, with
+a slightly buzzy flutter), a **Ceiling fan** (big, slow blades and a soft, slow "whum"), a
+**Box fan** (a fuller rush with a coarser flutter) or an **Air conditioner** (a steady blower
+over a low compressor hum, with almost no flutter). **Speed** spins the fan up or down,
+gliding like a real one: the air grows louder and brighter and the blades and motor faster.
+**Tone** makes the air darker or brighter, **Motor** sets the motor's level (0 is off), and
+**Oscillate** turns a desk or box fan slowly side to side, panning and swelling as it faces
+the bed. **Variation** crossfades to a different noise and flutter drift.
+
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
 sparse drizzle to a downpour, **Surface** sets what the rain lands on (open ground with
