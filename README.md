@@ -74,8 +74,9 @@ row with:
 - **Solo (S)**: while any layer is soloed, only the soloed layers are heard, and the header
   offers **Clear solo**;
 - **Mute (M)**: the row dims, and its controls still work;
-- a chevron that shows the sound's own settings (sliders, toggles and lists, with a button
-  to reset each one to its default); a newly added sound opens, and the others close;
+- a chevron that shows the sound's description (two lines, with **More** for the rest) and
+  its own settings (sliders, toggles and lists, with a button to reset each one to its
+  default); a newly added sound opens, and the others close;
 - **Remove (✕)**, which fades the layer out and shows a toast with **Undo** for a few
   seconds;
 - a **volume** slider, always shown.
@@ -109,6 +110,21 @@ cursor hidden.
 
 **Copy link** copies a link that spells out every setting, defaults included, plus
 `panel=hidden`, so the mix sounds the same even if a default changes later.
+
+### Phones and tablets
+
+On a narrow screen (a phone held upright) the panel is a **bottom sheet**. Collapsed, it
+shows a peek bar with Play/Pause, the mix's sounds, **Add sound** and an expand button.
+Drag the handle up (or tap the bar) to expand it to about two thirds of the screen, with the
+master volume at the top and **Copy link**, **Fullscreen** and **Hide** in the bar; drag it
+down, flick it, or tap the backdrop to collapse it. The sound picker fills the expanded
+sheet and stays above the on-screen keyboard. On a short screen (a phone on its side) the
+panel is a full-height drawer on the right.
+
+On touch screens every control is at least 44 px, sliders have large thumbs, and a vertical
+swipe over a slider scrolls the panel: a slider moves only when dragged sideways or tapped.
+The panel doesn't fade after touch input, and the keyboard hints are left out. With the
+**Night** backdrop, the panel dims too.
 
 ### Backdrop
 
