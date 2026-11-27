@@ -69,3 +69,15 @@ export const SpeakerIcon = () => (
 export const SpeakerMutedIcon = () => (
   <Icon d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5" />
 );
+/** A star, filled when the sound is starred. */
+export const StarIcon = ({ filled }: { filled: boolean }) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path
+      d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linejoin="round"
+    />
+  </svg>
+);

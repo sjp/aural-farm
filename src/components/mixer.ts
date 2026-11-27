@@ -1,4 +1,8 @@
 /** Small helpers shared by the mixer's rows and panel. */
+import { MAX_LAYERS } from "../mixes/mix";
+
+/** Says why no more sounds can be added to a full mix. */
+export const FULL_MIX_HINT = `${String(MAX_LAYERS)} sounds is the most a mix can hold`;
 
 /** The id of a layer's name, which takes focus when the row is added or its neighbour removed. */
 export const layerNameId = (id: string) => `layer-${id}-name`;
