@@ -95,6 +95,11 @@ interface SoundInit<P extends ParamSchema = ParamSchema> {
   seed: number;
   /** Context time, in seconds, the sound starts at. */
   startAt: number;
+  /**
+   * Reports a failure after `create` has returned, such as a worklet processor
+   * crashing; the engine then disposes this layer alone. Pass it to `withAudioScope`.
+   */
+  onError?: (error: unknown) => void;
 }
 
 /** A running sound. `when` is the context time a change applies from. */
@@ -107,9 +112,14 @@ interface SoundInstance<P extends ParamSchema = ParamSchema> {
 interface SoundImplementation<P extends ParamSchema = ParamSchema> {
   /**
    * Builds the sound's graph in `ctx` (a live or offline context) and connects it to
-   * `out`. It must not touch `ctx.destination`, the DOM or timers.
+   * `out`. It must not touch `ctx.destination`, the DOM or timers. It may be async,
+   * for a sound that has to load a worklet module first.
    */
-  create: (ctx: BaseAudioContext, out: AudioNode, init: SoundInit<P>) => SoundInstance<P>;
+  create: (
+    ctx: BaseAudioContext,
+    out: AudioNode,
+    init: SoundInit<P>,
+  ) => SoundInstance<P> | Promise<SoundInstance<P>>;
 }
 
 /** A loaded sound: its metadata plus its implementation. */

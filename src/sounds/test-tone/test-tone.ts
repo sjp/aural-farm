@@ -1,3 +1,4 @@
+import { withAudioScope } from "../../audio/scope";
 import { defineSound } from "../types";
 import { testToneMeta } from "./test-tone.meta";
 
@@ -22,38 +23,41 @@ function detuneFor(seed: number): number {
  */
 export const testTone = defineSound(testToneMeta, {
   create(ctx, out, init) {
-    const osc = new OscillatorNode(ctx, {
-      type: init.params.wave,
-      frequency: init.params.pitch,
-      detune: detuneFor(init.seed),
-    });
-    const filter = new BiquadFilterNode(ctx, {
-      type: "lowpass",
-      Q: 0.5,
-      frequency: init.params.pitch * (init.params.soft ? SOFT_CUTOFF : OPEN_CUTOFF),
-    });
-    const gain = new GainNode(ctx, { gain: LEVEL });
-    osc.connect(filter).connect(gain).connect(out);
-    osc.start(init.startAt);
-    return {
-      update(params, when) {
-        osc.frequency.setTargetAtTime(params.pitch, when, GLIDE);
-        osc.detune.setTargetAtTime(detuneFor(params.seed), when, GLIDE);
-        filter.frequency.setTargetAtTime(
-          params.pitch * (params.soft ? SOFT_CUTOFF : OPEN_CUTOFF),
-          when,
-          TIMBRE_GLIDE,
-        );
-        if (osc.type !== params.wave) {
-          osc.type = params.wave;
-        }
-      },
-      dispose() {
-        osc.stop();
-        osc.disconnect();
-        filter.disconnect();
-        gain.disconnect();
-      },
-    };
+    return withAudioScope((scope) => {
+      const osc = scope.addSource(
+        new OscillatorNode(ctx, {
+          type: init.params.wave,
+          frequency: init.params.pitch,
+          detune: detuneFor(init.seed),
+        }),
+      );
+      const filter = scope.add(
+        new BiquadFilterNode(ctx, {
+          type: "lowpass",
+          Q: 0.5,
+          frequency: init.params.pitch * (init.params.soft ? SOFT_CUTOFF : OPEN_CUTOFF),
+        }),
+      );
+      const gain = scope.add(new GainNode(ctx, { gain: LEVEL }));
+      osc.connect(filter).connect(gain).connect(out);
+      osc.start(init.startAt);
+      return {
+        update(params, when) {
+          osc.frequency.setTargetAtTime(params.pitch, when, GLIDE);
+          osc.detune.setTargetAtTime(detuneFor(params.seed), when, GLIDE);
+          filter.frequency.setTargetAtTime(
+            params.pitch * (params.soft ? SOFT_CUTOFF : OPEN_CUTOFF),
+            when,
+            TIMBRE_GLIDE,
+          );
+          if (osc.type !== params.wave) {
+            osc.type = params.wave;
+          }
+        },
+        dispose: () => {
+          scope.dispose();
+        },
+      };
+    }, init.onError);
   },
 });
