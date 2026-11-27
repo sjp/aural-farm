@@ -1,5 +1,6 @@
 /** Small helpers shared by the mixer's rows and panel. */
 import { MAX_LAYERS } from "../mixes/mix";
+import type { SoundEntry } from "../sounds/registry";
 
 /** Says why no more sounds can be added to a full mix. */
 export const FULL_MIX_HINT = `${String(MAX_LAYERS)} sounds is the most a mix can hold`;
@@ -14,4 +15,13 @@ export function levelBrightness(rms: number): number {
   }
   const db = 20 * Math.log10(rms);
   return Math.min(1, Math.max(0, (db + 60) / 48));
+}
+
+/** The peek bar's summary of a mix: its sounds' names joined with " + ". */
+export function mixSummary(
+  layers: readonly { id: string }[],
+  sounds: readonly SoundEntry[],
+): string {
+  const names = layers.flatMap((layer) => sounds.find((s) => s.id === layer.id)?.name ?? []);
+  return names.length === 0 ? "No sounds yet" : names.join(" + ");
 }

@@ -1216,3 +1216,186 @@ kbd {
 .layer-star[aria-pressed="true"] {
   color: #f2c14e;
 }
+
+/* Bottom sheet (narrow screens): a peek bar while collapsed, about 70% of the
+   height when expanded. Collapsed, the whole sheet slides down so only its top
+   bar shows; the drag handle moves it with the finger (an inline transform). */
+
+.app[data-layout="sheet"] {
+  --sheet-peek: 76px;
+  --sheet-height: min(70vh, 100vh - var(--keyboard-inset, 0px) - var(--safe-top) - 16px);
+}
+
+/* The dynamic viewport leaves out mobile browsers' toolbars. */
+@supports (height: 100dvh) {
+  .app[data-layout="sheet"] {
+    --sheet-height: min(70dvh, 100dvh - var(--keyboard-inset, 0px) - var(--safe-top) - 16px);
+  }
+}
+
+.app[data-layout="sheet"] .panel-wrap {
+  top: auto;
+  right: 0;
+  bottom: var(--keyboard-inset, 0px);
+  left: 0;
+  max-height: none;
+}
+
+.app[data-layout="sheet"] .panel-wrap[data-visible="false"] {
+  transform: translateY(12px);
+}
+
+.panel[data-layout="sheet"],
+.panel[data-layout="sheet"][data-picker="true"] {
+  width: 100%;
+  max-width: none;
+  height: var(--sheet-height);
+  max-height: none;
+  padding: 0 0 var(--safe-bottom);
+  overflow: hidden;
+  border-width: 1px 0 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--panel-solid);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 35%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.panel[data-layout="sheet"][data-sheet="collapsed"] {
+  transform: translateY(calc(100% - var(--sheet-peek) - var(--safe-bottom)));
+}
+
+.panel[data-layout="sheet"][data-dragging="true"] {
+  transition: none;
+}
+
+.sheet-top {
+  flex: none;
+  height: var(--sheet-peek);
+  padding: 0 calc(var(--pad-right) + var(--safe-right)) 0 calc(var(--pad-left) + var(--safe-left));
+  touch-action: none;
+  user-select: none;
+}
+
+.sheet-handle {
+  display: grid;
+  place-items: center;
+  height: 20px;
+}
+
+.sheet-handle::before {
+  content: "";
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 30%);
+}
+
+.peek-bar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  height: 56px;
+}
+
+.peek-bar .play-button {
+  width: 48px;
+  height: 48px;
+  margin-left: -8px;
+}
+
+.peek-bar .play-blocked {
+  min-height: 48px;
+}
+
+.peek-summary {
+  flex: 1;
+  min-width: 0;
+  margin: 0 4px;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peek-bar .panel-toolbar {
+  margin-right: 0;
+}
+
+.peek-expand {
+  margin-right: -8px;
+}
+
+.peek-expand svg {
+  transform: rotate(-90deg);
+  transition: transform 0.2s;
+}
+
+.peek-expand[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.sheet-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 calc(var(--pad-right) + var(--safe-right)) 0 calc(var(--pad-left) + var(--safe-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: opacity 0.2s;
+}
+
+/* The peek bar stands in for the header's top row, so the master volume comes first. */
+.panel[data-layout="sheet"] {
+  --pad-top: 4px;
+}
+
+.panel[data-sheet="collapsed"]:not([data-dragging="true"]) .sheet-content {
+  opacity: 0;
+}
+
+/* The picker fills the expanded sheet, and only its list scrolls. */
+.panel[data-layout="sheet"][data-picker="true"] .sheet-content {
+  overflow: hidden;
+}
+
+.app[data-layout="sheet"] .toast {
+  bottom: calc(var(--sheet-peek) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 12px);
+}
+
+.app[data-layout="sheet"][data-sheet="expanded"] .toast {
+  bottom: calc(var(--sheet-height) + var(--keyboard-inset, 0px) + 12px);
+}
+
+/* Drawer (short, landscape screens): the panel runs the full height on the right. */
+
+.app[data-layout="drawer"] .panel-wrap {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  max-height: none;
+}
+
+.panel[data-layout="drawer"],
+.panel[data-layout="drawer"][data-picker="true"] {
+  /* Wider than the card, so a row's touch-sized buttons leave room for its name. */
+  --pad-top: calc(10px + var(--safe-top));
+  --pad-right: calc(16px + var(--safe-right));
+  --pad-bottom: calc(8px + var(--safe-bottom));
+  width: calc(360px + var(--safe-right));
+  max-width: 100vw;
+  height: 100%;
+  max-height: none;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  background: var(--panel-solid);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[data-layout="sheet"],
+  .panel[data-layout="sheet"][data-picker="true"],
+  .peek-expand svg,
+  .sheet-content {
+    transition: none;
+  }
+}

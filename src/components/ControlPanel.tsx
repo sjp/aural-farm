@@ -6,7 +6,9 @@ import { DISPLAY_PARAMS, type DisplaySettings } from "../backdrop/settings";
 import type { Preferences } from "../lib/preferences";
 import { sounds as registry, type SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
+import { BottomSheet } from "./BottomSheet";
 import {
+  ChevronIcon,
   FullscreenIcon,
   HideIcon,
   LinkIcon,
@@ -18,7 +20,8 @@ import { LayerSection } from "./LayerSection";
 import { ParamControl } from "./ParamControl";
 import { countChanged } from "./sections";
 import { Section } from "./Section";
-import { FULL_MIX_HINT, layerNameId, levelBrightness } from "./mixer";
+import { FULL_MIX_HINT, layerNameId, levelBrightness, mixSummary } from "./mixer";
+import type { PanelLayout } from "./sheet";
 import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
 import { Slider } from "./Slider";
@@ -290,6 +293,11 @@ interface ControlPanelProps {
   /** The Display settings; the section shows only when they are given. */
   display?: DisplaySettings | undefined;
   onDisplayChange?: ((settings: DisplaySettings) => void) | undefined;
+  /** How the panel is laid out for the screen; a floating card by default. */
+  layout?: PanelLayout | undefined;
+  /** Whether the bottom sheet is expanded. The sound picker expands it too. */
+  sheetOpen?: boolean | undefined;
+  onSheetOpenChange?: ((open: boolean) => void) | undefined;
 }
 
 /** The Display section: how the backdrop looks on this device. Starts collapsed. */
@@ -355,7 +363,12 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
   };
   const hint = (title: string, key: string) => (hover ? `${title} (${key})` : title);
 
-  useLevelDots(panelRef, props.levels, props.levelsActive === true);
+  const layout = props.layout ?? "card";
+  const sheet = layout === "sheet";
+  // Collapsed, the sheet shows only its peek bar.
+  const expanded = !sheet || props.sheetOpen === true || props.addOpen;
+
+  useLevelDots(panelRef, props.levels, props.levelsActive === true && expanded);
 
   // Moves focus once the layer it should go to has rendered.
   useEffect(() => {
@@ -408,8 +421,63 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
   // An empty mix has nothing to play; a playing one can still be paused.
   const playDisabled = empty && !isPlaying(props.engineState);
 
-  return (
-    <div ref={panelRef} className="panel" data-picker={props.addOpen}>
+  const setSheetOpen = (open: boolean) => {
+    if (!open && props.addOpen) {
+      props.onAddOpenChange(false);
+    }
+    props.onSheetOpenChange?.(open);
+  };
+  const openPicker = () => {
+    if (sheet) {
+      props.onSheetOpenChange?.(true);
+    }
+    props.onAddOpenChange(true);
+  };
+
+  const playButton = (
+    <PlayButton
+      state={props.engineState}
+      hover={hover}
+      disabled={playDisabled}
+      onToggle={props.onTogglePlay}
+    />
+  );
+  const toolbar = (
+    <div className="panel-toolbar">
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Copy link"
+        title="Copy link"
+        onClick={props.onCopyLink}
+      >
+        <LinkIcon />
+      </button>
+      {props.onFullscreen && (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Fullscreen"
+          title={hint("Fullscreen", "F")}
+          onClick={props.onFullscreen}
+        >
+          <FullscreenIcon />
+        </button>
+      )}
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Hide controls"
+        title={hint("Hide controls", "H")}
+        onClick={props.onHide}
+      >
+        <HideIcon />
+      </button>
+    </div>
+  );
+
+  const content = (
+    <>
       {props.addOpen ? (
         <SoundList
           sounds={catalogue}
@@ -433,46 +501,14 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
       ) : (
         <>
           <header className="panel-header">
-            <div className="panel-header-row">
-              <PlayButton
-                state={props.engineState}
-                hover={hover}
-                disabled={playDisabled}
-                onToggle={props.onTogglePlay}
-              />
-              <h1 className="panel-title">Aural Farm</h1>
-              <div className="panel-toolbar">
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Copy link"
-                  title="Copy link"
-                  onClick={props.onCopyLink}
-                >
-                  <LinkIcon />
-                </button>
-                {props.onFullscreen && (
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Fullscreen"
-                    title={hint("Fullscreen", "F")}
-                    onClick={props.onFullscreen}
-                  >
-                    <FullscreenIcon />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Hide controls"
-                  title={hint("Hide controls", "H")}
-                  onClick={props.onHide}
-                >
-                  <HideIcon />
-                </button>
+            {/* In the sheet, Play and the toolbar live in the peek bar instead. */}
+            {!sheet && (
+              <div className="panel-header-row">
+                {playButton}
+                <h1 className="panel-title">Aural Farm</h1>
+                {toolbar}
               </div>
-            </div>
+            )}
             <MasterVolume
               value={mix.master}
               muted={props.masterMuted}
@@ -547,14 +583,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
                 />,
               ];
             })}
-            <AddSound
-              full={full}
-              open={props.addOpen}
-              hover={hover}
-              onOpen={() => {
-                props.onAddOpenChange(true);
-              }}
-            />
+            <AddSound full={full} open={props.addOpen} hover={hover} onOpen={openPicker} />
             {props.display && props.onDisplayChange && (
               <DisplaySection
                 settings={props.display}
@@ -580,6 +609,56 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
           </footer>
         </>
       )}
+    </>
+  );
+
+  if (sheet) {
+    return (
+      <BottomSheet
+        panelRef={panelRef}
+        open={expanded}
+        onOpenChange={setSheetOpen}
+        picker={props.addOpen}
+        bar={
+          <div className="peek-bar">
+            {playButton}
+            <p className="peek-summary">{mixSummary(mix.layers, catalogue)}</p>
+            {expanded ? (
+              toolbar
+            ) : (
+              <button
+                type="button"
+                className="icon-button peek-add"
+                aria-label="Add sound"
+                title="Add sound"
+                onClick={openPicker}
+              >
+                <PlusIcon />
+              </button>
+            )}
+            <button
+              type="button"
+              className="icon-button peek-expand"
+              aria-label={expanded ? "Collapse mixer" : "Expand mixer"}
+              aria-expanded={expanded}
+              title={expanded ? "Collapse mixer" : "Expand mixer"}
+              onClick={() => {
+                setSheetOpen(!expanded);
+              }}
+            >
+              <ChevronIcon />
+            </button>
+          </div>
+        }
+      >
+        {content}
+      </BottomSheet>
+    );
+  }
+
+  return (
+    <div ref={panelRef} className="panel" data-layout={layout} data-picker={props.addOpen}>
+      {content}
     </div>
   );
 }

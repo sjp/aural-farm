@@ -662,3 +662,57 @@ describe("App mixer shortcuts", () => {
     expect(backdrop()).toBe("glow");
   });
 });
+
+describe("Panel layout", () => {
+  /** Makes `queries` (and hover) match, as on a phone or a small window. */
+  function screenMatching(...queries: string[]) {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          matches: queries.includes(query),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+  }
+  const panel = () => document.querySelector<HTMLElement>(".panel");
+  const app = () => document.querySelector<HTMLElement>(".app");
+
+  it("is a floating card on a wide, tall screen", () => {
+    renderApp("#layers=test-tone");
+    expect(app()?.dataset.layout).toBe("card");
+    expect(panel()?.dataset.layout).toBe("card");
+  });
+
+  it("is a bottom sheet in portrait, collapsed until expanded", () => {
+    screenMatching("(max-width: 640px)");
+    renderApp("#layers=test-tone");
+    expect(app()?.dataset.layout).toBe("sheet");
+    expect(app()?.dataset.sheet).toBe("collapsed");
+    expect(panel()?.dataset.layout).toBe("sheet");
+    fireEvent.click(screen.getByRole("button", { name: "Expand mixer" }));
+    expect(app()?.dataset.sheet).toBe("expanded");
+    expect(panel()?.dataset.sheet).toBe("expanded");
+    fireEvent.click(screen.getByRole("button", { name: "Collapse mixer" }));
+    expect(app()?.dataset.sheet).toBe("collapsed");
+  });
+
+  it("expands the sheet for the sound picker when / opens it, and keeps it open after adding", () => {
+    screenMatching("(max-width: 640px)");
+    renderMixer("#layers=test-tone");
+    fireEvent.keyDown(window, { key: "/" });
+    expect(app()?.dataset.sheet).toBe("expanded");
+    fireEvent.click(screen.getByRole("option", { name: /Alpha/ }));
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(app()?.dataset.sheet).toBe("expanded");
+    expect(document.activeElement?.textContent).toBe("Alpha");
+  });
+
+  it("is a drawer on a short, landscape screen, even a narrow one", () => {
+    screenMatching("(max-height: 500px)", "(max-width: 640px)");
+    renderApp("#layers=test-tone");
+    expect(app()?.dataset.layout).toBe("drawer");
+    expect(app()?.dataset.sheet).toBeUndefined();
+    expect(panel()?.dataset.layout).toBe("drawer");
+  });
+});

@@ -20,8 +20,10 @@ import { ControlPanel, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
+import { usePanelLayout } from "./components/sheet";
 import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
+import { useKeyboardInset } from "./hooks/useKeyboardInset";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { copyText } from "./lib/clipboard";
 import { createFavourites, type Favourites } from "./lib/favourites";
@@ -178,6 +180,8 @@ export function App({
   const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
   const [masterMuted, setMasterMuted] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // The bottom sheet starts collapsed to its peek bar.
+  const [sheetOpen, setSheetOpen] = useState(false);
   const stateRef = useRef(state);
   useLayoutEffect(() => {
     stateRef.current = state;
@@ -192,6 +196,8 @@ export function App({
   const hover = useMediaQuery("(hover: hover)");
   const idle = useIdle(IDLE_MS);
   const touch = useTouchPointer();
+  const layout = usePanelLayout();
+  useKeyboardInset();
 
   const [playback] = useState(() => createStore<Playback>({ state: "idle", layers: {} }));
   const [engine] = useState(() =>
@@ -557,6 +563,7 @@ export function App({
       } else if (event.key === "/") {
         event.preventDefault();
         setPanelHidden(false);
+        setSheetOpen(true);
         setAddOpen(true);
       } else if (key === "m") {
         setMasterMuted((muted) => !muted);
@@ -609,7 +616,15 @@ export function App({
   const { panelHidden } = state;
 
   return (
-    <div className="app" data-idle={fade} data-backdrop={display.backdrop}>
+    <div
+      className="app"
+      data-idle={fade}
+      data-backdrop={display.backdrop}
+      data-layout={layout}
+      data-sheet={
+        layout === "sheet" ? (sheetOpen || addOpen ? "expanded" : "collapsed") : undefined
+      }
+    >
       <Backdrop
         mode={display.backdrop}
         brightness={display.brightness}
@@ -666,6 +681,9 @@ export function App({
             sounds={sounds}
             display={display}
             onDisplayChange={changeDisplay}
+            layout={layout}
+            sheetOpen={sheetOpen}
+            onSheetOpenChange={setSheetOpen}
           />
         </div>
       </PanelErrorBoundary>

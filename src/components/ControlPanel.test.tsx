@@ -10,6 +10,7 @@ import { TEST_TONE_ID, testCatalogue } from "../test/catalogue";
 import { ControlPanel, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
 import { FULL_MIX_HINT } from "./mixer";
 import { LOADING_DELAY_MS } from "./LayerSection";
+import type { PanelLayout } from "./sheet";
 
 type PanelOptions = {
   mix?: Mix;
@@ -26,6 +27,8 @@ type PanelOptions = {
   onToggleFavourite?: (id: string) => void;
   levels?: LevelMeter;
   levelsActive?: boolean;
+  layout?: PanelLayout;
+  sheetOpen?: boolean;
 };
 
 function renderPanel(initial: PanelOptions = {}) {
@@ -45,6 +48,7 @@ function renderPanel(initial: PanelOptions = {}) {
     onToggleSolo: vi.fn<(id: string) => void>(),
     onClearSolo: vi.fn<() => void>(),
     onAddOpenChange: vi.fn<(open: boolean) => void>(),
+    onSheetOpenChange: vi.fn<(open: boolean) => void>(),
   };
   const preferences = initial.preferences ?? createPreferences(() => undefined);
   let options = initial;
@@ -65,6 +69,8 @@ function renderPanel(initial: PanelOptions = {}) {
       sounds={options.sounds ?? catalogue}
       favourites={options.favourites}
       onToggleFavourite={options.onToggleFavourite}
+      layout={options.layout}
+      sheetOpen={options.sheetOpen}
       {...handlers}
     />
   );
@@ -576,5 +582,176 @@ describe("Display section", () => {
     expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, brightness: 20 });
     fireEvent.click(screen.getByRole("switch", { name: "Respond to sound" }));
     expect(onDisplayChange).toHaveBeenLastCalledWith({ ...display, respond: false });
+  });
+});
+
+describe("Bottom sheet", () => {
+  const panel = () => document.querySelector<HTMLElement>(".panel");
+  const content = () => document.querySelector<HTMLElement>(".sheet-content");
+  const top = () => document.querySelector<HTMLElement>(".sheet-top");
+  const peek = () => document.querySelector<HTMLElement>(".peek-bar");
+
+  it("collapses to a peek bar: Play, the mix's sounds, Add sound and Expand", () => {
+    renderPanel({ layout: "sheet", mix: mixOf("alpha", "bravo") });
+    expect(panel()?.dataset.layout).toBe("sheet");
+    expect(panel()?.dataset.sheet).toBe("collapsed");
+    const bar = within(peek() ?? document.body);
+    expect(bar.getByRole("button", { name: "Play" })).toBeTruthy();
+    expect(bar.getByText("Alpha + Bravo")).toBeTruthy();
+    expect(bar.getByRole("button", { name: "Add sound" })).toBeTruthy();
+    const expand = bar.getByRole("button", { name: "Expand mixer" });
+    expect(expand.getAttribute("aria-expanded")).toBe("false");
+    // The rest is out of reach until it expands.
+    expect(content()?.inert).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Aural Farm" })).toBeNull();
+  });
+
+  it("says when the mix is empty", () => {
+    renderPanel({ layout: "sheet", mix: { master: 70, layers: [] } });
+    expect(within(peek() ?? document.body).getByText("No sounds yet")).toBeTruthy();
+  });
+
+  it("expands from the expand button and from Add sound, which also opens the picker", () => {
+    const { onSheetOpenChange, onAddOpenChange } = renderPanel({ layout: "sheet" });
+    fireEvent.click(screen.getByRole("button", { name: "Expand mixer" }));
+    expect(onSheetOpenChange).toHaveBeenLastCalledWith(true);
+    onSheetOpenChange.mockClear();
+    fireEvent.click(within(peek() ?? document.body).getByRole("button", { name: "Add sound" }));
+    expect(onSheetOpenChange).toHaveBeenLastCalledWith(true);
+    expect(onAddOpenChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("expanded, puts the toolbar in the bar and the master volume first", () => {
+    renderPanel({ layout: "sheet", sheetOpen: true, onFullscreen: () => undefined });
+    expect(panel()?.dataset.sheet).toBe("expanded");
+    expect(content()?.inert).toBe(false);
+    const bar = within(peek() ?? document.body);
+    for (const name of ["Play", "Copy link", "Fullscreen", "Hide controls", "Collapse mixer"]) {
+      expect(bar.getByRole("button", { name })).toBeTruthy();
+    }
+    expect(bar.queryByRole("button", { name: "Add sound" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Play" })).toHaveLength(1);
+    const first = content()?.querySelector("input");
+    expect(first?.getAttribute("aria-label")).toBe("Master volume");
+  });
+
+  it("collapses from the bar's button, closing the picker", () => {
+    const { onSheetOpenChange, onAddOpenChange } = renderPanel({
+      layout: "sheet",
+      sheetOpen: true,
+      addOpen: true,
+    });
+    expect(screen.getByRole("combobox", { name: "Search sounds" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Collapse mixer" }));
+    expect(onSheetOpenChange).toHaveBeenLastCalledWith(false);
+    expect(onAddOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("stays expanded while the picker is open", () => {
+    renderPanel({ layout: "sheet", sheetOpen: false, addOpen: true });
+    expect(panel()?.dataset.sheet).toBe("expanded");
+    expect(panel()?.dataset.picker).toBe("true");
+  });
+
+  it("collapses on a tap on the backdrop, but not on one inside the panel", () => {
+    const { onSheetOpenChange } = renderPanel({ layout: "sheet", sheetOpen: true });
+    fireEvent.pointerDown(screen.getByLabelText("Master volume"));
+    expect(onSheetOpenChange).not.toHaveBeenCalled();
+    const backdrop = document.createElement("canvas");
+    backdrop.className = "backdrop";
+    document.body.append(backdrop);
+    fireEvent.pointerDown(backdrop);
+    expect(onSheetOpenChange).toHaveBeenCalledWith(false);
+    backdrop.remove();
+  });
+
+  it("toggles on a tap on the bar outside its buttons", () => {
+    const { onSheetOpenChange } = renderPanel({ layout: "sheet" });
+    const summary = within(peek() ?? document.body).getByText("Test Tone");
+    fireEvent.pointerDown(summary, { pointerId: 1, button: 0, clientY: 800 });
+    fireEvent.pointerUp(summary, { pointerId: 1, button: 0, clientY: 802 });
+    expect(onSheetOpenChange).toHaveBeenCalledWith(true);
+  });
+
+  describe("dragging", () => {
+    const TRAVEL = 500;
+    /** Drags the bar from y=600 through `ys`, `ms` apart, and lets go at the last. */
+    function drag(ys: number[], ms = 16, restMs = 0) {
+      const bar = top();
+      const sheetContent = content();
+      if (!bar || !sheetContent) {
+        throw new Error("No sheet");
+      }
+      vi.spyOn(sheetContent, "offsetHeight", "get").mockReturnValue(TRAVEL);
+      bar.setPointerCapture = () => undefined;
+      fireEvent.pointerDown(bar, { pointerId: 1, button: 0, clientY: 600 });
+      for (const y of ys) {
+        vi.advanceTimersByTime(ms);
+        fireEvent.pointerMove(bar, { pointerId: 1, clientY: y });
+      }
+      vi.advanceTimersByTime(restMs);
+      fireEvent.pointerUp(bar, { pointerId: 1, clientY: ys.at(-1) });
+    }
+
+    it("follows the finger, then hands the sheet back to the stylesheet", () => {
+      renderPanel({ layout: "sheet" });
+      const bar = top();
+      const sheetContent = content();
+      if (!bar || !sheetContent) {
+        throw new Error("No sheet");
+      }
+      vi.spyOn(sheetContent, "offsetHeight", "get").mockReturnValue(TRAVEL);
+      bar.setPointerCapture = () => undefined;
+      fireEvent.pointerDown(bar, { pointerId: 1, button: 0, clientY: 600 });
+      fireEvent.pointerMove(bar, { pointerId: 1, clientY: 500 });
+      expect(panel()?.style.transform).toBe(`translateY(${String(TRAVEL - 100)}px)`);
+      expect(panel()?.dataset.dragging).toBe("true");
+      // It can't go past either end.
+      fireEvent.pointerMove(bar, { pointerId: 1, clientY: 0 });
+      expect(panel()?.style.transform).toBe("translateY(0px)");
+      fireEvent.pointerCancel(bar, { pointerId: 1 });
+      expect(panel()?.style.transform).toBe("");
+      expect(panel()?.dataset.dragging).toBeUndefined();
+    });
+
+    it("opens when let go of past halfway", () => {
+      const { onSheetOpenChange } = renderPanel({ layout: "sheet" });
+      drag([560, 400, 300], 16, 200);
+      expect(onSheetOpenChange).toHaveBeenCalledWith(true);
+    });
+
+    it("springs back when let go of short of halfway", () => {
+      const { onSheetOpenChange } = renderPanel({ layout: "sheet" });
+      drag([560, 450, 400], 16, 200);
+      expect(onSheetOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("opens on a short, fast flick up", () => {
+      const { onSheetOpenChange } = renderPanel({ layout: "sheet" });
+      drag([590, 570, 550]);
+      expect(onSheetOpenChange).toHaveBeenCalledWith(true);
+    });
+
+    it("closes on a short, fast flick down", () => {
+      const { onSheetOpenChange } = renderPanel({ layout: "sheet", sheetOpen: true });
+      drag([610, 630, 650]);
+      expect(onSheetOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("doesn't toggle at the end of a drag that starts on a button", () => {
+      const { onSheetOpenChange } = renderPanel({ layout: "sheet", sheetOpen: true });
+      drag([650, 700, 1100], 16, 200);
+      expect(onSheetOpenChange).toHaveBeenCalledTimes(1);
+      expect(onSheetOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+});
+
+describe("Drawer", () => {
+  it("lays the usual panel out as a drawer, with no peek bar", () => {
+    renderPanel({ layout: "drawer" });
+    expect(document.querySelector<HTMLElement>(".panel")?.dataset.layout).toBe("drawer");
+    expect(document.querySelector(".peek-bar")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Aural Farm" })).toBeTruthy();
   });
 });
