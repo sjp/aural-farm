@@ -181,6 +181,28 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { size, flow: 100, distance: 0 },
     })),
   },
+  insects: {
+    // Every cricket, close by, on the warmest night, with the katydids; and the
+    // sparsest, coolest night far off.
+    extraSets: [
+      {
+        name: "most, warmest, closest, with katydids",
+        params: { count: 12, warmth: 28, distance: 0, katydids: true },
+      },
+      { name: "fewest, coolest, farthest", params: { count: 1, warmth: 12, distance: 100 } },
+    ],
+    thresholds: {
+      seedSwingDb: {
+        value: 8,
+        reason:
+          "Each cricket sings in 8 s bouts with pauses between, and the nearest one or two set " +
+          "most of the level, so a seed's level over the first 8 s swings by up to 7 dB with " +
+          "who is singing (seed 1 starts with both near ones paused). The windows around a " +
+          "seed change measure that, not the crossfade (the shared equal-power crossfader the " +
+          "other sounds check); with no seed change they hold within 1 dB.",
+      },
+    },
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },

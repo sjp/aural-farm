@@ -8,6 +8,7 @@ import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
 import { greyNoiseMeta } from "./grey-noise/grey-noise.meta";
+import { insectsMeta } from "./insects/insects.meta";
 import { oceanMeta } from "./ocean/ocean.meta";
 import { pinkNoiseMeta } from "./pink-noise/pink-noise.meta";
 import { rainMeta } from "./rain/rain.meta";
@@ -28,6 +29,7 @@ export const sounds: readonly SoundEntry[] = [
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
+  { ...insectsMeta, load: () => import("./insects/insects").then((m) => m.insects) },
   {
     ...fireplaceMeta,
     load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
