@@ -142,6 +142,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { type, speed: 100, tone: 100, motor: 100, oscillate: true },
     })),
   },
+  airplane: {
+    // Engines and vent flat out, chiming as often as it does, in each seat.
+    extraSets: (["front", "wing", "rear"] as const).map((seat) => ({
+      name: `${seat}, everything up, chime sometimes`,
+      params: { seat, engines: 100, vent: 100, chime: "sometimes" },
+    })),
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({

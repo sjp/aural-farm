@@ -4,6 +4,7 @@
  * hand-picked "Featured" order.
  */
 import type { SoundDefinition, SoundMeta } from "./types";
+import { airplaneMeta } from "./airplane/airplane.meta";
 import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
@@ -38,6 +39,7 @@ export const sounds: readonly SoundEntry[] = [
     load: () => import("./life-support/life-support").then((m) => m.lifeSupport),
   },
   { ...fanMeta, load: () => import("./fan/fan").then((m) => m.fan) },
+  { ...airplaneMeta, load: () => import("./airplane/airplane").then((m) => m.airplane) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
