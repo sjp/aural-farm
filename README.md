@@ -15,10 +15,44 @@ npm run dev           # dev server with hot reload
 npm run build         # type-check and build to dist/
 npm run check         # linting, formatting and unused exports
 npm test              # vitest
-npm run test:browser  # Playwright, in headless Chromium
+npm run test:browser  # Playwright, in headless Chromium, including the sound checks
+npm run render -- engine-core  # render a sound to a WAV file (see below)
 ```
 
 `npm run test:browser` needs Chromium once: `npx playwright install chromium`.
+
+### Sound checks
+
+`npm run test:browser` also renders every sound in headless Chromium, faster than real
+time in an `OfflineAudioContext`, and measures what can be measured without ears: its
+loudness (about −23 LUFS at default settings) and peaks at every setting's extremes, DC
+and sub-bass, mono compatibility, how much of it small speakers can play, clicks when a
+setting changes or the variation crossfades, whether two renders match, whether a render
+started later lines up with one started earlier, and its render cost against its budget.
+A last check plays every sound at once through the master chain and watches the limiter.
+The pass marks, and the few sounds allowed to miss one (with the reason), are in
+`e2e/sound-thresholds.ts`.
+
+The run ends with a table of the measurements, also written to `test-results/sounds.json`.
+The cost checks time renders, so they run one at a time after everything else.
+
+## Listening to a sound
+
+`npm run render` renders a sound to a 16-bit, 48 kHz stereo WAV file in `renders/`, so it
+can be listened to (and compared) without opening the app:
+
+```sh
+npm run render -- engine-core                      # 60 s at its defaults: renders/engine-core-1.wav
+npm run render -- engine-core --seconds 300 --seed 2 --param pitch=40 --param hiss=0
+npm run render -- --all                            # every sound at its defaults, 60 s each
+npm run render -- "#layers=engine-core,brown-noise&brown-noise.volume=40"
+```
+
+A sound renders on its own at full layer volume, without the master chain; add `--master`
+to play it through the master's high-pass and limiter. `--param` takes a setting's key as
+it appears in the address bar (`pitch`, `hiss`, `seed`, …). A mix hash, copied from the
+address bar or **Copy link**, renders the whole mix through the master chain, as the app
+plays it, to `renders/mix-<sounds>.wav`. Listen on headphones and on laptop speakers.
 
 ## Using it
 
