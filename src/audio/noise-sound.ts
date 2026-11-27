@@ -19,7 +19,7 @@ import type { NumberParam, ParamValues, SoundDefinition, SoundMeta } from "../so
 import { defineSound } from "../sounds/types";
 import { BUTTERWORTH_Q, type BiquadSpec } from "./biquad";
 import { createCrossfader } from "./crossfade";
-import { createDrift } from "./drift";
+import { createDrifts } from "./drift";
 import { dbToGain, glide } from "./glide";
 import { createNoise } from "./noise";
 import type { NoiseColour } from "./noise-dsp";
@@ -159,18 +159,18 @@ function buildVariation(
       channels: 2,
       startAt: absoluteNow(),
     });
-    const drifts: AudioNode[] = [];
-    for (const channel of [0, 1]) {
-      drifts.push(
-        await createDrift(ctx, scope, {
-          seed,
-          stream: DRIFT_STREAM + channel,
-          rate: DRIFT_RATE,
-          octaves: DRIFT_OCTAVES,
-          startAt: absoluteNow(),
-        }),
-      );
-    }
+    // One drift per channel, both from one node.
+    const drifts = await createDrifts(ctx, scope, {
+      seed,
+      drifts: [0, 1].map((channel) => ({
+        stream: DRIFT_STREAM + channel,
+        rate: DRIFT_RATE,
+        octaves: DRIFT_OCTAVES,
+      })),
+      startAt: absoluteNow(),
+    });
+    const driftChannels = scope.add(new ChannelSplitterNode(ctx, { numberOfOutputs: 2 }));
+    drifts.connect(driftChannels);
 
     // Built after the awaits, so a change made meanwhile is already in.
     const p = params();
@@ -188,7 +188,7 @@ function buildVariation(
     const width = widthGains(p.width);
     const tilt = tiltGains(tiltDb(p.tone));
     const depth = driftDepth(p.movement);
-    const channels = drifts.map((drift, channel) => {
+    const channels = [0, 1].map((channel) => {
       const own = scope.add(new GainNode(ctx, { gain: width.direct }));
       const other = scope.add(new GainNode(ctx, { gain: width.cross }));
       splitter.connect(own, channel);
@@ -206,7 +206,7 @@ function buildVariation(
 
       // The drift brightens and lifts together, darkens and dips together.
       const drifting = scope.add(new GainNode(ctx, { gain: depth }));
-      drift.connect(drifting).connect(shelf.gain);
+      driftChannels.connect(drifting, channel).connect(shelf.gain);
       return { own, other, shelf, level, drifting };
     });
     merger.connect(into);
