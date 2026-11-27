@@ -20,7 +20,9 @@
  */
 
 /** The sample rate exports render and write at. */
-const EXPORT_RATE = 48000;
+export const EXPORT_RATE = 48000;
+/** Exports are stereo. */
+export const EXPORT_CHANNELS = 2;
 const CHUNK_SECONDS = 30;
 const PREROLL_SECONDS = 5;
 const OVERLAP_SECONDS = 0.05;
