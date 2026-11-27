@@ -174,6 +174,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     },
   },
+  stream: {
+    // The fastest water, close up, as a brook and as a river.
+    extraSets: [0, 100].map((size) => ({
+      name: `size ${String(size)}, fastest and closest`,
+      params: { size, flow: 100, distance: 0 },
+    })),
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
