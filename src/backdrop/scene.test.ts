@@ -136,9 +136,9 @@ describe("poolAt", () => {
       for (let t = 0; t < 600; t += 0.5) {
         const [x, y, radius] = poolAt(index, t);
         const [nx, ny] = poolAt(index, t + 1);
-        expect(Math.abs(x)).toBeLessThanOrEqual(0.36);
-        expect(Math.abs(y)).toBeLessThanOrEqual(0.3);
-        expect(radius).toBeGreaterThanOrEqual(0.3);
+        expect(Math.abs(x)).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(y)).toBeLessThanOrEqual(0.32);
+        expect(radius).toBeGreaterThanOrEqual(0.24);
         // Moves less than 3 % of the screen's height in any second.
         expect(Math.hypot(nx - x, ny - y)).toBeLessThan(0.03);
       }
@@ -153,7 +153,7 @@ describe("displayColours", () => {
     expect(full[0]).toBeCloseTo(half[0] * 2);
     expect(half[0]).toBeCloseTo(0.3);
     expect([...displayColours(red, { mode: "glow", brightness: 0 })].slice(0, -1)).toEqual(
-      Array.from({ length: MAX_POOLS * 3 }, () => 0),
+      Array.from({ length: MAX_POOLS * 4 }, (_, i) => (i % 4 === 3 && i < 12 ? 1 : 0)),
     );
   });
 
@@ -202,7 +202,7 @@ describe("createScene", () => {
     const scene = createScene();
     scene.setTarget(red, glow, false);
     scene.frame(0, 0, undefined);
-    scene.setTarget(red, glow, false);
+    expect(scene.setTarget(red, glow, false)).toBe(false);
     scene.frame(1, FRAME, undefined);
     expect(scene.easing).toBe(false);
     scene.setTarget(blue, glow, true);
@@ -235,9 +235,10 @@ describe("createScene", () => {
     scene.setTarget(red, glow, false);
     const { pools } = scene.frame(42, 0, undefined);
     for (let i = 0; i < MAX_POOLS; i++) {
-      expect(Array.from(pools.slice(i * POOL_FLOATS, i * POOL_FLOATS + 3))).toEqual(
-        poolAt(i, 42).map((v) => Math.fround(v)),
-      );
+      expect(Array.from(pools.slice(i * POOL_FLOATS, (i + 1) * POOL_FLOATS))).toEqual([
+        ...poolAt(i, 42).map((v) => Math.fround(v)),
+        i < 3 ? 1 : 0,
+      ]);
     }
   });
 });
@@ -246,7 +247,7 @@ describe("cssBackdrop", () => {
   it("draws each pool as a radial gradient over black", () => {
     const background = cssBackdrop(red, glow);
     expect(background.match(/radial-gradient/g)).toHaveLength(MAX_POOLS);
-    expect(background).toContain("rgb(77 0 0)");
+    expect(background).toContain("rgb(77 0 0 / 1.00)");
     expect(background.endsWith("#000")).toBe(true);
   });
 });

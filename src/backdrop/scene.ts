@@ -31,7 +31,7 @@ const SILENT_LEVEL = 1e-4;
 /** A response this close to 0 has settled. */
 const SETTLED = 0.002;
 
-/** Floats per pool in `Uniforms.pools`: x, y, radius, unused. */
+/** Floats per pool in `Uniforms.pools`: x, y, radius, strength. */
 export const POOL_FLOATS = 4;
 
 /**
@@ -43,10 +43,10 @@ export const POOL_FLOATS = 4;
 const SLOW_KNOT_S = 50;
 const QUICK_KNOT_S = 23.3;
 const SLOW_SHARE = 0.75;
-const RANGE_X = 0.36;
-const RANGE_Y = 0.3;
-const RADIUS = 0.42;
-const RADIUS_RANGE = 0.12;
+const RANGE_X = 0.5;
+const RANGE_Y = 0.32;
+const RADIUS = 0.34;
+const RADIUS_RANGE = 0.1;
 const RADIUS_KNOT_S = 71;
 /** The seed of the pools' paths. The look is the same on every visit. */
 const PATH_SEED = 7;
@@ -54,7 +54,7 @@ const PATH_SEED = 7;
 type Mode = "glow" | "night";
 
 /** How the backdrop looks: Glow or Night, and the Brightness setting (0–100). */
-interface Look {
+export interface Look {
   mode: Mode;
   brightness: number;
 }
@@ -71,14 +71,17 @@ const WARM: Rgb = [1.5, 0.9, 0.48];
 /** How far Night shifts the colours towards `WARM`. */
 const WARM_SHIFT = 0.75;
 
-/** Floats in a displayed colour set: an RGB per pool, then the ceiling. */
-const DISPLAY_FLOATS = MAX_POOLS * 3 + 1;
+/** Floats in a displayed colour set: an RGB and a strength per pool, then the ceiling. */
+const DISPLAY_FLOATS = MAX_POOLS * 4 + 1;
 
 /** One frame's uniforms. */
-interface Uniforms {
-  /** x, y and radius per pool, in units of the screen's height from its centre. */
+export interface Uniforms {
+  /**
+   * x, y, radius and strength (0–1) per pool, the position and radius in units
+   * of the screen's height from its centre.
+   */
   pools: Float32Array<ArrayBuffer>;
-  /** RGB per pool, ready to add up. */
+  /** RGB per pool, as the pool shows at its centre. */
   colours: Float32Array<ArrayBuffer>;
   /** The soft ceiling a pixel's colour approaches. */
   ceiling: number;
@@ -189,8 +192,8 @@ export function poolAt(index: number, time: number): [x: number, y: number, radi
 }
 
 /**
- * The pools' colours as shown, for `look`: each scaled by its strength and the
- * brightness, and warmed in Night, followed by the ceiling.
+ * The pools' colours as shown, for `look`: each scaled by the brightness and
+ * warmed in Night, then its strength; and last the ceiling.
  */
 export function displayColours(
   pools: readonly PoolColour[],
@@ -209,10 +212,10 @@ export function displayColours(
       const luma = 0.2126 * colour[0] + 0.7152 * colour[1] + 0.0722 * colour[2];
       colour = mixRgb(colour, [luma * WARM[0], luma * WARM[1], luma * WARM[2]], WARM_SHIFT);
     }
-    const k = gain * pool.strength;
-    out[i * 3] = colour[0] * k;
-    out[i * 3 + 1] = colour[1] * k;
-    out[i * 3 + 2] = colour[2] * k;
+    out[i * 4] = colour[0] * gain;
+    out[i * 4 + 1] = colour[1] * gain;
+    out[i * 4 + 2] = colour[2] * gain;
+    out[i * 4 + 3] = pool.strength;
   }
   out[DISPLAY_FLOATS - 1] = night ? NIGHT_CEILING : GLOW_CEILING;
   return out;
@@ -224,8 +227,11 @@ const smoothstep = (t: number) => {
 };
 
 interface Scene {
-  /** The colours to ease to; `instant` jumps there (for reduced motion). */
-  setTarget: (pools: readonly PoolColour[], look: Look, instant: boolean) => void;
+  /**
+   * The colours to ease to; `instant` jumps there (for reduced motion). Returns
+   * whether they differ from the current target.
+   */
+  setTarget: (pools: readonly PoolColour[], look: Look, instant: boolean) => boolean;
   /**
    * The uniforms at `time` seconds (`dt` since the last frame), with the master
    * level, or `undefined` while the response is off.
@@ -259,9 +265,10 @@ export function createScene(): Scene {
       const latest = pending?.colours ?? to;
       // An unchanged target (a re-render) leaves a running ease, or the rest, alone.
       if (shown && colours.every((v, i) => v === latest[i])) {
-        return;
+        return false;
       }
       pending = { colours, instant };
+      return true;
     },
     frame(time, dt, level) {
       if (pending) {
@@ -286,8 +293,9 @@ export function createScene(): Scene {
         uniforms.pools[i * POOL_FLOATS] = x;
         uniforms.pools[i * POOL_FLOATS + 1] = y;
         uniforms.pools[i * POOL_FLOATS + 2] = radius * swell;
+        uniforms.pools[i * POOL_FLOATS + 3] = current[i * 4 + 3];
         for (let c = 0; c < 3; c++) {
-          uniforms.colours[i * 3 + c] = current[i * 3 + c] * breath;
+          uniforms.colours[i * 3 + c] = current[i * 4 + c] * breath;
         }
       }
       uniforms.ceiling = current[DISPLAY_FLOATS - 1];
@@ -313,11 +321,12 @@ export function cssBackdrop(pools: readonly PoolColour[], look: Look): string {
   const layers: string[] = [];
   for (let i = 0; i < MAX_POOLS; i++) {
     const [x, y, radius] = poolAt(i, 0);
-    const rgb = [0, 1, 2].map((c) => css(colours[i * 3 + c])).join(" ");
+    const rgb = [0, 1, 2].map((c) => css(colours[i * 4 + c])).join(" ");
+    const alpha = colours[i * 4 + 3].toFixed(2);
     // Screen-height units: the centre is at 50 % 50 %, and y points up.
     const at = `calc(50% + ${(x * 100).toFixed(1)}vh) calc(50% - ${(y * 100).toFixed(1)}vh)`;
     layers.push(
-      `radial-gradient(circle at ${at}, rgb(${rgb}) 0, transparent ${(radius * 150).toFixed(0)}vh)`,
+      `radial-gradient(circle at ${at}, rgb(${rgb} / ${alpha}) 0, transparent ${(radius * 150).toFixed(0)}vh)`,
     );
   }
   return [...layers, "#000"].join(", ");

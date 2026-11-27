@@ -7,6 +7,9 @@ import {
   type EngineState,
   type LayerState,
 } from "./audio/engine";
+import { tintWeights } from "./backdrop/colours";
+import { loadDisplay } from "./backdrop/settings";
+import { Backdrop, type MasterMeter } from "./components/Backdrop";
 import { ControlPanel, FULL_MIX_HINT, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
@@ -200,6 +203,17 @@ export function App({
   const levels = useMemo<LevelMeter>(
     () => ({ watch: engine.watchLevels, get: engine.getLevel }),
     [engine],
+  );
+
+  const [display] = useState(() => loadDisplay(preferences));
+  const masterLevel = useMemo<MasterMeter>(
+    () => ({ watch: engine.watchMasterLevel, get: engine.getMasterLevel }),
+    [engine],
+  );
+  const tints = useMemo(() => new Map(sounds.map((s) => [s.id, s.tint])), [sounds]);
+  const backdropTints = useMemo(
+    () => tintWeights(state.mix, tints, solo, masterMuted),
+    [state.mix, tints, solo, masterMuted],
   );
 
   // A fresh visit or a shared link starts playing. If the browser blocks that, the
@@ -531,7 +545,15 @@ export function App({
   const { panelHidden } = state;
 
   return (
-    <div className="app" data-idle={fade}>
+    <div className="app" data-idle={fade} data-backdrop={display.backdrop}>
+      <Backdrop
+        mode={display.backdrop}
+        brightness={display.brightness}
+        respond={display.respond}
+        tints={backdropTints}
+        playing={engineState === "playing"}
+        level={masterLevel}
+      />
       <PanelErrorBoundary>
         <div
           className="panel-wrap"

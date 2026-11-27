@@ -19,6 +19,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${String(PORT)}`,
     browserName: "chromium",
+    // Software WebGL, so the backdrop draws on machines and CI runners without a GPU.
+    launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
   },
   projects: [
     { name: "browser", testIgnore: /sound-cost\.spec\.ts$/ },

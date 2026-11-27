@@ -9,7 +9,7 @@ import type { Mix } from "../mixes/mix";
 export type Rgb = readonly [number, number, number];
 
 /** A tint and how much of it there is: the layer's effective gain. */
-interface TintWeight {
+export interface TintWeight {
   tint: string;
   gain: number;
 }

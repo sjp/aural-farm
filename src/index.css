@@ -40,6 +40,17 @@ body,
   cursor: none;
 }
 
+/* The backdrop fills the page behind everything; Off leaves the plain background. */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--backdrop, #000);
+}
+
 /* Panel placement, idle fade and hiding */
 
 .panel-wrap {
