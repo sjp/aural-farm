@@ -13,6 +13,10 @@
  *   const schedule = new PeriodicSchedule(seed, STREAM, 1, 0.02);
  *   const events = createPeriodicEvents(4);
  *   schedule.eventsIn(t0, t1, events);   // per render quantum, absolute seconds
+ *
+ * Instead of a hashed jitter, a schedule can take each event's offset from a
+ * function of its index, for timing that wanders in a shaped way (a slow
+ * drift, a sway) rather than at random from one event to the next.
  */
 import { HASH_START, hashStep, UINT32_SCALE } from "../random";
 
@@ -32,9 +36,13 @@ export function createPeriodicEvents(capacity: number): PeriodicEvents {
   return { times: new Float64Array(capacity), indices: new Float64Array(capacity), count: 0 };
 }
 
+/** Event n's offset from its grid position, as a fraction of the period. */
+type PeriodicOffset = (n: number) => number;
+
 export class PeriodicSchedule {
   private readonly prefix: number;
   private readonly jitter: number;
+  private readonly offset: PeriodicOffset | undefined;
   private period: number;
   /** Event `anchorIndex` is nominally at `anchorTime`; later ones follow every `period`. */
   private anchorTime = 0;
@@ -45,16 +53,25 @@ export class PeriodicSchedule {
   /**
    * @param period seconds between events (> 0)
    * @param jitter how far each event may stray from the grid, as a fraction of the
-   *   period (0 to 0.45)
+   *   period (0 to 0.45), at random; or each event's offset as a function of its
+   *   index, a fraction of the period, held within ±0.45
    */
-  constructor(seed: number, stream: number, period: number, jitter = 0) {
+  constructor(seed: number, stream: number, period: number, jitter: number | PeriodicOffset = 0) {
     this.prefix = hashStep(hashStep(HASH_START, seed), stream);
     this.period = period;
-    this.jitter = Math.min(MAX_JITTER, Math.max(0, jitter));
+    if (typeof jitter === "function") {
+      this.offset = jitter;
+      this.jitter = 0;
+    } else {
+      this.jitter = Math.min(MAX_JITTER, Math.max(0, jitter));
+    }
   }
 
   /** Event n's offset from its grid position, in seconds. */
   private jitterOf(n: number): number {
+    if (this.offset !== undefined) {
+      return Math.min(MAX_JITTER, Math.max(-MAX_JITTER, this.offset(n))) * this.period;
+    }
     if (this.jitter === 0) {
       return 0;
     }

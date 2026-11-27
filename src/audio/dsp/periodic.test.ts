@@ -38,6 +38,29 @@ describe("PeriodicSchedule", () => {
     expect(new Set(times.map((t, i) => t - (indices[i] ?? 0) * 0.25)).size).toBeGreaterThan(100);
   });
 
+  it("offsets each event by a function of its index, held within ±0.45 of a period", () => {
+    const offset = (n: number) => (n === 3 ? 0.9 : n === 4 ? -0.9 : 0.1 * Math.sin(n));
+    const { times, indices } = collect(new PeriodicSchedule(1, 1, 0.5, offset), 0, 4);
+    expect(indices).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    indices.forEach((n, i) => {
+      const expected = n === 3 ? 1.725 : n === 4 ? 1.775 : 0.5 * (n + 0.1 * Math.sin(n));
+      expect(times[i]).toBeCloseTo(expected, 12);
+    });
+  });
+
+  it("keeps an offset function's events through a period change", () => {
+    const schedule = new PeriodicSchedule(1, 1, 1, (n) => 0.05 * Math.sin(n));
+    const before = collect(schedule, 0, 2.5).times;
+    schedule.setPeriod(0.5, 2.5);
+    const after = collect(schedule, 2.5, 6).times;
+    // Event 3 keeps its time; the next follow half a second apart, give or take their offsets.
+    expect(after[0]).toBeCloseTo(3 + 0.05 * Math.sin(3), 12);
+    const all = [...before, ...after];
+    for (let i = 1; i < all.length; i++) {
+      expect((all[i] ?? 0) - (all[i - 1] ?? 0)).toBeGreaterThan(0.4);
+    }
+  });
+
   it("is time-addressable: a render starting anywhere finds the same events", () => {
     const whole = collect(new PeriodicSchedule(7, 1, 0.3, 0.3), 0, 20);
     const late = collect(new PeriodicSchedule(7, 1, 0.3, 0.3), 9.9, 20, 0.001);
