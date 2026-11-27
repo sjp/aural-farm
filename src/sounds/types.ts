@@ -103,7 +103,7 @@ interface SoundInit<P extends ParamSchema = ParamSchema> {
 }
 
 /** A running sound. `when` is the context time a change applies from. */
-interface SoundInstance<P extends ParamSchema = ParamSchema> {
+export interface SoundInstance<P extends ParamSchema = ParamSchema> {
   update: (params: ParamValues<P>, when: number) => void;
   /** Stops and disconnects everything the sound built. */
   dispose: () => void;
