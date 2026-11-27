@@ -42,7 +42,7 @@ interface MergeResult {
   stored: boolean;
 }
 
-interface SavedMixes {
+export interface SavedMixes {
   /** The saved mixes, newest first. The same array comes back until something changes. */
   get: () => readonly SavedMix[];
   /** The mix saved under `name`, ignoring case. */

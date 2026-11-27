@@ -49,6 +49,7 @@ const ADVANCED_DISPLAY_KEYS = ["audioOutput"] as const satisfies readonly (keyof
 const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
   ["Space", "Play or pause"],
   ["/", "Add a sound"],
+  ["P", "Presets and saved mixes"],
   ["S", "Star the focused sound"],
   ["1–8", "Mute or unmute layer N"],
   ["Shift+1–8", "Solo or unsolo layer N"],

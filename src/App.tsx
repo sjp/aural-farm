@@ -27,6 +27,7 @@ import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
 import { pageTitle } from "./components/mixer";
+import type { MixEntry, MixesControls } from "./components/MixesView";
 import { usePanelLayout } from "./components/sheet";
 import { useDocumentVisible } from "./hooks/useDocumentVisible";
 import { useExternalStore } from "./hooks/useExternalStore";
@@ -36,6 +37,7 @@ import { useMediaQuery } from "./hooks/useMediaQuery";
 import { browserMediaSession, browserMetadata, useMediaSession } from "./hooks/useMediaSession";
 import { useWakeLock } from "./hooks/useWakeLock";
 import { copyText } from "./lib/clipboard";
+import { downloadText } from "./lib/download";
 import { createFavourites, type Favourites } from "./lib/favourites";
 import { mediaTitle, type MediaSessionLike, type MetadataFactory } from "./lib/media-session";
 import { createPreferences, type Preferences } from "./lib/preferences";
@@ -54,12 +56,17 @@ import {
   MASTER_PARAM,
   MAX_LAYERS,
   parseHash,
+  sanitizeName,
   serialiseHash,
   VOLUME_PARAM,
+  withName,
   type HashState,
   type Layer,
   type Mix,
 } from "./mixes/mix";
+import { createSavedMixes, sameName, type SavedMix, type SavedMixes } from "./mixes/mixes";
+import { MAX_FILE_LENGTH, MIXES_FILE_NAME, mixesFile, readMixesFile } from "./mixes/mixes-file";
+import { presets as builtInPresets, type Preset } from "./mixes/presets";
 import type { SoundLoader } from "./sounds/loader";
 import { defaults } from "./sounds/params";
 import { DEFAULT_SOUND_ID, sounds as registry, type SoundEntry } from "./sounds/registry";
@@ -74,6 +81,8 @@ export const TOAST_MS = 2500;
 export const UNDO_TOAST_MS = 5000;
 /** How far ↑ and ↓ move the master volume. */
 const MASTER_STEP = 5;
+/** Said when a change to the saved mixes couldn't be written to the browser's storage. */
+export const STORAGE_FAILED = "Kept for this visit only: this browser's storage is full or blocked";
 
 interface Toast {
   id: number;
@@ -212,6 +221,40 @@ interface AppProps {
   mediaMetadata?: MetadataFactory | undefined;
   /** Keeps the screen on; tests pass a fake. */
   wakeLock?: WakeLockLike | undefined;
+  /** The saved mixes; tests pass one backed by memory. */
+  savedMixes?: SavedMixes | undefined;
+  /** The built-in presets: the app's own, or a stand-in in tests. */
+  presets?: readonly Preset[] | undefined;
+}
+
+/** A row for a mix in the Mixes view. */
+function mixEntry(
+  mix: Mix,
+  description: string | undefined,
+  sounds: readonly SoundEntry[],
+  current: boolean,
+): MixEntry {
+  const used = mix.layers.flatMap((layer) => sounds.find((s) => s.id === layer.id) ?? []);
+  return {
+    name: mix.name ?? "",
+    description: description ?? used.map((s) => s.name).join(" + "),
+    sounds: used.map((s) => ({ id: s.id, tint: s.tint })),
+    current,
+  };
+}
+
+/** What importing mixes did, in a few words. */
+function importMessage(result: ReturnType<SavedMixes["merge"]>): string {
+  if (!result.stored) {
+    return STORAGE_FAILED;
+  }
+  const count = result.added + result.replaced;
+  const noRoom =
+    result.noRoom > 0 ? `; ${String(result.noRoom)} didn't fit, delete some to make room` : "";
+  if (count === 0) {
+    return `Nothing new to import${noRoom}`;
+  }
+  return `Imported ${String(count)} ${count === 1 ? "mix" : "mixes"}${noRoom}`;
 }
 
 export function App({
@@ -225,6 +268,8 @@ export function App({
   mediaSession = browserMediaSession(),
   mediaMetadata = browserMetadata(),
   wakeLock = browserWakeLock(),
+  savedMixes: givenSavedMixes,
+  presets = builtInPresets,
 }: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
   const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
@@ -236,8 +281,30 @@ export function App({
   useLayoutEffect(() => {
     stateRef.current = state;
   });
-  // What a named mix was when it was loaded or saved; any other mix of that name is "edited".
-  const [baseline, setBaseline] = useState(() => mixKey(initial.mix, sounds));
+  const [savedMixes] = useState(() => givenSavedMixes ?? createSavedMixes());
+  const saved = useExternalStore(savedMixes.subscribe, savedMixes.get);
+  const [mixesOpen, setMixesOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<
+    { mixes: SavedMix[]; conflicts: string[] } | undefined
+  >(undefined);
+  /** A stored mix as it plays: its hash read, named after its entry. */
+  const storedMix = useCallback(
+    (hash: string, name: string) => withName(parseHash(hash, sounds, defaultSoundId).mix, name),
+    [sounds, defaultSoundId],
+  );
+  // What a named mix was when it was loaded or saved; any other mix of that name is
+  // "edited". A page opened on a name that is saved here compares against the saved mix.
+  const [baseline, setBaseline] = useState(() => {
+    const { name } = initial.mix;
+    const stored =
+      name === undefined
+        ? undefined
+        : (savedMixes.byName(name) ?? presets.find((p) => sameName(p.name, name)));
+    return mixKey(
+      stored && name !== undefined ? storedMix(stored.hash, name) : initial.mix,
+      sounds,
+    );
+  });
   const currentKey = useMemo(() => mixKey(state.mix, sounds), [state.mix, sounds]);
   const edited = state.mix.name !== undefined && currentKey !== baseline;
   const [preferences] = useState(() => givenPreferences ?? createPreferences());
@@ -691,6 +758,218 @@ export function App({
     [favourites, showToast, sounds],
   );
 
+  /** The presets' and saved mixes' mixes, each with its key. */
+  const presetMixes = useMemo(
+    () =>
+      presets.map((p) => {
+        const mix = storedMix(p.hash, p.name);
+        return { mix, key: mixKey(mix, sounds), description: p.description };
+      }),
+    [presets, storedMix, sounds],
+  );
+  const savedList = useMemo(
+    () =>
+      saved.map((m) => {
+        const mix = storedMix(m.hash, m.name);
+        return { mix, key: mixKey(mix, sounds), description: undefined };
+      }),
+    [saved, storedMix, sounds],
+  );
+  /** Every mix kept somewhere, a preset or saved, so replacing one loses nothing. */
+  const storedKeys = useMemo(
+    () => new Set([...presetMixes, ...savedList].map((entry) => entry.key)),
+    [presetMixes, savedList],
+  );
+
+  /** Plays `mix` in place of the current one, offering Undo if the current one isn't kept anywhere. */
+  const applyMix = useCallback(
+    (mix: Mix) => {
+      const previous = stateRef.current.mix;
+      const key = mixKey(mix, sounds);
+      const previousKey = mixKey(previous, sounds);
+      if (key === previousKey) {
+        return;
+      }
+      const previousBaseline = baseline;
+      const previousSolo = solo;
+      setState((s) => ({ ...s, mix }));
+      setBaseline(key);
+      // A new mix starts unsoloed; muting everything is left as it is.
+      setSolo(new Set());
+      if (previous.layers.length > 0 && !storedKeys.has(previousKey)) {
+        showToast("Replaced your mix", {
+          label: "Undo",
+          run: () => {
+            setState((s) => ({ ...s, mix: previous }));
+            setBaseline(previousBaseline);
+            setSolo(previousSolo);
+          },
+        });
+      }
+    },
+    [baseline, solo, storedKeys, showToast, sounds],
+  );
+
+  const saveMix = useCallback(
+    (name: string) => {
+      const mix = withName(stateRef.current.mix, name);
+      const key = mixKey(mix, sounds);
+      const result = savedMixes.save(name, key);
+      if (!result.ok) {
+        showToast("Couldn't save the mix: delete one to make room");
+        return;
+      }
+      setState((s) => ({ ...s, mix: withName(s.mix, name) }));
+      setBaseline(key);
+      showToast(result.stored ? `Saved ${mix.name ?? name}` : STORAGE_FAILED);
+    },
+    [savedMixes, showToast, sounds],
+  );
+
+  const renameMix = useCallback(
+    (from: string, to: string) => {
+      const entry = savedMixes.byName(from);
+      const name = sanitizeName(to);
+      if (!entry || name === "") {
+        return;
+      }
+      const renamed = storedMix(entry.hash, name);
+      const result = savedMixes.rename(entry.name, name, mixKey(renamed, sounds));
+      if (!result.ok) {
+        showToast(
+          result.reason === "taken"
+            ? `There's already a mix called ${name}`
+            : "Couldn't rename the mix",
+        );
+        return;
+      }
+      // The mix playing follows its new name, unless it has been changed since.
+      const current = stateRef.current.mix;
+      if (mixKey(current, sounds) === mixKey(storedMix(entry.hash, entry.name), sounds)) {
+        setState((s) => ({ ...s, mix: renamed }));
+        setBaseline(mixKey(renamed, sounds));
+      }
+      if (!result.stored) {
+        showToast(STORAGE_FAILED);
+      }
+    },
+    [savedMixes, showToast, sounds, storedMix],
+  );
+
+  const deleteMix = useCallback(
+    (name: string) => {
+      const removed = savedMixes.remove(name);
+      if (!removed) {
+        return;
+      }
+      showToast(`Deleted ${removed.name}`, {
+        label: "Undo",
+        run: () => {
+          const result = savedMixes.restore(removed);
+          if (!result.ok) {
+            showToast(`Couldn't bring back ${removed.name}`);
+          } else if (!result.stored) {
+            showToast(STORAGE_FAILED);
+          }
+        },
+      });
+    },
+    [savedMixes, showToast],
+  );
+
+  const finishImport = useCallback(
+    (mixes: readonly SavedMix[], replace: boolean) => {
+      setPendingImport(undefined);
+      showToast(importMessage(savedMixes.merge(mixes, replace)), undefined, UNDO_TOAST_MS);
+    },
+    [savedMixes, showToast],
+  );
+
+  const importMixes = useCallback(
+    (file: File) => {
+      const refuse = (message: string) => {
+        showToast(message, undefined, UNDO_TOAST_MS);
+      };
+      // Bytes are at least characters, so a file this size can't be a mixes file.
+      if (file.size > MAX_FILE_LENGTH * 4) {
+        refuse("That file is too large to be a mixes file.");
+        return;
+      }
+      file
+        .text()
+        .then((text) => {
+          const result = readMixesFile(text, sounds);
+          if (!result.ok) {
+            refuse(result.error);
+            return undefined;
+          }
+          const conflicts = savedMixes.conflicts(result.mixes);
+          if (conflicts.length > 0) {
+            setPendingImport({ mixes: result.mixes, conflicts });
+          } else {
+            finishImport(result.mixes, false);
+          }
+          return undefined;
+        })
+        .catch(() => {
+          refuse("Couldn't read that file.");
+        });
+    },
+    [finishImport, savedMixes, showToast, sounds],
+  );
+
+  const changeMixesOpen = useCallback((open: boolean) => {
+    setMixesOpen(open);
+    if (!open) {
+      setPendingImport(undefined);
+    }
+  }, []);
+
+  const mixes: MixesControls = {
+    open: mixesOpen,
+    onOpenChange: changeMixesOpen,
+    presets: presetMixes.map((entry) =>
+      mixEntry(entry.mix, entry.description, sounds, entry.key === currentKey),
+    ),
+    saved: savedList.map((entry) =>
+      mixEntry(entry.mix, entry.description, sounds, entry.key === currentKey),
+    ),
+    suggestedName:
+      state.mix.name ??
+      sanitizeName(
+        state.mix.layers.flatMap((l) => sounds.find((s) => s.id === l.id)?.name ?? []).join(" + "),
+      ),
+    canSave: state.mix.layers.length > 0,
+    findSaved: (name) => savedMixes.byName(name)?.name,
+    onApplyPreset: (index) => {
+      const entry = presetMixes.at(index);
+      if (entry) {
+        applyMix(entry.mix);
+      }
+    },
+    onApplySaved: (name) => {
+      const entry = savedMixes.byName(name);
+      if (entry) {
+        applyMix(storedMix(entry.hash, entry.name));
+      }
+    },
+    onSave: saveMix,
+    onRename: renameMix,
+    onDelete: deleteMix,
+    onExport: () => {
+      downloadText(MIXES_FILE_NAME, mixesFile(savedMixes.get()));
+    },
+    onImport: importMixes,
+    importConflicts: pendingImport?.conflicts,
+    onImportAnswer: (replace) => {
+      if (replace === undefined || !pendingImport) {
+        setPendingImport(undefined);
+      } else {
+        finishImport(pendingImport.mixes, replace);
+      }
+    },
+  };
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) {
@@ -726,7 +1005,13 @@ export function App({
         event.preventDefault();
         setPanelHidden(false);
         setSheetOpen(true);
+        changeMixesOpen(false);
         setAddOpen(true);
+      } else if (key === "p") {
+        setPanelHidden(false);
+        setSheetOpen(true);
+        setAddOpen(false);
+        setMixesOpen(true);
       } else if (key === "m") {
         setMasterMuted((muted) => !muted);
       } else if (
@@ -766,6 +1051,7 @@ export function App({
   }, [
     canFullscreen,
     changeDisplay,
+    changeMixesOpen,
     chooseSleep,
     hover,
     onToggleSolo,
@@ -789,7 +1075,11 @@ export function App({
       data-backdrop={display.backdrop}
       data-layout={layout}
       data-sheet={
-        layout === "sheet" ? (sheetOpen || addOpen ? "expanded" : "collapsed") : undefined
+        layout === "sheet"
+          ? sheetOpen || addOpen || mixesOpen
+            ? "expanded"
+            : "collapsed"
+          : undefined
       }
     >
       <Backdrop
@@ -860,6 +1150,7 @@ export function App({
               onChoose: chooseSleep,
               onSettingsChange: changeSleepSettings,
             }}
+            mixes={mixes}
           />
         </div>
       </PanelErrorBoundary>

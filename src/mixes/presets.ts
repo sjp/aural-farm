@@ -25,7 +25,7 @@
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
  */
 
-interface Preset {
+export interface Preset {
   /** A stable id, in kebab-case. */
   id: string;
   /** The name shown, the same as the hash's `name=`. */

@@ -1,11 +1,21 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen, within } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS, UNDO_TOAST_MS, type EngineFactory } from "./App";
+import {
+  App,
+  HASH_DEBOUNCE_MS,
+  IDLE_MS,
+  STORAGE_FAILED,
+  TOAST_MS,
+  UNDO_TOAST_MS,
+  type EngineFactory,
+} from "./App";
 import type { AudioEngine, EngineState } from "./audio/engine";
 import { createFavourites } from "./lib/favourites";
 import { createPreferences } from "./lib/preferences";
 import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
+import { createSavedMixes, MIXES_KEY, type SavedMixes } from "./mixes/mixes";
+import type { Preset } from "./mixes/presets";
 import { createSoundLoader } from "./sounds/loader";
 import type { SoundEntry } from "./sounds/registry";
 import { act } from "./test/act";
@@ -64,8 +74,41 @@ function fakeEngine() {
 
 const catalogue = testCatalogue();
 
+/** Presets made of test sounds. */
+const TEST_PRESETS: Preset[] = [
+  {
+    id: "duo",
+    name: "Duo",
+    description: "Alpha and Bravo together.",
+    hash: "#name=Duo&layers=alpha,bravo&alpha.volume=50&bravo.level=9",
+  },
+  {
+    id: "charlie",
+    name: "Charlie Alone",
+    description: "Just Charlie.",
+    hash: "#name=Charlie%20Alone&layers=charlie",
+  },
+];
+
+/** Saved mixes kept in a map, as localStorage would keep them. */
+function memoryMixes() {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      data.set(key, value);
+    },
+  };
+  return { data, savedMixes: createSavedMixes(() => storage) };
+}
+
 /** Renders the app with `sounds` (the test catalogue by default), whose default is Test Tone. */
-function renderApp(hash = "", fake = fakeEngine(), sounds: SoundEntry[] = catalogue) {
+function renderApp(
+  hash = "",
+  fake = fakeEngine(),
+  sounds: SoundEntry[] = catalogue,
+  savedMixes: SavedMixes = memoryMixes().savedMixes,
+) {
   window.history.replaceState(null, "", `/${hash}`);
   const replaceState = vi.spyOn(window.history, "replaceState");
   const view = render(
@@ -77,9 +120,11 @@ function renderApp(hash = "", fake = fakeEngine(), sounds: SoundEntry[] = catalo
       createEngine={fake.factory}
       sounds={sounds}
       defaultSoundId={TEST_TONE_ID}
+      savedMixes={savedMixes}
+      presets={TEST_PRESETS}
     />,
   );
-  return { replaceState, ...fake, view };
+  return { replaceState, ...fake, view, savedMixes };
 }
 
 /** Renders the app with the test catalogue: Test Tone, then Alpha to India. */
@@ -238,6 +283,362 @@ describe("App mix names", () => {
     fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "30" } });
     setHash("#name=Day&layers=bravo");
     expect(heading().textContent).toBe("Day");
+  });
+});
+
+describe("App mixes", () => {
+  const heading = () => screen.getByRole("heading", { level: 1 }).textContent;
+  const group = (name: string) => within(screen.getByRole("group", { name }));
+  const openMixes = () => {
+    fireEvent.keyDown(window, { key: "p", code: "KeyP" });
+  };
+  const closeMixes = () => {
+    fireEvent.click(screen.getByRole("button", { name: "Close mixes" }));
+  };
+  const applyPreset = (name: RegExp) => {
+    fireEvent.click(group("Presets").getByRole("button", { name }));
+  };
+  const saveAs = (name: string) => {
+    fireEvent.click(screen.getByRole("button", { name: "Save mix…" }));
+    const field = screen.getByRole("textbox", { name: "Mix name" });
+    fireEvent.input(field, { target: { value: name } });
+    fireEvent.submit(field);
+  };
+  const toast = () => screen.getByRole("status");
+
+  it("opens with P, in place of the picker, and lists the presets", () => {
+    renderMixer("#layers=alpha");
+    fireEvent.keyDown(window, { key: "/" });
+    openMixes();
+    expect(screen.queryByRole("listbox", { name: "Sounds" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Mixes" })).toBeTruthy();
+    const duo = group("Presets").getByRole("button", { name: /^Duo/ });
+    expect(duo.textContent).toContain("Alpha and Bravo together.");
+    expect(duo.querySelectorAll(".layer-dot")).toHaveLength(2);
+    // / goes back to the picker.
+    fireEvent.keyDown(document.body, { key: "/" });
+    expect(screen.getByRole("listbox", { name: "Sounds" })).toBeTruthy();
+  });
+
+  it("applies a preset through the engine's diff, with its name, and marks it playing", () => {
+    const { engine } = renderMixer("#layers=alpha");
+    openMixes();
+    applyPreset(/^Duo/);
+    const mix = engine.setMix.mock.lastCall?.[0];
+    expect(mix?.name).toBe("Duo");
+    expect(mix?.layers.map((l) => [l.id, l.volume, l.params])).toEqual([
+      ["alpha", 50, { level: 5 }],
+      ["bravo", 70, { level: 9 }],
+    ]);
+    expect(
+      group("Presets").getByRole("button", { name: /^Duo/ }).getAttribute("aria-current"),
+    ).toBe("true");
+    expect(writtenHash()).toBe("#name=Duo&layers=alpha,bravo&alpha.volume=50&bravo.level=9");
+    expect(document.title).toBe("Duo · Aural Farm");
+    closeMixes();
+    expect(heading()).toBe("Duo");
+  });
+
+  it("offers Undo when the mix it replaces isn't kept anywhere", () => {
+    renderMixer("#layers=alpha&alpha.volume=33");
+    openMixes();
+    applyPreset(/^Duo/);
+    expect(toast().textContent).toContain("Replaced your mix");
+    fireEvent.click(within(toast()).getByRole("button", { name: "Undo" }));
+    expect(writtenHash()).toBe("#layers=alpha&alpha.volume=33");
+  });
+
+  it("leaves the toast up for five seconds", () => {
+    renderMixer("#layers=alpha");
+    openMixes();
+    applyPreset(/^Duo/);
+    act(() => {
+      vi.advanceTimersByTime(UNDO_TOAST_MS - 1);
+    });
+    expect(screen.queryByRole("status")).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("replaces a preset or saved mix without asking, since it's kept", () => {
+    renderMixer("#layers=alpha");
+    openMixes();
+    applyPreset(/^Duo/);
+    act(() => {
+      vi.advanceTimersByTime(UNDO_TOAST_MS);
+    });
+    applyPreset(/^Charlie Alone/);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(writtenHash()).toBe("#name=Charlie%20Alone&layers=charlie");
+  });
+
+  it("does nothing when the preset is already playing", () => {
+    const { engine } = renderMixer("#name=Charlie%20Alone&layers=charlie");
+    openMixes();
+    const calls = engine.setMix.mock.calls.length;
+    applyPreset(/^Charlie Alone/);
+    expect(engine.setMix.mock.calls.length).toBe(calls);
+  });
+
+  it("clears solo for the new mix, and Undo brings it back", () => {
+    const { engine } = renderMixer("#layers=alpha,bravo");
+    fireEvent.keyDown(window, { key: "!", code: "Digit1", shiftKey: true });
+    expect([...(engine.setSolo.mock.lastCall?.[0] ?? [])]).toEqual(["alpha"]);
+    openMixes();
+    applyPreset(/^Duo/);
+    expect([...(engine.setSolo.mock.lastCall?.[0] ?? [])]).toEqual([]);
+    fireEvent.click(within(toast()).getByRole("button", { name: "Undo" }));
+    expect([...(engine.setSolo.mock.lastCall?.[0] ?? [])]).toEqual(["alpha"]);
+  });
+
+  it("saves the mix under a name, in full, and names the mix playing", () => {
+    const mixes = memoryMixes();
+    renderApp("#layers=alpha,bravo&alpha.volume=40", fakeEngine(), catalogue, mixes.savedMixes);
+    openMixes();
+    fireEvent.click(screen.getByRole("button", { name: "Save mix…" }));
+    expect(screen.getByRole<HTMLInputElement>("textbox", { name: "Mix name" }).value).toBe(
+      "Alpha + Bravo",
+    );
+    const field = screen.getByRole("textbox", { name: "Mix name" });
+    fireEvent.input(field, { target: { value: "Evening" } });
+    fireEvent.submit(field);
+    expect(toast().textContent).toBe("Saved Evening");
+    expect(JSON.parse(mixes.data.get(MIXES_KEY) ?? "[]")).toEqual([
+      {
+        name: "Evening",
+        hash: "#name=Evening&master=70&layers=alpha,bravo&alpha.volume=40&alpha.muted=0&alpha.level=5&bravo.volume=70&bravo.muted=0&bravo.level=5",
+        savedAt: Date.now(),
+      },
+    ]);
+    const row = group("My mixes").getByRole("button", { name: /^Evening/ });
+    expect(row.textContent).toContain("Alpha + Bravo");
+    expect(row.getAttribute("aria-current")).toBe("true");
+    closeMixes();
+    expect(heading()).toBe("Evening");
+  });
+
+  it("asks before saving over a mix of the same name", () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    openMixes();
+    saveAs("Evening");
+    closeMixes();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
+    fireEvent.keyDown(window, { key: "/" });
+    fireEvent.click(screen.getByRole("option", { name: "Bravo" }));
+    openMixes();
+    saveAs("evening");
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+    expect(savedMixes.get()).toHaveLength(1);
+    expect(savedMixes.get()[0]?.hash).toContain("layers=bravo");
+  });
+
+  it("marks a saved mix (edited) once changed, and offers Undo when replacing the changes", () => {
+    renderMixer("#layers=alpha");
+    openMixes();
+    saveAs("Evening");
+    closeMixes();
+    fireEvent.input(screen.getByLabelText("Volume"), { target: { value: "30" } });
+    expect(heading()).toBe("Evening (edited)");
+    openMixes();
+    applyPreset(/^Duo/);
+    expect(toast().textContent).toContain("Replaced your mix");
+  });
+
+  it("deletes a saved mix with Undo", () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    openMixes();
+    saveAs("Evening");
+    fireEvent.click(screen.getByRole("button", { name: "Delete Evening" }));
+    expect(savedMixes.get()).toEqual([]);
+    expect(toast().textContent).toContain("Deleted Evening");
+    fireEvent.click(within(toast()).getByRole("button", { name: "Undo" }));
+    expect(savedMixes.get().map((m) => m.name)).toEqual(["Evening"]);
+  });
+
+  it("renames a saved mix, and the mix playing with it", () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    openMixes();
+    saveAs("Evening");
+    fireEvent.click(screen.getByRole("button", { name: "Rename Evening" }));
+    const field = screen.getByRole("textbox", { name: "New name for Evening" });
+    fireEvent.input(field, { target: { value: "Night" } });
+    fireEvent.submit(field);
+    expect(savedMixes.get()[0]?.name).toBe("Night");
+    expect(savedMixes.get()[0]?.hash).toMatch(/^#name=Night&/);
+    closeMixes();
+    expect(heading()).toBe("Night");
+  });
+
+  it("applies a saved mix", () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    savedMixes.save("Later", "#name=Later&layers=charlie,delta");
+    openMixes();
+    fireEvent.click(group("My mixes").getByRole("button", { name: /^Later/ }));
+    expect(writtenHash()).toBe("#name=Later&layers=charlie,delta");
+  });
+
+  it("says so when the browser won't store the mix", () => {
+    const fail = () => {
+      throw new Error("QuotaExceededError");
+    };
+    const savedMixes = createSavedMixes(() => ({ getItem: () => null, setItem: fail }));
+    renderApp("#layers=alpha", fakeEngine(), catalogue, savedMixes);
+    openMixes();
+    saveAs("Evening");
+    expect(toast().textContent).toBe(STORAGE_FAILED);
+    expect(group("My mixes").getByRole("button", { name: /^Evening/ })).toBeTruthy();
+  });
+
+  it("shows (edited) on opening a saved name whose mix differs", () => {
+    const mixes = memoryMixes();
+    mixes.savedMixes.save("Evening", "#name=Evening&layers=alpha");
+    renderApp(
+      "#name=Evening&layers=alpha&alpha.volume=20",
+      fakeEngine(),
+      catalogue,
+      mixes.savedMixes,
+    );
+    expect(heading()).toBe("Evening (edited)");
+  });
+
+  it("follows mixes saved in another tab", () => {
+    const mixes = memoryMixes();
+    renderApp("#layers=alpha", fakeEngine(), catalogue, mixes.savedMixes);
+    openMixes();
+    act(() => {
+      mixes.data.set(
+        MIXES_KEY,
+        JSON.stringify([{ name: "Elsewhere", hash: "#layers=bravo", savedAt: 1 }]),
+      );
+      window.dispatchEvent(new StorageEvent("storage", { key: MIXES_KEY }));
+    });
+    expect(group("My mixes").getByRole("button", { name: /^Elsewhere/ })).toBeTruthy();
+  });
+});
+
+describe("App mixes file", () => {
+  const openMixes = () => {
+    fireEvent.keyDown(window, { key: "p", code: "KeyP" });
+  };
+  const importText = async (text: string) => {
+    const input = screen.getByLabelText<HTMLInputElement>("Import mixes file");
+    const file = new File([text], "aural-farm-mixes.json", { type: "application/json" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+  };
+  const fileOf = (mixes: unknown[]) => JSON.stringify({ app: "aural-farm", version: 1, mixes });
+  const toast = () => screen.getByRole("status").textContent;
+
+  it("exports the saved mixes as aural-farm-mixes.json", async () => {
+    const blobs: Blob[] = [];
+    const createObjectURL = vi.fn<(blob: Blob) => string>((blob) => {
+      blobs.push(blob);
+      return "blob:mixes";
+    });
+    const revokeObjectURL = vi.fn<(url: string) => void>();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const { savedMixes } = renderMixer("#layers=alpha");
+    savedMixes.save("Evening", "#name=Evening&layers=alpha");
+    openMixes();
+    fireEvent.click(screen.getByRole("button", { name: "Export my mixes" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(click.mock.contexts[0]).toMatchObject({ download: "aural-farm-mixes.json" });
+    const text = await blobs.at(0)?.text();
+    expect(JSON.parse(text ?? "")).toEqual({
+      app: "aural-farm",
+      version: 1,
+      mixes: savedMixes.get(),
+    });
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mixes");
+  });
+
+  it("imports new mixes", async () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    openMixes();
+    await importText(
+      fileOf([
+        { name: "One", hash: "#layers=alpha", savedAt: 1 },
+        { name: "Two", hash: "#layers=bravo", savedAt: 2 },
+      ]),
+    );
+    expect(toast()).toBe("Imported 2 mixes");
+    expect(savedMixes.get().map((m) => m.name)).toEqual(["Two", "One"]);
+  });
+
+  it.each([
+    [
+      "Replace",
+      "#name=evening&master=70&layers=bravo&bravo.volume=70&bravo.muted=0&bravo.level=5",
+      "Imported 2 mixes",
+    ],
+    ["Keep mine", "#layers=alpha", "Imported 1 mix"],
+  ])("asks before replacing a saved mix: %s", async (answer, hash, message) => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    savedMixes.save("Evening", "#layers=alpha");
+    openMixes();
+    await importText(
+      fileOf([
+        { name: "evening", hash: "#layers=bravo", savedAt: 1 },
+        { name: "New", hash: "#layers=bravo", savedAt: 2 },
+      ]),
+    );
+    expect(savedMixes.get()).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: answer }));
+    expect(toast()).toBe(message);
+    expect(savedMixes.byName("Evening")?.hash).toBe(hash);
+    expect(savedMixes.get()).toHaveLength(2);
+  });
+
+  it("cancels an import that would replace a mix", async () => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    savedMixes.save("Evening", "#layers=alpha");
+    openMixes();
+    await importText(fileOf([{ name: "Evening", hash: "#layers=bravo", savedAt: 1 }]));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(savedMixes.get()).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Keep mine" })).toBeNull();
+  });
+
+  it.each([
+    ["not JSON", "nope", "That file isn't a mixes file."],
+    [
+      "a bad hash",
+      fileOf([{ name: "A", hash: "#layers=nope", savedAt: 1 }]),
+      "no sounds this app knows",
+    ],
+  ])("refuses %s, saying why", async (_case, text, message) => {
+    const { savedMixes } = renderMixer("#layers=alpha");
+    openMixes();
+    await importText(text);
+    expect(toast()).toContain(message);
+    expect(savedMixes.get()).toEqual([]);
+  });
+
+  it("refuses a huge file without reading it", async () => {
+    renderMixer("#layers=alpha");
+    openMixes();
+    const input = screen.getByLabelText<HTMLInputElement>("Import mixes file");
+    const file = new File(["x"], "big.json");
+    Object.defineProperty(file, "size", { value: 10_000_000 });
+    const text = vi.spyOn(file, "text");
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(text).not.toHaveBeenCalled();
+    expect(toast()).toContain("too large");
   });
 });
 
@@ -791,6 +1192,7 @@ describe("App mixer shortcuts", () => {
     expect(keys).toEqual([
       "Space",
       "/",
+      "P",
       "S",
       "1–8",
       "Shift+1–8",
