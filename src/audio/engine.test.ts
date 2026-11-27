@@ -286,15 +286,47 @@ describe("play and pause", () => {
     expect(states).toEqual(["playing"]);
   });
 
+  it("fades in over the time set, from the next play on", async () => {
+    engine.setPlayFadeIn(10);
+    await engine.play();
+    await flush();
+    const fade = param(chain().masterFade, "gain");
+    expect(fade.valueAt(5)).toBeCloseTo(0.5);
+    expect(fade.valueAt(10)).toBe(1);
+    await tick(11);
+    engine.pause();
+    await tick(1);
+    engine.setPlayFadeIn(0.1);
+    await engine.play();
+    await flush();
+    expect(fade.valueAt(ctx.currentTime + 0.05)).toBeCloseTo(0.5);
+    expect(fade.valueAt(ctx.currentTime + 0.1)).toBe(1);
+  });
+
+  it("takes its first fade-in time from the options", async () => {
+    engine.dispose();
+    engine = createAudioEngine({
+      createContext: () => ctx.asContext(),
+      loader: createSoundLoader(),
+      onState: () => undefined,
+      onLayerState: () => undefined,
+      playFadeIn: 30,
+    });
+    await engine.play();
+    await flush();
+    expect(param(chain().masterFade, "gain").valueAt(15)).toBeCloseTo(0.5);
+  });
+
   it("fades out over the pause fade, then suspends the context", async () => {
     await engine.play();
     await flush();
-    await tick(2);
+    const at = PLAY_FADE_IN + 1;
+    await tick(at);
     engine.pause();
     expect(states).toEqual(["playing", "pausing"]);
     const fade = param(chain().masterFade, "gain");
-    expect(fade.valueAt(2)).toBe(1);
-    expect(fade.valueAt(2 + PAUSE_FADE_OUT)).toBe(0);
+    expect(fade.valueAt(at)).toBe(1);
+    expect(fade.valueAt(at + PAUSE_FADE_OUT)).toBe(0);
     await tick(PAUSE_FADE_OUT / 2);
     expect(ctx.calls).not.toContain("suspend");
     await tick(PAUSE_FADE_OUT);
@@ -331,12 +363,12 @@ describe("play and pause", () => {
   it("cancels the suspend when play comes during the pause fade", async () => {
     await engine.play();
     await flush();
-    await tick(2);
+    await tick(PLAY_FADE_IN + 1);
     engine.pause();
     await tick(PAUSE_FADE_OUT / 2);
     await engine.play();
     await flush();
-    await tick(2);
+    await tick(PLAY_FADE_IN + 1);
     expect(ctx.calls).not.toContain("suspend");
     expect(states.at(-1)).toBe("playing");
     const fade = param(chain().masterFade, "gain");

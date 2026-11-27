@@ -46,6 +46,7 @@ function fakeEngine() {
     retry: vi.fn<AudioEngine["retry"]>(),
     setSolo: vi.fn<AudioEngine["setSolo"]>(),
     setMasterMuted: vi.fn<AudioEngine["setMasterMuted"]>(),
+    setPlayFadeIn: vi.fn<AudioEngine["setPlayFadeIn"]>(),
     watchLevels: vi.fn<AudioEngine["watchLevels"]>(() => () => undefined),
     getLevel: vi.fn<AudioEngine["getLevel"]>(() => 0),
     watchMasterLevel: vi.fn<AudioEngine["watchMasterLevel"]>(() => () => undefined),

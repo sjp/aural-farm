@@ -85,8 +85,8 @@ const GLIDE_TAU = 0.08;
 export const LAYER_FADE_IN = 1.5;
 /** A removed layer fades out over this many seconds before it is disposed. */
 export const LAYER_FADE_OUT = 1;
-/** `play()` fades the master in over this many seconds. */
-export const PLAY_FADE_IN = 1;
+/** `play()` fades the master in over this many seconds, unless told otherwise. */
+export const PLAY_FADE_IN = 3;
 /** `pause()` fades the master out over this many seconds, then suspends. */
 export const PAUSE_FADE_OUT = 0.4;
 /** How long `play()` waits for the context to start before calling it blocked. */
@@ -113,6 +113,8 @@ interface EngineOptions {
   mediaElement?: (() => MediaOutputElement | undefined) | undefined;
   /** Finds a sound's registry entry; the default is the registry. */
   findSound?: typeof getSound;
+  /** How long `play()` fades in, in seconds; `PLAY_FADE_IN` by default. */
+  playFadeIn?: number | undefined;
 }
 
 export interface AudioEngine {
@@ -131,6 +133,8 @@ export interface AudioEngine {
   setSolo: (ids: ReadonlySet<string>) => void;
   /** Silences (or restores) the master output without touching the master volume. */
   setMasterMuted: (muted: boolean) => void;
+  /** Sets how long `play()` fades in, in seconds, from the next play on. */
+  setPlayFadeIn: (seconds: number) => void;
   /**
    * Starts measuring layer levels for `getLevel`, and returns a function that stops.
    * The analysers exist only while at least one watcher is active.
@@ -262,6 +266,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   const leaving = new Set<Voice>();
   let solo: ReadonlySet<string> = new Set();
   let masterMuted = false;
+  let playFadeIn = options.playFadeIn ?? PLAY_FADE_IN;
   /** How many `watchLevels` callers are active. */
   let levelWatchers = 0;
   /** Scratch space for reading an analyser, shared by every layer. */
@@ -703,7 +708,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     if (!context || !master || state === "playing") {
       return;
     }
-    masterFade = fadeParam(master.fade.gain, masterFade, 1, PLAY_FADE_IN, context.currentTime);
+    masterFade = fadeParam(master.fade.gain, masterFade, 1, playFadeIn, context.currentTime);
     setState("playing");
   };
 
@@ -931,6 +936,10 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
   };
 
+  const setPlayFadeIn = (seconds: number) => {
+    playFadeIn = seconds;
+  };
+
   const watchLevels = () => {
     levelWatchers++;
     if (levelWatchers === 1) {
@@ -1043,6 +1052,7 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     retry,
     setSolo,
     setMasterMuted,
+    setPlayFadeIn,
     watchLevels,
     getLevel,
     watchMasterLevel,
