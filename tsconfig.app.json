@@ -31,5 +31,7 @@
     "allowUnusedLabels": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The service worker runs in a worker, with its own globals: see tsconfig.sw.json.
+  "exclude": ["src/sw/sw.ts"]
 }

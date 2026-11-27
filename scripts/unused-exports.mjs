@@ -1,6 +1,6 @@
 /**
  * Lists exports nothing else imports: names a module exports but no other file
- * in `src/`, `e2e/` or `scripts/` (tests included) imports. Each one should be
+ * in `src/`, `e2e/`, `scripts/` or `plugins/` (tests included) imports. Each one should be
  * un-exported, deleted, or (when something outside the module graph reads it)
  * added to `ALLOW` below with the reason.
  *
@@ -17,7 +17,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
-const DIRS = ["src", "e2e", "scripts"];
+const DIRS = ["src", "e2e", "scripts", "plugins"];
 const ROOT_FILES = ["vite.config.ts", "vitest.perf.config.ts", "playwright.config.ts"];
 const EXTENSIONS = [".ts", ".tsx", ".mjs", ".js"];
 

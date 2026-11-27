@@ -2,6 +2,7 @@ import { preact } from "@preact/preset-vite";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { configDefaults, defineConfig } from "vitest/config";
+import { serviceWorker } from "./plugins/service-worker.ts";
 
 /**
  * Content-Security-Policy for the built site. GitHub Pages can't send headers, so it
@@ -31,6 +32,11 @@ import { configDefaults, defineConfig } from "vitest/config";
  * The web app manifest is fetched under manifest-src, named explicitly ('self',
  * the same as default-src) so the policy reads as a list of what the page loads;
  * its icons are images under img-src.
+ *
+ * The service worker, sw.js, is registered under worker-src: 'self' allows it,
+ * from the site's own origin, and nothing else (no blob: or data: workers). The
+ * worker itself isn't governed by this policy, which applies to the page; the
+ * files it fetches and caches are the page's own.
  */
 const CSP = [
   "default-src 'self'",
@@ -38,6 +44,7 @@ const CSP = [
   "style-src 'self'",
   "img-src 'self'",
   "manifest-src 'self'",
+  "worker-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",
@@ -99,6 +106,7 @@ export default defineConfig({
   plugins: [
     preact({ reactAliasesEnabled: false, exclude: PREACT_EXCLUDE }),
     contentSecurityPolicy(),
+    serviceWorker("src/sw/sw.ts"),
   ],
   // The dev server finds a dependency imported only lazily (the export encoder's
   // mediabunny) when it is first imported, pre-bundles it then and reloads the
