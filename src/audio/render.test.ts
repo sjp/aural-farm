@@ -9,7 +9,7 @@ import {
   type FakeParam,
 } from "../test/fake-audio";
 import { createSend, getReverb } from "./reverb";
-import { buildMix } from "./render";
+import { buildMix, renderMix } from "./render";
 import { withAudioScope } from "./scope";
 
 interface Built {
@@ -133,5 +133,53 @@ describe("buildMix", () => {
       'No sound "nope"',
     );
     expect(built.map((b) => b.disposed)).toEqual([true]);
+  });
+});
+
+/** A fake offline context whose render is a buffer of the requested length. */
+class FakeOfflineContext extends FakeAudioContext {
+  readonly length: number;
+  rendered = false;
+
+  constructor(length: number, sampleRate: number) {
+    super({ sampleRate });
+    this.length = length;
+  }
+
+  startRendering(): Promise<AudioBuffer> {
+    this.rendered = true;
+    return Promise.resolve(
+      this.createBuffer(2, this.length, this.sampleRate) as unknown as AudioBuffer,
+    );
+  }
+}
+
+describe("renderMix", () => {
+  it("renders the mix from startAt in a context of the right length, then releases it", async () => {
+    const contexts: FakeOfflineContext[] = [];
+    const createContext = (length: number, sampleRate: number) => {
+      const offline = new FakeOfflineContext(length, sampleRate);
+      contexts.push(offline);
+      return offline as unknown as OfflineAudioContext;
+    };
+    const prepared: unknown[] = [];
+    const buffer = await renderMix(
+      { master: 100, layers: [layer("x")] },
+      {
+        seconds: 2.5,
+        startAt: 25,
+        sampleRate: 44100,
+        findSound,
+        createContext,
+        prepare: (_ctx, graph) => {
+          prepared.push(graph.master.output);
+        },
+      },
+    );
+    expect(buffer.length).toBe(110250);
+    expect(buffer.sampleRate).toBe(44100);
+    expect(contexts.map((c) => c.rendered)).toEqual([true]);
+    expect(prepared).toHaveLength(1);
+    expect(built).toMatchObject([{ startAt: 25, disposed: true }]);
   });
 });

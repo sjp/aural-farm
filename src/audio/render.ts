@@ -111,3 +111,37 @@ export async function buildMix(
   }
   return { master, dispose };
 }
+
+/** The sample rate offline renders use unless told otherwise. */
+const RENDER_RATE = 48000;
+
+interface RenderOptions extends BuildOptions {
+  /** How long to render, in seconds. */
+  seconds: number;
+  /** Default `RENDER_RATE`. */
+  sampleRate?: number;
+  /** Makes the offline context (stereo); tests pass a stand-in. */
+  createContext?: (length: number, sampleRate: number) => OfflineAudioContext;
+  /** Called once the mix is built, before rendering starts, e.g. to schedule suspends. */
+  prepare?: (ctx: OfflineAudioContext, graph: MixGraph) => void;
+}
+
+/**
+ * Renders `seconds` of `mix` in a fresh stereo `OfflineAudioContext`, through
+ * the master chain, and releases the graph. Its first sample stands for
+ * absolute time `startAt`. Rejects if the mix can't be built.
+ */
+export async function renderMix(mix: Mix, options: RenderOptions): Promise<AudioBuffer> {
+  const { seconds, sampleRate = RENDER_RATE, createContext, prepare, ...build } = options;
+  const length = Math.round(seconds * sampleRate);
+  const ctx = createContext
+    ? createContext(length, sampleRate)
+    : new OfflineAudioContext(2, length, sampleRate);
+  const graph = await buildMix(ctx, mix, build);
+  try {
+    prepare?.(ctx, graph);
+    return await ctx.startRendering();
+  } finally {
+    graph.dispose();
+  }
+}

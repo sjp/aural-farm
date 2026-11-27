@@ -8,7 +8,7 @@
 import * as analysis from "../src/audio/analysis";
 import { routeReverb, getReverb, type ReverbKind } from "../src/audio/reverb";
 import { seedOf, soundParams } from "../src/audio/mix-graph";
-import { buildMix } from "../src/audio/render";
+import { buildMix, renderMix as renderMixOffline } from "../src/audio/render";
 import { parseHash, type Mix } from "../src/mixes/mix";
 import { defaults } from "../src/sounds/params";
 import { getSound, sounds } from "../src/sounds/registry";
@@ -186,34 +186,38 @@ async function renderSound(spec: SoundSpec): Promise<Rendered> {
 /** Renders a whole mix through the master chain, reading the limiter as it goes. */
 async function renderMix(spec: MixSpec): Promise<Rendered> {
   const mix = typeof spec.mix === "string" ? parseHash(spec.mix).mix : spec.mix;
-  const ctx = new OfflineAudioContext(2, Math.round(spec.seconds * DEFAULT_RATE), DEFAULT_RATE);
   const errors: string[] = [];
-  const graph = await buildMix(ctx, mix, {
+  const reduction: number[] = [];
+  const every = spec.reductionEvery ?? 0;
+  const began = performance.now();
+  const buffer = await renderMixOffline(mix, {
+    seconds: spec.seconds,
     startAt: spec.startAt ?? 0,
+    sampleRate: DEFAULT_RATE,
     onError: (error) => {
       errors.push(describe(error));
     },
-  });
-  const reduction: number[] = [];
-  const every = spec.reductionEvery ?? 0;
-  if (every > 0) {
-    // Chained, so each suspend is scheduled while the context is suspended at the one before.
-    const read = async (at: number) => {
-      await ctx.suspend(at);
-      reduction.push(graph.master.limiter.reduction);
-      if (at + every < spec.seconds) {
-        read(at + every).catch((error: unknown) => {
-          console.error(error);
-        });
+    prepare: (ctx, graph) => {
+      if (every <= 0) {
+        return;
       }
-      await ctx.resume();
-    };
-    read(every).catch((error: unknown) => {
-      console.error(error);
-    });
-  }
-  const { buffer, cost } = await render(ctx, spec.seconds, []);
-  graph.dispose();
+      // Chained, so each suspend is scheduled while the context is suspended at the one before.
+      const read = async (at: number) => {
+        await ctx.suspend(at);
+        reduction.push(graph.master.limiter.reduction);
+        if (at + every < spec.seconds) {
+          read(at + every).catch((error: unknown) => {
+            console.error(error);
+          });
+        }
+        await ctx.resume();
+      };
+      read(every).catch((error: unknown) => {
+        console.error(error);
+      });
+    },
+  });
+  const cost = (performance.now() - began) / 1000 / spec.seconds;
   return { channels: channelsOf(buffer), sampleRate: DEFAULT_RATE, cost, reduction, errors };
 }
 
