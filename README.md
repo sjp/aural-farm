@@ -119,8 +119,8 @@ cursor hidden.
 
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
-- **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**, **Deep
-  Brown**, **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
+- **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
+  **Seaside**, **Deep Brown**, **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
 
@@ -295,6 +295,14 @@ settling with a soft thump. **Fire** goes from glowing embers to a roaring blaze
 sets how busy the crackles and pops are, **Wood** picks hardwood (steady, few pops) or
 softwood (more pops and sap), **Room** moves you from close to the hearth to across a large
 room, and **Variation** crossfades to a different pattern of crackles and flicker.
+
+**Wind** is moving air: a broad rush that grows louder and brighter as it picks up, with
+irregular gusts that surge and die away between lulls, and now and then a soft, hollow
+whistle that rises a little with each gust. **Strength** goes from a light breeze to a gale,
+**Gusts** from steady to strongly gusting, **Setting** picks what it blows past (an open
+field; trees, with a flutter of leaves; or a house, heard muffled from inside, with moans at
+the gaps; a change crossfades, with the gusts carrying on through it), **Whistle** sets how
+much it whistles, and **Variation** crossfades to a different run of gusts.
 
 The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
 noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
