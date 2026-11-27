@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createRng,
+  HASH_START,
   hash32,
   hashFloat,
   hashStep,
@@ -53,6 +54,7 @@ describe("hash32", () => {
 
   it("can be continued one argument at a time", () => {
     expect(hashStep(hash32(4, 5), 6)).toBe(hash32(4, 5, 6));
+    expect(hashStep(hashStep(HASH_START, 4), 5)).toBe(hash32(4, 5));
   });
 });
 

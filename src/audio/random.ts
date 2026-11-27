@@ -14,8 +14,12 @@
  * Plain TypeScript with no Web Audio or DOM globals: it runs in worklets too.
  */
 
-/** The fold's starting state, so `hash32()` and `hash32(0)` differ. */
-const HASH_INIT = 0x9e3779b9;
+/**
+ * The fold's starting state, so `hash32()` and `hash32(0)` differ. Hot loops can
+ * fold with `hashStep` from here instead of calling `hash32`, whose rest
+ * parameter allocates: `hashStep(hashStep(HASH_START, a), b) === hash32(a, b)`.
+ */
+export const HASH_START = 0x9e3779b9;
 
 /** lowbias32: a fast, well-mixing 32-bit integer hash (a bijection on uint32). */
 export function lowbias32(x: number): number {
@@ -43,7 +47,7 @@ export function hashStep(state: number, x: number): number {
  * platforms.
  */
 export function hash32(...ints: number[]): number {
-  let h = HASH_INIT;
+  let h = HASH_START;
   for (const x of ints) {
     h = lowbias32(h ^ x);
   }
