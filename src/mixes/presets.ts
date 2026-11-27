@@ -9,7 +9,6 @@
  * along with the last of its sounds:
  *
  *   Engine Room       Starship Engine Core, Life Support
- *   Night Shift       Starship Engine Core (power 40), Starship Bridge (quiet), Crew Quarters
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
  *   Night Train       Train Carriage, Rain (on a window)
  *   Long-haul Flight  Airplane Cabin, Brown Noise
@@ -44,6 +43,20 @@ export const presets: readonly Preset[] = [
       "&engine-core.hiss=20&engine-core.seed=1" +
       "&brown-noise.volume=40&brown-noise.muted=0&brown-noise.tone=-30&brown-noise.width=80" +
       "&brown-noise.movement=25&brown-noise.seed=1",
+  },
+  {
+    id: "night-shift",
+    name: "Night Shift",
+    description: "A starship at night: low engines, a quiet bridge and a cabin's soft rumble.",
+    hash:
+      "#name=Night%20Shift&master=70&layers=quarters,engine-core,bridge" +
+      "&quarters.volume=75&quarters.muted=0&quarters.air=60&quarters.hum=30&quarters.hull=45" +
+      "&quarters.warmth=65&quarters.seed=1" +
+      "&engine-core.volume=50&engine-core.muted=0&engine-core.power=40&engine-core.pitch=46" +
+      "&engine-core.pulseRate=0.7&engine-core.pulseDepth=25&engine-core.room=45" +
+      "&engine-core.hiss=10&engine-core.seed=1" +
+      "&bridge.volume=45&bridge.muted=0&bridge.activity=quiet&bridge.engine=25&bridge.air=40" +
+      "&bridge.doors=off&bridge.alert=0&bridge.seed=1",
   },
   {
     id: "seaside",
