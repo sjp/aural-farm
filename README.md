@@ -149,19 +149,19 @@ steady) and **Variation**, which crossfades to a different take on the same nois
 
 ### Keyboard shortcuts
 
-| Key                 | Action                                |
-| ------------------- | ------------------------------------- |
-| `Space`             | Play or pause                         |
-| `/`                 | Add a sound (opens the picker)        |
-| `S`                 | Star or unstar the focused layer      |
-| `1`–`8`             | Mute or unmute layer N                |
-| `Shift+1`–`Shift+8` | Solo or unsolo layer N                |
-| `M`                 | Mute or unmute everything             |
-| `↑` / `↓`           | Master volume up or down by 5         |
-| `H`                 | Hide or show the control panel        |
-| `F`                 | Toggle fullscreen                     |
-| `D`                 | Backdrop: Glow, Night or Off          |
-| `?`                 | Show the keyboard shortcuts           |
+| Key                 | Action                           |
+| ------------------- | -------------------------------- |
+| `Space`             | Play or pause                    |
+| `/`                 | Add a sound (opens the picker)   |
+| `S`                 | Star or unstar the focused layer |
+| `1`–`8`             | Mute or unmute layer N           |
+| `Shift+1`–`Shift+8` | Solo or unsolo layer N           |
+| `M`                 | Mute or unmute everything        |
+| `↑` / `↓`           | Master volume up or down by 5    |
+| `H`                 | Hide or show the control panel   |
+| `F`                 | Toggle fullscreen                |
+| `D`                 | Backdrop: Glow, Night or Off     |
+| `?`                 | Show the keyboard shortcuts      |
 
 Shortcuts are ignored while a form field has focus (`Space` still works on a slider, but
 on a focused button it presses the button). `↑` and `↓` change the master volume only when
