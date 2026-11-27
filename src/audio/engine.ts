@@ -36,6 +36,13 @@
  * own interruptions (Safari's "interrupted", as during a phone call) resume by
  * themselves when the context runs again.
  *
+ * A sleep timer fades the output out on its own gain stage, ending a set amount
+ * of playing time from when it was set, then pauses. Both the fade and the
+ * countdown run on the audio clock, which stops while the context is suspended,
+ * so pausing pauses the timer and playing again resumes it, and a throttled timer
+ * in a background tab can only make the final pause late, after the sound has
+ * already faded to nothing.
+ *
  * Fades and glides are scheduled on the audio clock. Work that has to wait for
  * the clock (disposing a removed layer, suspending after a pause) polls it with a
  * timer, so a throttled timer in a background tab only makes it late, never early.
@@ -55,6 +62,7 @@ import {
 } from "./mix-graph";
 import type { MediaOutputElement } from "./output";
 import { getReverb, routeReverb, type ReverbKind } from "./reverb";
+import { curveValue, sleepFadeCurve } from "./sleep-fade";
 
 export type EngineState =
   /** No context yet: nothing has asked to play. */
@@ -89,6 +97,10 @@ export const LAYER_FADE_OUT = 1;
 export const PLAY_FADE_IN = 3;
 /** `pause()` fades the master out over this many seconds, then suspends. */
 export const PAUSE_FADE_OUT = 0.4;
+/** Cancelling a sleep timer during its fade brings the sound back over this many seconds. */
+export const SLEEP_CANCEL_RAMP = 2;
+/** A sleep fade starts at least this long after it is scheduled, clear of anything scheduled now. */
+const SLEEP_LEAD = 0.02;
 /** How long `play()` waits for the context to start before calling it blocked. */
 export const BLOCKED_AFTER_MS = 500;
 /** The shortest wait between checks of the audio clock. */
@@ -115,6 +127,8 @@ interface EngineOptions {
   findSound?: typeof getSound;
   /** How long `play()` fades in, in seconds; `PLAY_FADE_IN` by default. */
   playFadeIn?: number | undefined;
+  /** Called when a sleep timer has run out and paused playback. */
+  onSleepEnd?: (() => void) | undefined;
 }
 
 export interface AudioEngine {
@@ -135,6 +149,15 @@ export interface AudioEngine {
   setMasterMuted: (muted: boolean) => void;
   /** Sets how long `play()` fades in, in seconds, from the next play on. */
   setPlayFadeIn: (seconds: number) => void;
+  /**
+   * Starts a sleep timer, replacing any other: after `seconds` of playing time the
+   * output has faded out, over the last `fadeSeconds` (at most `seconds`), and
+   * playback pauses. Undefined cancels the timer, bringing the sound back over
+   * `SLEEP_CANCEL_RAMP` if it had started to fade.
+   */
+  setSleepTimer: (seconds: number | undefined, fadeSeconds?: number) => void;
+  /** The playing time left on the sleep timer in seconds, by the audio clock, or undefined. */
+  sleepRemaining: () => number | undefined;
   /**
    * Starts measuring layer levels for `getLevel`, and returns a function that stops.
    * The analysers exist only while at least one watcher is active.
@@ -164,6 +187,29 @@ interface Fade {
 }
 
 const still = (value: number): Fade => ({ from: value, to: value, start: 0, end: 0 });
+
+/** A running sleep timer. */
+interface SleepTimer {
+  /** When it runs out, on the audio clock; undefined until there is a context. */
+  end: number | undefined;
+  /** The playing time left, while there is no context yet. */
+  seconds: number;
+  /** How long its fade-out lasts. */
+  fade: number;
+}
+
+/** What the sleep timer's gain is doing: a linear ramp, then (from `curveStart`) the fade-out. */
+interface TimerLevel {
+  ramp: Fade;
+  curveStart: number;
+  curveDuration: number;
+}
+
+const fullLevel = (): TimerLevel => ({
+  ramp: still(1),
+  curveStart: Number.POSITIVE_INFINITY,
+  curveDuration: 0,
+});
 
 function fadeValue(fade: Fade, t: number): number {
   if (t >= fade.end) {
@@ -267,6 +313,11 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   let solo: ReadonlySet<string> = new Set();
   let masterMuted = false;
   let playFadeIn = options.playFadeIn ?? PLAY_FADE_IN;
+  let sleep: SleepTimer | undefined;
+  let timerLevel = fullLevel();
+  const sleepCurve = sleepFadeCurve();
+  /** Bumped to stop the check that waits for the sleep timer to run out. */
+  let sleepWatch = 0;
   /** How many `watchLevels` callers are active. */
   let levelWatchers = 0;
   /** Scratch space for reading an analyser, shared by every layer. */
@@ -665,6 +716,76 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     });
   };
 
+  /** The sleep timer gain's value at `t`, from what was scheduled on it. */
+  const timerValue = (t: number) =>
+    t < timerLevel.curveStart
+      ? fadeValue(timerLevel.ramp, t)
+      : curveValue(sleepCurve, timerLevel.curveStart, timerLevel.curveDuration, t);
+
+  /**
+   * Brings the sleep timer's gain back to 1 over `seconds`, or at once while the
+   * context isn't running (nothing is heard then, so it can't click).
+   */
+  const restoreTimer = (seconds: number) => {
+    if (!context || !master) {
+      return;
+    }
+    const now = context.currentTime;
+    const from = timerValue(now);
+    if (from === 1 && timerLevel.curveStart === Number.POSITIVE_INFINITY) {
+      return;
+    }
+    const instant = seconds <= 0 || !isRunning(context);
+    timerLevel = {
+      ...fullLevel(),
+      ramp: fadeParam(master.timer.gain, still(instant ? 1 : from), 1, instant ? 0 : seconds, now),
+    };
+  };
+
+  /** Schedules the sleep timer's fade-out on the audio clock. */
+  const scheduleSleep = () => {
+    if (!context || !master || !sleep) {
+      return;
+    }
+    const param = master.timer.gain;
+    const now = context.currentTime;
+    const end = sleep.end ?? now + sleep.seconds;
+    // A timer set again during its fade first comes back up, unless nothing is heard.
+    const from = isRunning(context) ? timerValue(now) : 1;
+    const rise = from < 1 ? SLEEP_CANCEL_RAMP : 0;
+    const ramp = fadeParam(param, still(from), 1, rise, now);
+    const start = Math.max(end - sleep.fade, ramp.end + SLEEP_LEAD);
+    const duration = Math.max(end - start, SLEEP_LEAD);
+    param.setValueCurveAtTime(sleepCurve, start, duration);
+    timerLevel = { ramp, curveStart: start, curveDuration: duration };
+    sleep.end = start + duration;
+  };
+
+  /** Waits, while playing, for the sleep timer to run out, then pauses. */
+  const watchSleep = () => {
+    const token = ++sleepWatch;
+    const check = () => {
+      if (disposed || token !== sleepWatch || !context || sleep?.end === undefined) {
+        return;
+      }
+      if (!isRunning(context) || state !== "playing") {
+        // The clock has stopped (or is about to): the next play watches again.
+        return;
+      }
+      const remaining = sleep.end - context.currentTime;
+      if (remaining > 0) {
+        later(Math.max(MIN_POLL_MS, remaining * 1000), check);
+        return;
+      }
+      sleep = undefined;
+      sleepWatch++;
+      // The gain is at 0 already. It comes back on the next play.
+      pause();
+      options.onSleepEnd?.();
+    };
+    check();
+  };
+
   /** Creates the context and the master chain, or returns undefined (and fails) if it can't. */
   const ensureContext = (): AudioContext | undefined => {
     if (context) {
@@ -695,6 +816,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
     context = ctx;
     masterFade = still(0);
+    timerLevel = fullLevel();
+    scheduleSleep();
     ctx.addEventListener("statechange", onContextState);
     element?.addEventListener("pause", onElementPause);
     attachMasterAnalyser();
@@ -708,8 +831,21 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     if (!context || !master || state === "playing") {
       return;
     }
+    const now = context.currentTime;
+    if (sleep?.end !== undefined && sleep.end <= now) {
+      // It ran out while the pause that would have followed was overtaken.
+      sleep = undefined;
+      options.onSleepEnd?.();
+    }
+    if (!sleep) {
+      // After a timer ran out: at once when nothing is heard yet, else with the fade-in.
+      restoreTimer(fadeValue(masterFade, now) === 0 ? 0 : playFadeIn);
+    }
     masterFade = fadeParam(master.fade.gain, masterFade, 1, playFadeIn, context.currentTime);
     setState("playing");
+    if (sleep) {
+      watchSleep();
+    }
   };
 
   /** Silences the master at once: only while the context isn't running, so it can't click. */
@@ -940,6 +1076,35 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     playFadeIn = seconds;
   };
 
+  const setSleepTimer = (seconds: number | undefined, fadeSeconds = 0) => {
+    if (disposed) {
+      return;
+    }
+    if (seconds === undefined) {
+      if (sleep) {
+        sleep = undefined;
+        sleepWatch++;
+        restoreTimer(SLEEP_CANCEL_RAMP);
+      }
+      return;
+    }
+    sleep = { end: undefined, seconds, fade: Math.min(Math.max(fadeSeconds, 0), seconds) };
+    scheduleSleep();
+    if (state === "playing") {
+      watchSleep();
+    }
+  };
+
+  const sleepRemaining = () => {
+    if (!sleep) {
+      return undefined;
+    }
+    if (sleep.end === undefined || !context) {
+      return sleep.seconds;
+    }
+    return Math.max(0, sleep.end - context.currentTime);
+  };
+
   const watchLevels = () => {
     levelWatchers++;
     if (levelWatchers === 1) {
@@ -1053,6 +1218,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     setSolo,
     setMasterMuted,
     setPlayFadeIn,
+    setSleepTimer,
+    sleepRemaining,
     watchLevels,
     getLevel,
     watchMasterLevel,

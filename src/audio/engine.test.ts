@@ -13,6 +13,7 @@ import {
   LAYER_FADE_OUT,
   PAUSE_FADE_OUT,
   PLAY_FADE_IN,
+  SLEEP_CANCEL_RAMP,
   type AudioEngine,
   type EngineState,
   type LayerState,
@@ -121,6 +122,7 @@ let a: ReturnType<typeof testSound>;
 let b: ReturnType<typeof testSound>;
 let states: EngineState[];
 let layerStates: Map<string, LayerState[]>;
+let sleepEnds: number;
 let engine: AudioEngine;
 
 function makeEngine(
@@ -138,6 +140,9 @@ function makeEngine(
     },
     onLayerState: (id, s) => {
       layerStates.set(id, [...(layerStates.get(id) ?? []), s]);
+    },
+    onSleepEnd: () => {
+      sleepEnds++;
     },
   });
 }
@@ -201,6 +206,7 @@ beforeEach(() => {
   b = testSound("b");
   states = [];
   layerStates = new Map();
+  sleepEnds = 0;
   engine = makeEngine();
 });
 
@@ -1012,5 +1018,152 @@ describe("master level", () => {
     expect(engine.getMasterLevel()).toBe(0);
     expect(chain().trim.connections).toContain(analysers()[0]);
     stopMaster();
+  });
+});
+
+describe("sleep timer", () => {
+  const MINUTE = 60;
+  const timerGain = () => param(chain().timer, "gain");
+  const db = (gain: number) => 20 * Math.log10(gain);
+
+  it("counts down only while playing, by the audio clock", async () => {
+    engine.setSleepTimer(10 * MINUTE, MINUTE);
+    expect(engine.sleepRemaining()).toBe(10 * MINUTE);
+    await engine.play();
+    await flush();
+    await tick(MINUTE);
+    expect(engine.sleepRemaining()).toBeCloseTo(9 * MINUTE);
+    engine.pause();
+    await tick(1);
+    const paused = engine.sleepRemaining() ?? 0;
+    // The clock stands still while suspended, and so does the timer.
+    await tick(5 * MINUTE);
+    expect(engine.sleepRemaining()).toBe(paused);
+    await engine.play();
+    await tick(MINUTE);
+    expect(engine.sleepRemaining()).toBeCloseTo(paused - MINUTE);
+  });
+
+  it("fades out evenly in decibels over the fade, on its own gain", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(10 * MINUTE, 5 * MINUTE);
+    const gain = timerGain();
+    expect(gain.valueAt(5 * MINUTE)).toBe(1);
+    expect(db(gain.valueAt(7.5 * MINUTE))).toBeCloseTo(-30, 0);
+    expect(gain.valueAt(10 * MINUTE)).toBe(0);
+    // Play and pause keep their own gain.
+    expect(param(chain().masterFade, "gain").valueAt(10 * MINUTE)).toBe(1);
+  });
+
+  it("caps the fade at the timer's length", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(MINUTE, 5 * MINUTE);
+    const gain = timerGain();
+    expect(db(gain.valueAt(MINUTE / 2))).toBeCloseTo(-30, 0);
+    expect(gain.valueAt(MINUTE)).toBe(0);
+  });
+
+  it("pauses once the fade has ended, and resets", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(MINUTE, 10);
+    await tick(MINUTE - 1);
+    expect(states.at(-1)).toBe("playing");
+    expect(sleepEnds).toBe(0);
+    await tick(1);
+    expect(states.at(-1)).toBe("pausing");
+    expect(sleepEnds).toBe(1);
+    expect(engine.sleepRemaining()).toBeUndefined();
+    await tick(1);
+    expect(states.at(-1)).toBe("paused");
+  });
+
+  it("is silent already when a throttled timer pauses late", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(MINUTE, 10);
+    // The clock runs on while timers lag behind.
+    ctx.advance(MINUTE + 30);
+    expect(timerGain().valueAt(ctx.currentTime)).toBe(0);
+    expect(states.at(-1)).toBe("playing");
+    await vi.advanceTimersByTimeAsync(MINUTE * 1000);
+    expect(states.at(-1)).toBe("pausing");
+  });
+
+  it("comes back at full level on the next play after it ran out", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(MINUTE, 10);
+    await tick(MINUTE);
+    await tick(1);
+    await engine.play();
+    await flush();
+    expect(timerGain().valueAt(ctx.currentTime)).toBe(1);
+    const fade = param(chain().masterFade, "gain");
+    expect(fade.valueAt(ctx.currentTime + PLAY_FADE_IN / 2)).toBeCloseTo(0.5);
+  });
+
+  it("ramps back to full over the cancel ramp when cancelled during the fade", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(2 * MINUTE, MINUTE);
+    await tick(1.5 * MINUTE);
+    const gain = timerGain();
+    const now = ctx.currentTime;
+    const faded = gain.valueAt(now);
+    expect(faded).toBeLessThan(0.1);
+    engine.setSleepTimer(undefined);
+    expect(engine.sleepRemaining()).toBeUndefined();
+    expect(gain.valueAt(now + SLEEP_CANCEL_RAMP / 2)).toBeCloseTo((faded + 1) / 2);
+    expect(gain.valueAt(now + SLEEP_CANCEL_RAMP)).toBe(1);
+    expect(gain.valueAt(now + 10 * MINUTE)).toBe(1);
+    await tick(10 * MINUTE);
+    expect(states.at(-1)).toBe("playing");
+    expect(sleepEnds).toBe(0);
+  });
+
+  it("restores the level at once when cancelled while paused", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(2 * MINUTE, MINUTE);
+    await tick(1.5 * MINUTE);
+    engine.pause();
+    await tick(1);
+    engine.setSleepTimer(undefined);
+    expect(timerGain().valueAt(ctx.currentTime)).toBe(1);
+  });
+
+  it("restarts the countdown when set again, rising first if it had started to fade", async () => {
+    await engine.play();
+    await flush();
+    engine.setSleepTimer(2 * MINUTE, MINUTE);
+    await tick(1.5 * MINUTE);
+    const now = ctx.currentTime;
+    engine.setSleepTimer(15 * MINUTE, 5 * MINUTE);
+    expect(engine.sleepRemaining()).toBe(15 * MINUTE);
+    const gain = timerGain();
+    expect(gain.valueAt(now + SLEEP_CANCEL_RAMP)).toBe(1);
+    expect(gain.valueAt(now + 10 * MINUTE)).toBe(1);
+    expect(db(gain.valueAt(now + 12.5 * MINUTE))).toBeCloseTo(-30, 0);
+    await tick(14 * MINUTE);
+    expect(states.at(-1)).toBe("playing");
+    await tick(MINUTE);
+    expect(states.at(-1)).toBe("pausing");
+    expect(sleepEnds).toBe(1);
+  });
+
+  it("starts with the first play when set before there is a context", async () => {
+    engine.setSleepTimer(MINUTE, 10);
+    await tick(5 * MINUTE);
+    expect(engine.sleepRemaining()).toBe(MINUTE);
+    await engine.play();
+    await flush();
+    const start = ctx.currentTime;
+    expect(timerGain().valueAt(start + MINUTE - 10)).toBe(1);
+    expect(timerGain().valueAt(start + MINUTE)).toBe(0);
+    await tick(MINUTE);
+    expect(sleepEnds).toBe(1);
   });
 });
