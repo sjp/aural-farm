@@ -12,7 +12,6 @@
  *   Night Shift       Starship Engine Core (power 40), Starship Bridge (quiet), Crew Quarters
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
  *   Stormy Night      Rain (heavy), Distant Thunder, Wind
- *   Seaside           Ocean Waves, Wind (light)
  *   Summer Night      Night Insects, Stream (quiet), Wind (light)
  *   Dawn Chorus       Birdsong (dawn), Stream
  *   Night Train       Train Carriage, Rain (on a window)
@@ -48,6 +47,17 @@ export const presets: readonly Preset[] = [
       "&engine-core.hiss=20&engine-core.seed=1" +
       "&brown-noise.volume=40&brown-noise.muted=0&brown-noise.tone=-30&brown-noise.width=80" +
       "&brown-noise.movement=25&brown-noise.seed=1",
+  },
+  {
+    id: "seaside",
+    name: "Seaside",
+    description: "Waves breaking on a sandy shore, under a light breeze off the sea.",
+    hash:
+      "#name=Seaside&master=70&layers=ocean,wind" +
+      "&ocean.volume=75&ocean.muted=0&ocean.period=11&ocean.size=45&ocean.distance=40" +
+      "&ocean.shore=sand&ocean.seed=1" +
+      "&wind.volume=55&wind.muted=0&wind.strength=25&wind.gustiness=40&wind.setting=field" +
+      "&wind.whistle=0&wind.seed=1",
   },
   {
     id: "deep-brown",
