@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Long-haul Flight**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -317,6 +317,18 @@ gliding like a real one: the air grows louder and brighter and the blades and mo
 **Tone** makes the air darker or brighter, **Motor** sets the motor's level (0 is off), and
 **Oscillate** turns a desk or box fan slowly side to side, panning and swelling as it faces
 the bed. **Variation** crossfades to a different noise and flutter drift.
+
+**Airplane Cabin** is a window seat on a long night flight, lights dimmed, a jet airliner at
+cruise: the broad, enveloping roar of air over the fuselage and the engines through the
+floor, a faint buzz from the engines' fans (the two turning at very slightly different
+speeds, so they beat slowly, "wah-wah", every two to four seconds), and the soft, close hiss
+of the air nozzle overhead. **Seat** moves the balance, gliding between them: at the
+**Front** the airflow is brighter and the engines quieter, **Over wing** sits in between, and
+at the **Rear** the roar is darker and the engines louder. **Engines** sets the engines' level
+(0 is off), **Air vent** the nozzle's (0 is off), and **Chime** adds, once in a long while, a
+soft two-tone chime far up the cabin (Off, Rarely, about every 25 minutes, or Sometimes,
+about every 8). **Variation** crossfades to different engine speeds, chime notes and slow
+drifts. With Brown Noise under it, it makes the **Long-haul Flight** preset.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
