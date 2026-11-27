@@ -32,7 +32,11 @@ export const sounds: readonly SoundEntry[] = [
 ];
 
 /** The sound a fresh visit's mix holds. */
-export const DEFAULT_SOUND_ID = "brown-noise";
+export const DEFAULT_SOUND_ID = "engine-core";
+
+if (!sounds.some((s) => s.id === DEFAULT_SOUND_ID)) {
+  throw new Error(`The default sound "${DEFAULT_SOUND_ID}" isn't registered`);
+}
 
 export function getSound(id: string): SoundEntry | undefined {
   return sounds.find((s) => s.id === id);

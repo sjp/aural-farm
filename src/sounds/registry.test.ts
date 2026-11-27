@@ -38,6 +38,11 @@ describe("registry", () => {
     expect(getSound("no-such-sound")).toBeUndefined();
   });
 
+  it("lists the default sound, Starship Engine Core, first", () => {
+    expect(DEFAULT_SOUND_ID).toBe("engine-core");
+    expect(sounds[0]?.id).toBe(DEFAULT_SOUND_ID);
+  });
+
   it("has no placeholder test tone", () => {
     expect(getSound("test-tone")).toBeUndefined();
   });

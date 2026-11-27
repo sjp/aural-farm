@@ -63,11 +63,18 @@ cursor hidden.
 
 ### Sounds
 
-A fresh visit opens with **Brown Noise**. The noise colours (**Brown**, **Pink**, **White**
-and **Grey Noise**) are the plain, steady noises used for sleep, focus and masking. Each has
-**Tone** (darker to brighter), **Width** (mono to wide stereo, at a steady level),
-**Movement** (slow, subtle swells; 0 is perfectly steady) and **Variation**, which
-crossfades to a different take on the same noise.
+A fresh visit opens with **Starship Engine Core**: the deep, steady hum of a large engine
+in a metal room, with a slow, breathing throb. Its settings are **Power** (how hard the
+engine runs: darker and softer to brighter and richer), **Pitch** (the drone's fundamental,
+32–72 Hz; everything in the sound follows it), **Pulse rate** and **Pulse depth** (how often
+and how strongly the throb swells; depth 0 is a steady hum), **Room** (metallic resonances
+and reverb), **Hiss** (faint ventilation air on top) and **Variation**, which crossfades to
+different slow drifts and room detail while the hum plays on.
+
+The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
+noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
+(mono to wide stereo, at a steady level), **Movement** (slow, subtle swells; 0 is perfectly
+steady) and **Variation**, which crossfades to a different take on the same noise.
 
 ### Keyboard shortcuts
 

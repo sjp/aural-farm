@@ -13,23 +13,23 @@ test("shows the panel with the default layer and keeps the hash in sync", async 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Aural Farm" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Brown Noise" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Starship Engine Core" })).toBeVisible();
 
-  const tone = page.getByRole("slider", { name: "Tone" });
-  await expect(tone).toBeVisible();
-  await tone.focus();
+  const power = page.getByRole("slider", { name: "Power" });
+  await expect(power).toBeVisible();
+  await power.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page).toHaveURL(/brown-noise\.tone=-9/);
+  await expect(page).toHaveURL(/engine-core\.power=56/);
 
   const volume = page.getByLabel("Volume", { exact: true });
   await volume.fill("40");
-  await expect(page).toHaveURL(/brown-noise\.volume=40/);
+  await expect(page).toHaveURL(/engine-core\.volume=40/);
 
   // An edited hash applies without a reload.
   await page.evaluate(() => {
-    window.location.hash = "layers=brown-noise&brown-noise.width=25";
+    window.location.hash = "layers=engine-core&engine-core.room=25";
   });
-  await expect(page.getByRole("slider", { name: "Width" })).toHaveValue("25");
+  await expect(page.getByRole("slider", { name: "Room" })).toHaveValue("25");
 
   expect(errors).toEqual([]);
 });
