@@ -1,0 +1,12 @@
+{
+  "name": "zoomer-devcontainer",
+  "owner": { "name": "zoomer" },
+  "plugins": [
+    {
+      "name": "ts7-lsp",
+      "description": "TypeScript 7 native language server (tsc --lsp), using the project's own TypeScript",
+      "version": "1.0.0",
+      "source": "./plugins/ts7-lsp"
+    }
+  ]
+}

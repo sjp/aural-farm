@@ -1,0 +1,21 @@
+{
+  "name": "ts7-lsp",
+  "description": "TypeScript 7 native language server (tsc --lsp), using the project's own TypeScript",
+  "version": "1.0.0",
+  "lspServers": {
+    "typescript": {
+      "command": "npx",
+      "args": ["--no-install", "tsc", "--lsp", "--stdio"],
+      "extensionToLanguage": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact",
+        ".mts": "typescript",
+        ".cts": "typescript",
+        ".mjs": "javascript",
+        ".cjs": "javascript"
+      }
+    }
+  }
+}
