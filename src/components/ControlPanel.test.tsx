@@ -198,6 +198,12 @@ describe("ControlPanel", () => {
 });
 
 describe("Mixer rows", () => {
+  it("shows the sound's description in its settings", () => {
+    renderPanel();
+    const settings = document.querySelector<HTMLElement>(".layer-settings") ?? document.body;
+    expect(within(settings).getByText(/A quiet, steady tone/)).toBeTruthy();
+  });
+
   it("shows a tint dot, the name and hint, and labels every button with the sound", () => {
     const sounds = catalogue.map((s) =>
       s.id === "alpha" ? Object.assign({}, s, { hint: "Use headphones" }) : s,

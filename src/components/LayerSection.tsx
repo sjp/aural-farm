@@ -4,6 +4,7 @@ import { VOLUME_PARAM, type Layer } from "../mixes/mix";
 import type { LayerState } from "../audio/engine";
 import type { SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
+import { Description } from "./Description";
 import { ChevronIcon, CloseIcon, StarIcon } from "./icons";
 import { ParamSections } from "./ParamSections";
 import { layerNameId } from "./mixer";
@@ -213,6 +214,7 @@ export function LayerSection({
         aria-labelledby={nameId}
         hidden={!open}
       >
+        <Description text={sound.description} />
         <ParamSections
           idPrefix={layer.id}
           schema={sound.params}
