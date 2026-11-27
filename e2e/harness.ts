@@ -9,6 +9,7 @@ import * as analysis from "../src/audio/analysis";
 import { routeReverb, getReverb, type ReverbKind } from "../src/audio/reverb";
 import { seedOf, soundParams } from "../src/audio/mix-graph";
 import { buildMix, renderMix as renderMixOffline } from "../src/audio/render";
+import { createDither, encodePcm16 } from "../src/export/wav";
 import { parseHash, type Mix } from "../src/mixes/mix";
 import { defaults } from "../src/sounds/params";
 import { getSound, sounds } from "../src/sounds/registry";
@@ -307,25 +308,8 @@ async function pcm16(spec: { sound: SoundSpec } | { mix: MixSpec }): Promise<str
   if (rendered.errors.length > 0) {
     throw new Error(rendered.errors.join("; "));
   }
-  const { channels } = rendered;
-  const frames = channels[0]?.length ?? 0;
-  const samples = new Int16Array(frames * channels.length);
   // Seeded dither, so a render's file is the same every time.
-  let state = 0x2545f491;
-  const uniform = () => {
-    state ^= state << 13;
-    state ^= state >>> 17;
-    state ^= state << 5;
-    return (state >>> 0) / 4294967296;
-  };
-  for (let i = 0; i < frames; i++) {
-    channels.forEach((c, ch) => {
-      const dither = uniform() - uniform();
-      const v = Math.max(-1, Math.min(1, c[i] ?? 0)) * 32767 + dither;
-      samples[i * channels.length + ch] = Math.max(-32768, Math.min(32767, Math.round(v)));
-    });
-  }
-  const bytes = new Uint8Array(samples.buffer);
+  const bytes = encodePcm16(rendered.channels, createDither());
   let binary = "";
   const CHUNK = 0x8000;
   for (let i = 0; i < bytes.length; i += CHUNK) {
