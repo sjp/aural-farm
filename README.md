@@ -120,8 +120,8 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Seaside**, **Stormy Night**, **Summer Night**, **Deep Brown**, **Soft Pink** and
-  **Masking Blend**. More arrive as more sounds are added.
+  **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Deep Brown**,
+  **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
 
@@ -297,6 +297,15 @@ on its own, **Size** from a small brook (small, high bubbles over a faint rush) 
 river (larger, lower bubbles almost lost in a deep, full rush), **Distance** moves you from
 the bank to further away, where the babble fades into the rush, and **Variation** crossfades
 to a different pattern of bubbles and surges.
+
+**Birdsong** is songbirds in a garden or wood, heard from a bench or an open window: a handful
+of birds near and far, each with its own voice and a small repertoire of phrases (whistles,
+slurs, chips, trills and warbles), singing, pausing and sometimes waiting for a nearer bird to
+finish, over a faint breath of air. **Time of day** sets the scene: a busy **Dawn chorus**, a
+lively **Morning**, or a sparse **Daytime** with long gaps and mostly distant birds.
+**Activity** sets how often every bird sings, **Distance** moves the birds from close by to
+further off in the trees, where they are softer and more reverberant, and **Variation**
+crossfades to a different set of birds. The birds are generic: none imitates a real species.
 
 **Night Insects** is a warm summer night outdoors: several crickets around you, near and far,
 each with its own pitch and pace, chirping in soft, rounded pulses, drifting in and out of
