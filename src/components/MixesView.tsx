@@ -43,6 +43,9 @@ export interface MixesControls {
   onImportAnswer: (replace: boolean | undefined) => void;
 }
 
+/** Where focus goes next: Save mix…, a saved mix's row, or its Rename button. */
+type FocusTarget = { to: "save" } | { to: "row" | "rename"; name: string };
+
 /** Where "Save mix…" is: not started, asking for a name, or asking to replace. */
 type SaveStep =
   | { step: "idle" }
@@ -55,6 +58,7 @@ function MixOption({ entry, onApply }: { entry: MixEntry; onApply: () => void })
     <button
       type="button"
       className="picker-option mix-option"
+      data-mix-name={entry.name}
       aria-current={entry.current ? "true" : undefined}
       onClick={onApply}
     >
@@ -177,19 +181,37 @@ export function MixesView({
   onClose: () => void;
 }): JSX.Element {
   const id = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | undefined>({ to: "save" });
   const [save, setSave] = useState<SaveStep>({ step: "idle" });
   const [renaming, setRenaming] = useState<string | undefined>(undefined);
   const [renameError, setRenameError] = useState<string | undefined>(undefined);
   const full = controls.saved.length >= MAX_SAVED_MIXES;
 
+  // Moves focus once its target has rendered, so it isn't lost when a form or row goes.
   useEffect(() => {
-    saveRef.current?.focus({ preventScroll: true });
-  }, []);
+    if (!focusTarget) {
+      return;
+    }
+    setFocusTarget(undefined);
+    const find = (selector: string, name: string) =>
+      Array.from(rootRef.current?.querySelectorAll<HTMLElement>(selector) ?? []).find(
+        (element) => (element.dataset.mixName ?? element.getAttribute("aria-label")) === name,
+      );
+    const element =
+      focusTarget.to === "save"
+        ? undefined
+        : focusTarget.to === "row"
+          ? find("[data-mix-name]", focusTarget.name)
+          : find(".mix-rename", `Rename ${focusTarget.name}`);
+    (element ?? saveRef.current)?.focus({ preventScroll: true });
+  }, [focusTarget]);
 
   const finishSave = () => {
     setSave({ step: "idle" });
+    setFocusTarget({ to: "save" });
   };
 
   const submitName = (raw: string) => {
@@ -213,6 +235,16 @@ export function MixesView({
     controls.onRename(from, to);
     setRenaming(undefined);
     setRenameError(undefined);
+    setFocusTarget({ to: "rename", name: to });
+  };
+
+  /** Deletes a saved mix, moving focus to the next row (or the one before, or Save mix…). */
+  const remove = (name: string) => {
+    const index = controls.saved.findIndex((m) => m.name === name);
+    const neighbour =
+      controls.saved.at(index + 1) ?? (index > 0 ? controls.saved.at(index - 1) : undefined);
+    controls.onDelete(name);
+    setFocusTarget(neighbour ? { to: "row", name: neighbour.name } : { to: "save" });
   };
 
   const presetsTitle = `${id}-presets`;
@@ -265,6 +297,7 @@ export function MixesView({
 
   return (
     <div
+      ref={rootRef}
       className="picker mixes"
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -369,6 +402,7 @@ export function MixesView({
                   onCancel={() => {
                     setRenaming(undefined);
                     setRenameError(undefined);
+                    setFocusTarget({ to: "rename", name: entry.name });
                   }}
                 />
               </div>
@@ -382,7 +416,7 @@ export function MixesView({
                 />
                 <button
                   type="button"
-                  className="icon-button mix-action"
+                  className="icon-button mix-action mix-rename"
                   aria-label={`Rename ${entry.name}`}
                   title="Rename"
                   onClick={() => {
@@ -398,7 +432,7 @@ export function MixesView({
                   aria-label={`Delete ${entry.name}`}
                   title="Delete"
                   onClick={() => {
-                    controls.onDelete(entry.name);
+                    remove(entry.name);
                   }}
                 >
                   <TrashIcon />

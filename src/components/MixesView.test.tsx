@@ -106,7 +106,7 @@ describe("MixesView saving", () => {
     fireEvent.input(nameField(), { target: { value: "  Night\n" } });
     fireEvent.submit(nameField());
     expect(controls.onSave).toHaveBeenCalledWith("Night");
-    expect(screen.getByRole("button", { name: "Save mix…" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Save mix…" }));
   });
 
   it("won't save an empty name", () => {
@@ -180,6 +180,8 @@ describe("MixesView rename and delete", () => {
     fireEvent.submit(field);
     expect(controls.onRename).toHaveBeenCalledWith("Rain", "Rainy Cabin");
     expect(screen.queryByRole("textbox")).toBeNull();
+    // The list hasn't followed the rename here, so focus falls back to Save mix….
+    expect(document.activeElement?.textContent).toBe("Save mix…");
   });
 
   it("refuses another mix's name, and allows a change of case", () => {
@@ -196,10 +198,22 @@ describe("MixesView rename and delete", () => {
     expect(controls.onRename).toHaveBeenCalledWith("Rain", "RAIN");
   });
 
-  it("deletes", () => {
+  it("deletes, moving focus to the next row, or else the one before", () => {
     const { controls } = renderView();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Rain" }));
+    expect(controls.onDelete).toHaveBeenCalledWith("Rain");
+    expect((document.activeElement as HTMLElement | null)?.dataset.mixName).toBe("Wind");
     fireEvent.click(screen.getByRole("button", { name: "Delete Wind" }));
-    expect(controls.onDelete).toHaveBeenCalledWith("Wind");
+    expect((document.activeElement as HTMLElement | null)?.dataset.mixName).toBe("Rain");
+  });
+
+  it("returns focus to Rename when renaming is cancelled", () => {
+    renderView();
+    fireEvent.click(screen.getByRole("button", { name: "Rename Wind" }));
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "New name for Wind" }), {
+      key: "Escape",
+    });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Rename Wind" }));
   });
 });
 
