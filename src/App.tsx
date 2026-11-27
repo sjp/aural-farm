@@ -1175,28 +1175,30 @@ export function App({
           Tap to play
         </button>
       )}
-      {toast && (
-        <div
-          key={toast.id}
-          className="toast"
-          role="status"
-          data-action={toast.action !== undefined}
-        >
-          {toast.message}
-          {toast.action && (
-            <button
-              type="button"
-              className="toast-action"
-              onClick={() => {
-                toast.action?.run();
-                setToast(null);
-              }}
-            >
-              {toast.action.label}
-            </button>
-          )}
-        </div>
-      )}
+      <div className="toasts">
+        {toast && (
+          <div
+            key={toast.id}
+            className="toast"
+            role="status"
+            data-action={toast.action !== undefined}
+          >
+            {toast.message}
+            {toast.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  toast.action?.run();
+                  setToast(null);
+                }}
+              >
+                {toast.action.label}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       <button
         type="button"
         className="show-panel"

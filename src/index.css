@@ -101,20 +101,29 @@ body,
     visibility 0s 0.3s;
 }
 
+/* The toasts stack upwards from the bottom centre, newest at the bottom. */
+.toasts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  position: absolute;
+  right: calc(16px + var(--safe-right));
+  bottom: calc(24px + var(--safe-bottom));
+  left: calc(16px + var(--safe-left));
+  pointer-events: none;
+}
+
 .toast {
   display: flex;
   gap: 12px;
   align-items: center;
-  position: absolute;
-  bottom: calc(24px + var(--safe-bottom));
-  left: 50%;
-  max-width: calc(100% - 32px - var(--safe-left) - var(--safe-right));
+  max-width: 100%;
   padding: 8px 14px;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   background: var(--panel-bg);
   pointer-events: none;
-  transform: translateX(-50%);
   animation: toast-in 0.2s;
 }
 
@@ -1677,11 +1686,11 @@ kbd {
   overflow: hidden;
 }
 
-.app[data-layout="sheet"] .toast {
+.app[data-layout="sheet"] .toasts {
   bottom: calc(var(--sheet-peek) + var(--safe-bottom) + var(--keyboard-inset, 0px) + 12px);
 }
 
-.app[data-layout="sheet"][data-sheet="expanded"] .toast {
+.app[data-layout="sheet"][data-sheet="expanded"] .toasts {
   bottom: calc(var(--sheet-height) + var(--keyboard-inset, 0px) + 12px);
 }
 
