@@ -39,6 +39,7 @@ describe("Svf", () => {
     const svf = new Svf(SR);
     const rng = createRng(1);
     let peak = 0;
+    let finite = true;
     for (let i = 0; i < SR; i++) {
       // A new cutoff anywhere from 20 Hz to 20 kHz every 16 samples.
       if (i % 16 === 0) {
@@ -46,10 +47,11 @@ describe("Svf", () => {
       }
       svf.tick(rng.range(-1, 1));
       for (const v of [svf.low, svf.band, svf.high, svf.notch]) {
-        expect(Number.isFinite(v)).toBe(true);
+        finite &&= Number.isFinite(v);
         peak = Math.max(peak, Math.abs(v));
       }
     }
+    expect(finite).toBe(true);
     expect(peak).toBeLessThan(10 * q + 10);
   });
 
@@ -62,10 +64,12 @@ describe("Svf", () => {
     [1e6, 1e6],
   ])("stays finite at cutoff %d Hz and Q %d", (cutoff, q) => {
     const svf = new Svf(SR, cutoff, q);
+    let finite = true;
     for (let i = 0; i < SR; i++) {
       svf.tick(i % 100 < 50 ? 1 : -1);
-      expect(Number.isFinite(svf.low + svf.band + svf.high)).toBe(true);
+      finite &&= Number.isFinite(svf.low + svf.band + svf.high);
     }
+    expect(finite).toBe(true);
   });
 
   it("forgets its state on reset", () => {

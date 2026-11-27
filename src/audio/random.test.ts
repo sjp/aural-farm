@@ -89,14 +89,14 @@ describe("createRng", () => {
 
   it("gives floats in [0, 1) and ranges and integers within bounds", () => {
     const rng = createRng(1);
+    let within = true;
     for (let i = 0; i < 10_000; i++) {
       const x = rng.next();
-      expect(x >= 0 && x < 1).toBe(true);
       const r = rng.range(-3, 5);
-      expect(r >= -3 && r < 5).toBe(true);
       const n = rng.int(6);
-      expect(Number.isInteger(n) && n >= 0 && n < 6).toBe(true);
+      within &&= x >= 0 && x < 1 && r >= -3 && r < 5 && Number.isInteger(n) && n >= 0 && n < 6;
     }
+    expect(within).toBe(true);
   });
 
   it("gives standard normal values", () => {
@@ -104,12 +104,14 @@ describe("createRng", () => {
     let sum = 0;
     let squares = 0;
     const count = 50_000;
+    let finite = true;
     for (let i = 0; i < count; i++) {
       const g = rng.gaussian();
-      expect(Number.isFinite(g)).toBe(true);
+      finite &&= Number.isFinite(g);
       sum += g;
       squares += g * g;
     }
+    expect(finite).toBe(true);
     expect(sum / count).toBeCloseTo(0, 1);
     expect(squares / count).toBeCloseTo(1, 1);
   });

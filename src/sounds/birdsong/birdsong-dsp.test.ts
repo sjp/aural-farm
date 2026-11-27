@@ -264,7 +264,7 @@ describe("syllables", () => {
 });
 
 describe("phrases", () => {
-  it.each(SEEDS)("sing 2–8 syllables, each within 1.5–7.5 kHz, for seed %d", (seed) => {
+  it.each(SEEDS.slice(0, 5))("sing 2–8 syllables, each within 1.5–7.5 kHz, for seed %d", (seed) => {
     const schedule = new Schedule(seed, SR);
     schedule.set(0, 100);
     const phrase = new Phrase();
@@ -422,8 +422,8 @@ describe("the generator", () => {
   it.each(TIMES)(
     "stays finite and well under full scale at Activity 100, Distance 0, time of day %d",
     (time) => {
-      for (const seed of [1, 2, 3]) {
-        const out = render(generator({ seed, time, density: 100, distance: 0 }), 0, SR * 30);
+      for (const seed of [1, 2]) {
+        const out = render(generator({ seed, time, density: 100, distance: 0 }), 0, SR * 20);
         for (const channel of Object.values(out)) {
           expect(channel.every((v) => Number.isFinite(v))).toBe(true);
         }

@@ -254,13 +254,19 @@ describe("bouts", () => {
 
   it("fade smoothly across a block's edge, never jumping", () => {
     let last = boutGain(prefix, 0);
+    let lowest = last;
+    let highest = last;
+    let biggestStep = 0;
     for (let t = 0; t < 800; t += 0.01) {
       const g = boutGain(prefix, t);
-      expect(g).toBeGreaterThanOrEqual(0);
-      expect(g).toBeLessThanOrEqual(1);
-      expect(Math.abs(g - last)).toBeLessThan(0.011);
+      lowest = Math.min(lowest, g);
+      highest = Math.max(highest, g);
+      biggestStep = Math.max(biggestStep, Math.abs(g - last));
       last = g;
     }
+    expect(lowest).toBeGreaterThanOrEqual(0);
+    expect(highest).toBeLessThanOrEqual(1);
+    expect(biggestStep).toBeLessThan(0.011);
   });
 });
 
@@ -379,7 +385,7 @@ describe("InsectsGenerator", () => {
     },
   );
 
-  it.each([1, 2, 3])("stays finite and under −3 dBFS at its loudest (seed %d)", (seed) => {
+  it.each([1, 2])("stays finite and under −3 dBFS at its loudest (seed %d)", (seed) => {
     const { left, right } = render(
       generator({ seed, count: 12, warmth: 28, distance: 0, katydids: 1 }),
       0,

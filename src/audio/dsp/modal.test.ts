@@ -137,9 +137,7 @@ describe("ModalBank", () => {
       bank.strike(1, 1e9);
       bank.strike(1);
       const out = renderBank(bank, 0.5, sampleRate);
-      for (const x of out) {
-        expect(Number.isFinite(x)).toBe(true);
-      }
+      expect(out.every((v) => Number.isFinite(v))).toBe(true);
       expect(peakIn(out, 0, out.length)).toBeLessThan(6);
     },
   );

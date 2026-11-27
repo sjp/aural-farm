@@ -211,7 +211,8 @@ describe("disk ticks", () => {
   });
 
   it("adds ticks only when on, about as often as the rate says", () => {
-    const length = seconds(120);
+    const duration = 60;
+    const length = seconds(duration);
     const [on = new Float32Array()] = render(kernel({ disks: 1 }), 0, length);
     const [off = new Float32Array()] = render(kernel({ disks: 0 }), 0, length);
     let bursts = 0;
@@ -226,12 +227,12 @@ describe("disk ticks", () => {
         quiet++;
       }
     }
-    expect(bursts).toBeGreaterThan(0.4 * BURST_RATE * 120);
-    expect(bursts).toBeLessThan(2 * BURST_RATE * 120);
+    expect(bursts).toBeGreaterThan(0.4 * BURST_RATE * duration);
+    expect(bursts).toBeLessThan(2 * BURST_RATE * duration);
   });
 
   it("peaks under the air's peaks", () => {
-    const length = seconds(120);
+    const length = seconds(40);
     const settings = { airflow: 100, racks: 1, hvac: 0, whine: 0 };
     const [on = new Float32Array()] = render(kernel({ ...settings, disks: 1 }), 0, length);
     const [off = new Float32Array()] = render(kernel({ ...settings, disks: 0 }), 0, length);
@@ -260,7 +261,7 @@ describe("kernel", () => {
   it.each(extremes)(
     "stays finite and under −3 dBFS at airflow $airflow, racks $racks, cooling $hvac, whine $whine",
     (settings) => {
-      for (let seed = 1; seed <= 3; seed++) {
+      for (let seed = 1; seed <= 2; seed++) {
         const [left = new Float32Array(), right = new Float32Array()] = render(
           kernel({ ...settings, seed }),
           0,

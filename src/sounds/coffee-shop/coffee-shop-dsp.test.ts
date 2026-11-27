@@ -403,9 +403,7 @@ describe("kernel", () => {
     (sampleRate) => {
       const out = render(10, { crowd: 12, clatter: 100, everyone: true, sampleRate });
       for (const channel of out.slice(0, 2)) {
-        for (const x of channel) {
-          expect(Number.isFinite(x)).toBe(true);
-        }
+        expect(channel.every((v) => Number.isFinite(v))).toBe(true);
         expect(db(peakOf(channel))).toBeLessThan(-3);
       }
     },
@@ -414,9 +412,7 @@ describe("kernel", () => {
   it.each([2, 6, 12])("makes no NaN or Infinity at Crowd %d, at 22.05 kHz", (crowd) => {
     const out = render(4, { crowd, clatter: 100, sampleRate: 22050 });
     for (const channel of out) {
-      for (const x of channel) {
-        expect(Number.isFinite(x)).toBe(true);
-      }
+      expect(channel.every((v) => Number.isFinite(v))).toBe(true);
     }
   });
 

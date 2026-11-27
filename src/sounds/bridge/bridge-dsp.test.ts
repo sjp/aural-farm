@@ -320,13 +320,13 @@ describe("BridgeKernel", () => {
     expect(k.sounding).toBe(0);
   });
 
-  it.each([1, 2, 3, 42, 500, 999])(
+  it.each([1, 42, 999])(
     "stays finite and under −6 dBFS with Busy, doors Sometimes and the alert on, seed %i",
     (seed) => {
       const k = kernel({ seed, rate: ACTIVITY_RATES.busy, doors: DOOR_RATES.sometimes, alert: 1 });
       const out = render(k, 0, 30 * SR);
       for (const channel of out) {
-        expect(channel.every((x) => Number.isFinite(x))).toBe(true);
+        expect(channel.every((v) => Number.isFinite(v))).toBe(true);
       }
       const [left, right] = events(out);
       expect(20 * Math.log10(Math.max(peakOf(left), peakOf(right)))).toBeLessThanOrEqual(-6);

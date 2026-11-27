@@ -156,17 +156,22 @@ describe("envelopes", () => {
     (period, seed) => {
       const field = new WaveField(seed, period, SR);
       const frame = new Float64Array(6);
+      let quietest = Number.POSITIVE_INFINITY;
       let loudest = 0;
+      let finite = true;
       for (let t = 0; t < 600; t += 0.05) {
         field.at(t, frame);
         for (let i = 0; i <= BACKWASH; i++) {
+          // Math.min/max carry a NaN through, so it fails the bounds below.
           const v = frame[i] ?? Number.NaN;
-          expect(v).toBeGreaterThanOrEqual(0);
-          expect(v).toBeLessThanOrEqual(1);
+          quietest = Math.min(quietest, v);
           loudest = Math.max(loudest, v);
         }
-        expect(Number.isFinite(frame[5])).toBe(true);
+        finite &&= Number.isFinite(frame[5]);
       }
+      expect(quietest).toBeGreaterThanOrEqual(0);
+      expect(loudest).toBeLessThanOrEqual(1);
+      expect(finite).toBe(true);
       expect(loudest).toBeGreaterThan(0.6);
     },
   );
@@ -285,13 +290,15 @@ describe("rattle", () => {
     const count = (backwash: number) => {
       const r = new Rattle(2, SR);
       let samples = 0;
+      let loudest = 0;
       for (let n = 0; n < SR; n++) {
         r.next(n, backwash);
-        expect(Math.abs(r.left)).toBeLessThan(1);
+        loudest = Math.max(loudest, Math.abs(r.left));
         if (r.left !== 0) {
           samples++;
         }
       }
+      expect(loudest).toBeLessThan(1);
       return samples;
     };
     const edge = count(0);

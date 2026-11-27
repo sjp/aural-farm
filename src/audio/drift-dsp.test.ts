@@ -43,12 +43,14 @@ describe("DriftGenerator", () => {
     const gen = new DriftGenerator(5, 1, 20, octaves, SR);
     let lo = 0;
     let hi = 0;
+    let finite = true;
     for (let n = -SR * 50; n < SR * 50; n += 16) {
       const v = gen.valueAt(n);
-      expect(Number.isFinite(v)).toBe(true);
+      finite &&= Number.isFinite(v);
       lo = Math.min(lo, v);
       hi = Math.max(hi, v);
     }
+    expect(finite).toBe(true);
     expect(lo).toBeGreaterThanOrEqual(-1);
     expect(hi).toBeLessThanOrEqual(1);
     expect(hi - lo).toBeGreaterThan(1);

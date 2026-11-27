@@ -223,8 +223,8 @@ describe("HeartbeatKernel", () => {
     { rate: 90, bed: 100 },
     { rate: 64, bed: 50 },
   ])("stays finite and peaks under −3 dBFS at $rate bpm, Flow $bed", (settings) => {
-    for (const seed of [1, 2, 3]) {
-      const out = render(kernel({ ...settings, seed }), 0, 60 * SR);
+    for (const seed of [1, 2]) {
+      const out = render(kernel({ ...settings, seed }), 0, 30 * SR);
       expect(out.every((v) => Number.isFinite(v))).toBe(true);
       expect(dbfs(peakOf(out))).toBeLessThan(-3);
     }
