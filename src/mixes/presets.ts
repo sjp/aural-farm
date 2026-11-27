@@ -9,7 +9,6 @@
  * along with the last of its sounds:
  *
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
- *   Night Train       Train Carriage, Rain (on a window)
  *   Café Study        Coffee Shop, Rain (light)
  *   City Night        Distant City (night), Rain (light)
  *   Server Hall       Server Room, Fan
@@ -116,6 +115,17 @@ export const presets: readonly Preset[] = [
       "&stream.seed=1" +
       "&wind.volume=45&wind.muted=0&wind.strength=25&wind.gustiness=35&wind.setting=trees" +
       "&wind.whistle=0&wind.seed=1",
+  },
+  {
+    id: "night-train",
+    name: "Night Train",
+    description: "A sleeper carriage clacking through the night, rain on the window beside you.",
+    hash:
+      "#name=Night%20Train&master=70&layers=train,rain" +
+      "&train.volume=75&train.muted=0&train.speed=100&train.track=jointed&train.clacks=55" +
+      "&train.points=rarely&train.seed=1" +
+      "&rain.volume=55&rain.muted=0&rain.intensity=40&rain.surface=window&rain.distance=20" +
+      "&rain.bubbles=25&rain.seed=1",
   },
   {
     id: "long-haul-flight",
