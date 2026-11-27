@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRng } from "../random";
-import { Svf } from "./svf";
+import { Svf, svfCoefficients } from "./svf";
 
 const SR = 48000;
 
@@ -74,5 +74,27 @@ describe("Svf", () => {
     svf.reset();
     svf.tick(0);
     expect([svf.low, svf.band, svf.high, svf.notch]).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe("svfCoefficients", () => {
+  it("runs inline to the same outputs as an Svf", () => {
+    const svf = new Svf(SR, 700, 0.8);
+    const [a1 = 0, a2 = 0, a3 = 0, k = 0] = svfCoefficients(new Float64Array(4), 700, 0.8, SR);
+    const rng = createRng(3);
+    let ic1 = 0;
+    let ic2 = 0;
+    for (let i = 0; i < 1000; i++) {
+      const x = rng.range(-1, 1);
+      svf.tick(x);
+      const v3 = x - ic2;
+      const v1 = a1 * ic1 + a2 * v3;
+      const v2 = ic2 + a2 * ic1 + a3 * v3;
+      ic1 = 2 * v1 - ic1;
+      ic2 = 2 * v2 - ic2;
+      expect(v2).toBe(svf.low);
+      expect(k * v1).toBe(svf.band);
+      expect(x - k * v1 - v2).toBe(svf.high);
+    }
   });
 });

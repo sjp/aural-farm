@@ -67,3 +67,29 @@ export class Svf {
     this.notch = 0;
   }
 }
+
+/**
+ * Sets `into` to an `Svf`'s coefficients at `cutoff` Hz and resonance `q`, as
+ * [a1, a2, a3, k], for a filter run inline in a hot loop, where an `Svf`
+ * object's field writes would cost more than the filter itself, and returns it.
+ * Written out, one tick is: v3 = x − ic2, v1 = a1·ic1 + a2·v3,
+ * v2 = ic2 + a2·ic1 + a3·v3, then ic1 = 2·v1 − ic1 and ic2 = 2·v2 − ic2; the
+ * outputs are low = v2, band = k·v1 and high = x − k·v1 − v2.
+ */
+export function svfCoefficients(
+  into: Float64Array,
+  cutoff: number,
+  q: number,
+  sampleRate: number,
+): Float64Array {
+  const fc = Math.min(Math.max(cutoff, MIN_CUTOFF), sampleRate * MAX_CUTOFF_RATIO);
+  const g = Math.tan((Math.PI * fc) / sampleRate);
+  const k = 1 / Math.max(q, MIN_Q);
+  const a1 = 1 / (1 + g * (g + k));
+  const a2 = g * a1;
+  into[0] = a1;
+  into[1] = a2;
+  into[2] = g * a2;
+  into[3] = k;
+  return into;
+}

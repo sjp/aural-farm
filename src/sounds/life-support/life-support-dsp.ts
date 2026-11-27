@@ -37,7 +37,7 @@ import {
   type EventBlock,
 } from "../../audio/dsp/events";
 import { panLeft, panRight } from "../../audio/dsp/pan";
-import { Svf } from "../../audio/dsp/svf";
+import { Svf, svfCoefficients } from "../../audio/dsp/svf";
 import { HASH_START, hashStep, UINT32_SCALE } from "../../audio/random";
 import type { LifeSupportValves } from "./life-support.meta";
 
@@ -630,29 +630,6 @@ class ValveVoice {
     this.position = n;
     this.active = n < this.end;
   }
-}
-
-/**
- * Sets `into` to an `Svf`'s coefficients at `cutoff` Hz and resonance `q`, as
- * [a1, a2, a3, k], for a filter run inline in a hot loop (see `Svf` for the
- * method), and returns it.
- */
-function svfCoefficients(
-  into: Float64Array,
-  cutoff: number,
-  q: number,
-  sampleRate: number,
-): Float64Array {
-  const fc = Math.min(Math.max(cutoff, 1), sampleRate * 0.49);
-  const g = Math.tan((Math.PI * fc) / sampleRate);
-  const k = 1 / q;
-  const a1 = 1 / (1 + g * (g + k));
-  const a2 = g * a1;
-  into[0] = a1;
-  into[1] = a2;
-  into[2] = g * a2;
-  into[3] = k;
-  return into;
 }
 
 /** Valves sounding at once. */
