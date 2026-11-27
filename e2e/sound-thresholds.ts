@@ -163,6 +163,14 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { track, speed: 160, clacks: 100, points: "sometimes" },
     })),
   },
+  city: {
+    // By day, the busiest traffic and the loudest rumble with signals as often as they come,
+    // at the most and the least space.
+    extraSets: [0, 100].map((space) => ({
+      name: `day, busiest, loudest, occasional signals, space ${String(space)}`,
+      params: { time: "day", traffic: 100, rumble: 100, signals: "occasional", space },
+    })),
+  },
   clock: {
     // Each clock at its crispest, with the most room and the chime on.
     extraSets: (["mantel", "wall", "grandfather"] as const).map((clock) => ({

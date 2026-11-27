@@ -7,6 +7,7 @@ import type { SoundDefinition, SoundMeta } from "./types";
 import { airplaneMeta } from "./airplane/airplane.meta";
 import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
+import { cityMeta } from "./city/city.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { clockMeta } from "./clock/clock.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
@@ -48,6 +49,7 @@ export const sounds: readonly SoundEntry[] = [
   },
   { ...airplaneMeta, load: () => import("./airplane/airplane").then((m) => m.airplane) },
   { ...trainMeta, load: () => import("./train/train").then((m) => m.train) },
+  { ...cityMeta, load: () => import("./city/city").then((m) => m.city) },
   { ...rainMeta, load: () => import("./rain/rain").then((m) => m.rain) },
   { ...oceanMeta, load: () => import("./ocean/ocean").then((m) => m.ocean) },
   { ...streamMeta, load: () => import("./stream/stream").then((m) => m.stream) },
