@@ -7,7 +7,7 @@
  */
 import type { Layer } from "../mixes/mix";
 import { coerce } from "../sounds/params";
-import type { ParamValues, SoundDefinition } from "../sounds/types";
+import type { ParamSchema, ParamValues } from "../sounds/types";
 
 const HIGHPASS_HZ = 25;
 const HIGHPASS_Q = 0.7;
@@ -20,9 +20,9 @@ export const volumeGain = (volume: number) => (volume / 100) ** 2;
 export const layerGain = (layer: Layer) => (layer.muted ? 0 : volumeGain(layer.volume));
 
 /** The layer's params, coerced against the sound's own schema. */
-export function soundParams(definition: SoundDefinition, values: ParamValues): ParamValues {
+export function soundParams(sound: { params: ParamSchema }, values: ParamValues): ParamValues {
   const params: ParamValues = {};
-  for (const [key, def] of Object.entries(definition.params)) {
+  for (const [key, def] of Object.entries(sound.params)) {
     params[key] = coerce(def, values[key]);
   }
   return params;
