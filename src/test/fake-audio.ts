@@ -96,7 +96,10 @@ export class FakeParam {
 
   cancelScheduledValues(time: number): this {
     this.record("cancelScheduledValues", [time]);
-    this.events = this.events.filter((e) => e.time < time);
+    // As in browsers, a value curve still running at `time` goes too.
+    this.events = this.events.filter(
+      (e) => e.time < time && !(e.type === "curve" && e.time + e.duration > time),
+    );
     return this;
   }
 
