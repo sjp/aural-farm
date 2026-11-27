@@ -18,7 +18,7 @@ import { CODECS, type CompressedCodec } from "./options";
 import type { ExportSink } from "./sink";
 
 /** Takes an export's audio block by block and encodes it into a file. */
-interface AudioWriter {
+export interface AudioWriter {
   write: (block: readonly Float32Array[]) => Promise<void>;
   /** Writes the end of the file, once every block is in. */
   finish: () => Promise<void>;

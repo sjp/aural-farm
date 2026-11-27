@@ -32,7 +32,7 @@ const MAX_LOOP_CROSSFADE_SECONDS = 5;
 /** Layers' loop periods agree when they are whole multiples of each other within this. */
 const PERIOD_TOLERANCE = 0.01;
 
-interface Chunk {
+export interface Chunk {
   /** The first frame of the file's timeline it renders, counting its leading overlap. */
   from: number;
   /** How many frames it keeps once its preroll is dropped, counting its leading overlap. */
@@ -45,7 +45,7 @@ interface Chunk {
   startAt: number;
 }
 
-interface ExportPlan {
+export interface ExportPlan {
   sampleRate: number;
   /** The file's length, in frames. */
   frames: number;

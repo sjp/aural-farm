@@ -10,7 +10,7 @@ import type { Mix } from "../mixes/mix";
 import { EXPORT_CHANNELS, EXPORT_RATE } from "./plan";
 import { wavBytes } from "./wav";
 
-type ExportType = "clip" | "loop";
+export type ExportType = "clip" | "loop";
 type ExportFormat = "wav" | "compressed";
 export type CompressedCodec = "opus" | "aac";
 
