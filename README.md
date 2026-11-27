@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -368,6 +368,16 @@ always soft and never startling, and **Space** how much of the open air you hear
 **Variation** crossfades to different car timings and swells. A change of Time, Traffic or
 the signals applies from the next second. With light rain on the street, it makes the
 **City Night** preset.
+
+**Coffee Shop** is a busy, friendly café heard from a corner table: a warm murmur of
+conversation all around you, people at their tables taking turns to talk, the odd clink of a
+cup set down on a saucer, and now and then the soft hiss of the steam wand. The talk is made
+from scratch, voices and vowels with no consonants, blurred by the room, so you hear that
+people are talking but never what they say. **Crowd** sets how many people are talking (2 to
+12; a change brings people in or lets them fall quiet over a second or two), **Clatter** how
+often cups clink and the steam hisses (0 is none), and **Room size** how far away and blurred
+the talk sounds. **Variation** crossfades to different voices, timings and cups. With light
+rain on the window, it makes the **Café Study** preset.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
