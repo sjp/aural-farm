@@ -10,7 +10,6 @@
  *
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
  *   Night Train       Train Carriage, Rain (on a window)
- *   Long-haul Flight  Airplane Cabin, Brown Noise
  *   Café Study        Coffee Shop, Rain (light)
  *   City Night        Distant City (night), Rain (light)
  *   Server Hall       Server Room, Fan
@@ -117,6 +116,17 @@ export const presets: readonly Preset[] = [
       "&stream.seed=1" +
       "&wind.volume=45&wind.muted=0&wind.strength=25&wind.gustiness=35&wind.setting=trees" +
       "&wind.whistle=0&wind.seed=1",
+  },
+  {
+    id: "long-haul-flight",
+    name: "Long-haul Flight",
+    description: "A night flight from a seat over the wing, deepened with soft brown noise.",
+    hash:
+      "#name=Long-haul%20Flight&master=70&layers=airplane,brown-noise" +
+      "&airplane.volume=75&airplane.muted=0&airplane.seat=wing&airplane.engines=35" +
+      "&airplane.vent=30&airplane.chime=off&airplane.seed=1" +
+      "&brown-noise.volume=40&brown-noise.muted=0&brown-noise.tone=-30&brown-noise.width=80" +
+      "&brown-noise.movement=15&brown-noise.seed=1",
   },
   {
     id: "deep-brown",
