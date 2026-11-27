@@ -5,6 +5,7 @@
  */
 import type { SoundDefinition, SoundMeta } from "./types";
 import { airplaneMeta } from "./airplane/airplane.meta";
+import { binauralMeta } from "./binaural/binaural.meta";
 import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
 import { cityMeta } from "./city/city.meta";
@@ -72,6 +73,7 @@ export const sounds: readonly SoundEntry[] = [
   { ...chimesMeta, load: () => import("./chimes/chimes").then((m) => m.chimes) },
   { ...bowlsMeta, load: () => import("./bowls/bowls").then((m) => m.bowls) },
   { ...droneMeta, load: () => import("./drone/drone").then((m) => m.drone) },
+  { ...binauralMeta, load: () => import("./binaural/binaural").then((m) => m.binaural) },
   { ...thunderMeta, load: () => import("./thunder/thunder").then((m) => m.thunder) },
   {
     ...brownNoiseMeta,

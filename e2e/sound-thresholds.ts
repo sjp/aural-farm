@@ -314,6 +314,15 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { key, brightness: 100, movement: 100, space: 100 },
     })),
   },
+  binaural: {
+    // The fastest custom beat at the highest and lowest tones, with the fullest bed, in each mode.
+    extraSets: (["binaural", "isochronic"] as const).flatMap((mode) =>
+      [400, 100].map((carrier) => ({
+        name: `${mode}, custom 30 Hz, tone ${String(carrier)} Hz, fullest bed`,
+        params: { mode, preset: "custom", beat: 30, carrier, bed: 100 },
+      })),
+    ),
+  },
   thunder: {
     // The nearest, longest rumbles, as often as they come.
     extraSets: [
