@@ -13,6 +13,7 @@ Use Node 26 (the version is in `.nvmrc`; the devcontainer already has it).
 npm install
 npm run dev           # dev server with hot reload
 npm run build         # type-check and build to dist/
+npm run preview       # serve dist/, with the service worker, as the site would be
 npm run check         # linting, formatting and unused exports
 npm test              # vitest
 npm run test:browser  # Playwright, in headless Chromium, including the sound checks
@@ -183,6 +184,26 @@ with Play and Pause. Media keys and desktop media controls play and pause it too
 another app takes the audio, the mix pauses and stays paused; after a phone call it resumes
 by itself where the browser says the call has ended. While paused, nothing runs.
 
+### Installing it and using it offline
+
+Aural Farm installs as an app, on a phone's home screen or a computer's desktop, and then
+opens in its own window. Where the browser offers to install it (Chrome, Edge, Android),
+**Install app** in the Display section does it; elsewhere use the browser's own menu: on
+an iPhone or iPad, Safari's Share → **Add to Home Screen**.
+
+Every sound is synthesised in the browser, so once the site has been opened the whole app
+works with no connection, installed or not: a service worker keeps every file of the
+site, every sound included, after the first visit. Pages still come from the network
+first when there is one (waiting up to 3 s), so a new version is seen straight away.
+
+A new version downloads in the background, and a message then says **A new version is
+ready**, with **Reload**. Nothing changes until you press it. Reloading keeps the mix,
+which is in the address, but stops the sound for a moment, so the message waits for you
+rather than reloading by itself.
+
+The service worker is part of the build only: `npm run dev` has none. To try it locally,
+`npm run build` and then `npm run preview`.
+
 ### Backdrop
 
 Behind the panel, a few large, soft pools of colour drift slowly over a near-black
@@ -200,6 +221,7 @@ device, and is remembered in the browser rather than the link:
 - **Respond to sound:** whether the glow breathes with the sound;
 - **Keep screen on:** keeps the screen from sleeping while the mix plays, for watching the
   backdrop (shown only where the browser can do it);
+- **Install app:** installs Aural Farm (see below; shown only where the browser offers to);
 - **Advanced → Audio output:** **Auto**, **Direct** or **Media element**. Auto plays
   through the hidden audio element on touch devices and straight to the speakers elsewhere.
   It's an escape hatch for a device where the automatic choice misbehaves, and a change
