@@ -42,6 +42,7 @@ import { downloadText } from "./lib/download";
 import { createFavourites, type Favourites } from "./lib/favourites";
 import { mediaTitle, type MediaSessionLike, type MetadataFactory } from "./lib/media-session";
 import { createPreferences, type Preferences } from "./lib/preferences";
+import type { AppUpdates } from "./lib/service-worker";
 import {
   countdownDelay,
   loadSleepSettings,
@@ -226,7 +227,15 @@ interface AppProps {
   savedMixes?: SavedMixes | undefined;
   /** The built-in presets: the app's own, or a stand-in in tests. */
   presets?: readonly Preset[] | undefined;
+  /** New versions of the app, from its service worker; absent in development. */
+  updates?: AppUpdates | undefined;
 }
+
+/** Stands in for `updates` where there is no service worker: never a new version. */
+const NO_UPDATES: Pick<AppUpdates, "subscribe" | "ready"> = {
+  subscribe: () => () => undefined,
+  ready: () => false,
+};
 
 /** A row for a mix in the Mixes view. */
 function mixEntry(
@@ -271,6 +280,7 @@ export function App({
   wakeLock = browserWakeLock(),
   savedMixes: givenSavedMixes,
   presets = builtInPresets,
+  updates,
 }: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
   const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
@@ -333,6 +343,16 @@ export function App({
     sleepSettingsRef.current = sleepSettings;
   });
   const visible = useDocumentVisible();
+  const updateReady = useExternalStore(
+    (updates ?? NO_UPDATES).subscribe,
+    (updates ?? NO_UPDATES).ready,
+  );
+  // A long-lived page (an installed app left open) looks for a new version when shown again.
+  useEffect(() => {
+    if (visible) {
+      updates?.check();
+    }
+  }, [visible, updates]);
   const [sleepRemaining, setSleepRemaining] = useState<number | undefined>(undefined);
 
   const [playback] = useState(() => createStore<Playback>({ state: "idle", layers: {} }));
@@ -1176,6 +1196,16 @@ export function App({
         </button>
       )}
       <div className="toasts">
+        {updates && updateReady && (
+          <div className="toast" role="status" data-action="true">
+            {isPlaying(engineState)
+              ? "A new version is ready. Reloading keeps your mix but stops the sound."
+              : "A new version is ready."}
+            <button type="button" className="toast-action" onClick={updates.apply}>
+              Reload
+            </button>
+          </div>
+        )}
         {toast && (
           <div
             key={toast.id}

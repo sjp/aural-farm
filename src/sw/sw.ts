@@ -9,12 +9,12 @@
  * changes this file and the browser installs the new worker.
  *
  * A new worker installs in the background and waits until the page asks it to take
- * over (the "skip-waiting" message, sent when the user presses Reload), so a page
+ * over (`SKIP_WAITING`, sent when the user presses Reload), so a page
  * never has its files swapped under it. A first install has no worker to wait for:
  * it activates at once and takes control of the open page, so it works offline
  * without a reload.
  */
-import { cacheName, respond, staleCaches } from "./strategy";
+import { cacheName, respond, SKIP_WAITING, staleCaches } from "./strategy";
 
 declare const SW_PRECACHE: readonly string[];
 declare const SW_VERSION: string;
@@ -53,7 +53,7 @@ worker.addEventListener("activate", (event) => {
 });
 
 worker.addEventListener("message", (event) => {
-  if (event.data === "skip-waiting") {
+  if (event.data === SKIP_WAITING) {
     void worker.skipWaiting();
   }
 });

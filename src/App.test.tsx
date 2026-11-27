@@ -13,6 +13,8 @@ import {
 import type { AudioEngine, EngineState } from "./audio/engine";
 import { createFavourites } from "./lib/favourites";
 import { createPreferences } from "./lib/preferences";
+import type { AppUpdates } from "./lib/service-worker";
+import { createStore } from "./lib/store";
 import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
 import { createSavedMixes, MIXES_KEY, type SavedMixes } from "./mixes/mixes";
 import type { Preset } from "./mixes/presets";
@@ -1413,5 +1415,118 @@ describe("Panel layout", () => {
     expect(app()?.dataset.layout).toBe("drawer");
     expect(app()?.dataset.sheet).toBeUndefined();
     expect(panel()?.dataset.layout).toBe("drawer");
+  });
+});
+
+describe("App updates", () => {
+  /** A stand-in for the service worker's updates, made ready by `set(true)`. */
+  function fakeUpdates() {
+    const store = createStore(false);
+    const updates = {
+      subscribe: store.subscribe,
+      ready: store.get,
+      apply: vi.fn<AppUpdates["apply"]>(),
+      check: vi.fn<AppUpdates["check"]>(),
+    } satisfies AppUpdates;
+    return { updates, store };
+  }
+
+  function renderWithUpdates(updates: AppUpdates, fake = fakeEngine()) {
+    window.history.replaceState(null, "", "/");
+    render(
+      <App
+        initial={parseHash("", catalogue, TEST_TONE_ID)}
+        loader={loader}
+        preferences={createPreferences(() => undefined)}
+        favourites={createFavourites(() => undefined)}
+        createEngine={fake.factory}
+        sounds={catalogue}
+        defaultSoundId={TEST_TONE_ID}
+        updates={updates}
+      />,
+    );
+    return fake;
+  }
+
+  const updateToast = () =>
+    screen.queryAllByRole("status").find((el) => el.textContent.includes("new version"));
+
+  it("shows nothing until a new version is ready", async () => {
+    const { updates } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    expect(updateToast()).toBeUndefined();
+  });
+
+  it("keeps the toast up, saying Reload stops the sound while it plays", async () => {
+    const { updates, store } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    act(() => {
+      store.set(true);
+    });
+    expect(updateToast()?.textContent).toBe(
+      "A new version is ready. Reloading keeps your mix but stops the sound.Reload",
+    );
+    act(() => {
+      vi.advanceTimersByTime(10 * 60 * 1000);
+    });
+    expect(updateToast()).toBeDefined();
+  });
+
+  it("leaves out the warning while paused", async () => {
+    const { updates, store } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    act(() => {
+      store.set(true);
+    });
+    expect(updateToast()?.textContent).toBe("A new version is ready.Reload");
+  });
+
+  it("reloads only when Reload is pressed", async () => {
+    const { updates, store } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    act(() => {
+      store.set(true);
+    });
+    expect(updates.apply).not.toHaveBeenCalled();
+    const toast = updateToast();
+    if (!toast) {
+      throw new Error("No update toast");
+    }
+    fireEvent.click(within(toast).getByRole("button", { name: "Reload" }));
+    expect(updates.apply).toHaveBeenCalledOnce();
+  });
+
+  it("shows another toast alongside it", async () => {
+    const { updates, store } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    act(() => {
+      store.set(true);
+    });
+    fireEvent.keyDown(window, { key: "d" });
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+  });
+
+  it("looks for a new version when the page is shown again", async () => {
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+    const { updates } = fakeUpdates();
+    renderWithUpdates(updates);
+    await settle();
+    updates.check.mockClear();
+    hidden.mockReturnValue(true);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(updates.check).not.toHaveBeenCalled();
+    hidden.mockReturnValue(false);
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(updates.check).toHaveBeenCalledOnce();
   });
 });

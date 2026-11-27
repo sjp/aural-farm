@@ -14,6 +14,9 @@
  *   The app makes no cross-origin requests, so nothing of that kind is cached.
  */
 
+/** The message a page sends a waiting worker to have it take over. */
+export const SKIP_WAITING = "skip-waiting";
+
 /** How long a navigation waits for the network before serving the cached page. */
 export const NAVIGATION_TIMEOUT_MS = 3000;
 
