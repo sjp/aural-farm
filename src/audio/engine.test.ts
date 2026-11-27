@@ -731,9 +731,9 @@ describe("crash isolation", () => {
     expect(states.at(-1)).toBe("playing");
     expect(a.built[0]?.disposed).toBe(0);
     // Its gains are gone too: what's left is a's level, solo and fade, and the
-    // master's level, mute, fade and trim.
+    // master's level, mute, fade, sleep timer and trim.
     const levels = ctx.nodes.filter((n) => n.kind === "gain" && n.connections.length > 0);
-    expect(levels).toHaveLength(3 + 4);
+    expect(levels).toHaveLength(3 + 5);
   });
 
   it("rebuilds a failed layer on retry", async () => {
