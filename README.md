@@ -280,6 +280,14 @@ on the new surface), **Distance** moves it from a close, detailed patter to a so
 **Plinks** sets how many drops ring, and **Variation** crossfades to a different pattern of
 drops and swells.
 
+**Ocean Waves** are waves breaking on a shore, heard from a little way up the beach: each
+one swells with a low rumble, breaks into a bright crash, spreads into hissing foam and
+drains back, and no two are quite the same, with now and then a set of bigger ones.
+**Wave period** sets the average time between waves (6–14 s; they arrive irregularly
+around it), **Wave size** goes from gentle lapping to big surf, **Distance** moves you from
+the water's edge to far up the beach, **Shore** sets what the backwash drains over (sand,
+or pebbles that rattle softly), and **Variation** crossfades to a different run of waves.
+
 The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
 noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
 (mono to wide stereo, at a steady level), **Movement** (slow, subtle swells; 0 is perfectly
