@@ -288,6 +288,14 @@ around it), **Wave size** goes from gentle lapping to big surf, **Distance** mov
 the water's edge to far up the beach, **Shore** sets what the backwash drains over (sand,
 or pebbles that rattle softly), and **Variation** crossfades to a different run of waves.
 
+**Fireplace** is a wood fire in an open hearth, heard from an armchair across the room: the
+soft, flickering breath of the flames under little clusters of dry crackles, the odd
+louder pop, now and then a few seconds of sap hissing out of a log, and rarely a log
+settling with a soft thump. **Fire** goes from glowing embers to a roaring blaze, **Crackle**
+sets how busy the crackles and pops are, **Wood** picks hardwood (steady, few pops) or
+softwood (more pops and sap), **Room** moves you from close to the hearth to across a large
+room, and **Variation** crossfades to a different pattern of crackles and flicker.
+
 The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
 noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
 (mono to wide stereo, at a steady level), **Movement** (slow, subtle swells; 0 is perfectly
