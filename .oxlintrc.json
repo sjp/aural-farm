@@ -307,6 +307,178 @@
       }
     },
     {
+      "files": ["**/*.worklet.ts", "**/*-dsp.ts"],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "self",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "document",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "navigator",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "location",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "history",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "localStorage",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "indexedDB",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "fetch",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "XMLHttpRequest",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "WebSocket",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "Worker",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "setTimeout",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "setInterval",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "clearTimeout",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "clearInterval",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "cancelAnimationFrame",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "requestIdleCallback",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "cancelIdleCallback",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioContext",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "OfflineAudioContext",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "BaseAudioContext",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioParam",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioBuffer",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioWorkletNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "GainNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "OscillatorNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "BiquadFilterNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "ConstantSourceNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "AudioBufferSourceNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "ConvolverNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "DelayNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "DynamicsCompressorNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "StereoPannerNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "WaveShaperNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "PeriodicWave",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "ChannelSplitterNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          },
+          {
+            "name": "ChannelMergerNode",
+            "message": "Worklets and DSP kernels run in AudioWorkletGlobalScope (and in Node tests), which has no DOM, timers or Web Audio nodes."
+          }
+        ]
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.test.tsx", "src/test/**"],
       "rules": {
         "typescript/no-unsafe-type-assertion": "off",

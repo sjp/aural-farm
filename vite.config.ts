@@ -9,6 +9,11 @@ import { configDefaults, defineConfig } from "vitest/config";
  * The build has no inline scripts and no data: or blob: subresources. style-src needs
  * no 'unsafe-inline': the UI's inline styles (the slider fill) are set through the
  * DOM's style object, which the policy doesn't restrict.
+ *
+ * AudioWorklet modules need no extra directive: `audioWorklet.addModule` fetches them
+ * under script-src, and each one is bundled (through a `?worker&url` import) into a
+ * self-contained file in assets/, so 'self' covers it. Loading one from a blob: or
+ * data: URL would need those schemes added, so don't.
  */
 const CSP = [
   "default-src 'self'",
