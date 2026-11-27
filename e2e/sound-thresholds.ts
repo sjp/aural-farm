@@ -119,6 +119,22 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { surface, intensity: 100, distance: 0, bubbles: 100 },
     })),
   },
+  ocean: {
+    // The biggest waves, close up, as often as they come, on each shore.
+    extraSets: (["sand", "pebbles"] as const).map((shore) => ({
+      name: `${shore}, biggest, closest and most frequent`,
+      params: { shore, size: 100, distance: 0, period: 6 },
+    })),
+    thresholds: {
+      seedSwingDb: {
+        value: 12,
+        reason:
+          "The waves themselves swing the 1.5 s level by 15–20 dB, from the bed between waves " +
+          "to a crash, so the windows around a seed change measure the waves, not the " +
+          "crossfade (the shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   "brown-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "grey-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
   "pink-noise": { thresholds: { subBassDb: NOISE_SUB_BASS } },
