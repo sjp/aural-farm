@@ -60,6 +60,16 @@ const TEST_TIME = Date.UTC(2026, 2, 14, 15, 9, 26);
 /** Kept out of every Vitest run. */
 export const TEST_EXCLUDE = ["**/.claude/**", "e2e/**"];
 
+/**
+ * Kept out of the Preact plugin's transform. In dev it adds Prefresh's HMR code to
+ * every module, and that code imports Vite's client, which needs the DOM: a
+ * module loaded into an AudioWorklet that imports it fails to evaluate, so its
+ * processors never register. The audio code is framework-free (lint enforces
+ * it), so it loses nothing but hot reloading. Sound folders hold `*-dsp.ts`
+ * kernels and `*.worklet.ts` modules too.
+ */
+const PREACT_EXCLUDE = [/node_modules/, /\/src\/audio\//, /-dsp\.ts$/, /\.worklet\.ts$/];
+
 // https://vite.dev/config/
 export default defineConfig({
   // Relative base so the build works when served from a GitHub Pages
@@ -68,7 +78,10 @@ export default defineConfig({
   cacheDir: CACHE_DIR,
   // No react -> preact/compat aliases: the app imports preact directly, and an alias
   // would hide a stray react import instead of failing the build.
-  plugins: [preact({ reactAliasesEnabled: false }), contentSecurityPolicy()],
+  plugins: [
+    preact({ reactAliasesEnabled: false, exclude: PREACT_EXCLUDE }),
+    contentSecurityPolicy(),
+  ],
   // Agent worktrees live under .claude/; keep their copies of the tests out of the run.
   // e2e/ holds the Playwright browser tests, run by `npm run test:browser`, and
   // *.perf.test.ts the timing tests, run one file at a time by `npm run test:perf`.
