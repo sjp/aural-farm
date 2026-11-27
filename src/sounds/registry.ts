@@ -8,6 +8,7 @@ import { airplaneMeta } from "./airplane/airplane.meta";
 import { birdsongMeta } from "./birdsong/birdsong.meta";
 import { bridgeMeta } from "./bridge/bridge.meta";
 import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
+import { clockMeta } from "./clock/clock.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fanMeta } from "./fan/fan.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
@@ -51,6 +52,7 @@ export const sounds: readonly SoundEntry[] = [
     ...fireplaceMeta,
     load: () => import("./fireplace/fireplace").then((m) => m.fireplace),
   },
+  { ...clockMeta, load: () => import("./clock/clock").then((m) => m.clock) },
   { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
   { ...thunderMeta, load: () => import("./thunder/thunder").then((m) => m.thunder) },
   {

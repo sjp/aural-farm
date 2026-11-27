@@ -156,6 +156,32 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       params: { track, speed: 160, clacks: 100, points: "sometimes" },
     })),
   },
+  clock: {
+    // Each clock at its crispest, with the most room and the chime on.
+    extraSets: (["mantel", "wall", "grandfather"] as const).map((clock) => ({
+      name: `${clock}, crispest, most room, chime`,
+      params: { clock, tone: 100, room: 100, chime: true },
+    })),
+    thresholds: {
+      targetLufs: {
+        value: -39,
+        reason:
+          "A clock is a few short clicks a second with silence between, so its crest factor is " +
+          "about 28–33 dB. Holding each tick's peak near −10 dBFS, so that it stays gentle and " +
+          "leaves headroom in a mix, puts the long-term level near −39 LUFS at the defaults (the " +
+          "mantel clock; the wall and grandfather clocks read about −42). Raising it to −23 " +
+          "would need peaks well above 0 dBFS.",
+      },
+      seedSwingDb: {
+        value: 4,
+        reason:
+          "Each 1.5 s window either side of a seed change holds three or four beats, so the " +
+          "windows' levels step by 1–2 dB with how many land in them, and both seeds' beats " +
+          "are heard through the crossfade at their own times. The windows measure that, not " +
+          "the crossfade (the shared equal-power crossfader the other sounds check).",
+      },
+    },
+  },
   rain: {
     // A downpour on each surface, close up, every drop plinking where the surface lets it.
     extraSets: (["ground", "leaves", "roof", "window", "tent"] as const).map((surface) => ({
