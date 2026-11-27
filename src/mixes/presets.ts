@@ -9,7 +9,6 @@
  * along with the last of its sounds:
  *
  *   Deep Focus        Pink Noise, Binaural Beats, Drone Pad
- *   Meditation        Singing Bowls, Wind Chimes, Drone Pad
  *   Baby Sleep        Heartbeat, Brown Noise, Fan
  */
 
@@ -157,6 +156,19 @@ export const presets: readonly Preset[] = [
       "&coffee-shop.room=55&coffee-shop.seed=1" +
       "&rain.volume=50&rain.muted=0&rain.intensity=30&rain.surface=window&rain.distance=35" +
       "&rain.bubbles=25&rain.seed=1",
+  },
+  {
+    id: "meditation",
+    name: "Meditation",
+    description: "Singing bowls struck now and then over a warm, slow chord, chimes stirring by.",
+    hash:
+      "#name=Meditation&master=70&layers=bowls,drone,chimes" +
+      "&bowls.volume=70&bowls.muted=0&bowls.root=a&bowls.bowls=3&bowls.interval=25" +
+      "&bowls.rub=0&bowls.space=50&bowls.seed=1" +
+      "&drone.volume=55&drone.muted=0&drone.key=a&drone.brightness=30&drone.movement=30" +
+      "&drone.space=60&drone.seed=1" +
+      "&chimes.volume=50&chimes.muted=0&chimes.tuning=major&chimes.tubes=5&chimes.wind=20" +
+      "&chimes.space=40&chimes.seed=1",
   },
   {
     id: "long-haul-flight",
