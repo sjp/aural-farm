@@ -51,14 +51,12 @@ test("mutes, solos, removes with undo, and lights the activity dot while playing
   await expect(page.getByRole("heading", { name: "Starship Engine Core" })).toBeVisible();
   await expect(page).toHaveURL(/layers=engine-core/);
 
-  // `/` opens the Add sound list.
+  // `/` opens the sound picker, whose first row Enter adds.
   await page.getByRole("button", { name: "Remove Starship Engine Core" }).click();
   await page.keyboard.press("/");
-  const add = page.getByRole("list", { name: "Sounds to add" }).getByRole("button", {
-    name: "Starship Engine Core",
-  });
-  await expect(add).toBeFocused();
-  await add.press("Enter");
+  const search = page.getByRole("combobox", { name: "Search sounds" });
+  await expect(search).toBeFocused();
+  await search.press("Enter");
   await expect(page.getByRole("heading", { name: "Starship Engine Core" })).toBeFocused();
 
   expect(errors).toEqual([]);

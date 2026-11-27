@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen, within } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { createPreferences, type Preferences } from "../lib/preferences";
 import { defaultLayer, defaultMix, MAX_LAYERS, type Mix } from "../mixes/mix";
@@ -7,7 +7,8 @@ import type { EngineState, LayerState } from "../audio/engine";
 import type { SoundEntry } from "../sounds/registry";
 import { act } from "../test/act";
 import { TEST_TONE_ID, testCatalogue } from "../test/catalogue";
-import { ControlPanel, FULL_MIX_HINT, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
+import { ControlPanel, LEVEL_RATE_HZ, type LevelMeter } from "./ControlPanel";
+import { FULL_MIX_HINT } from "./mixer";
 import { LOADING_DELAY_MS } from "./LayerSection";
 
 type PanelOptions = {
@@ -21,6 +22,8 @@ type PanelOptions = {
   masterMuted?: boolean;
   addOpen?: boolean;
   sounds?: SoundEntry[];
+  favourites?: ReadonlySet<string>;
+  onToggleFavourite?: (id: string) => void;
   levels?: LevelMeter;
   levelsActive?: boolean;
 };
@@ -60,6 +63,8 @@ function renderPanel(initial: PanelOptions = {}) {
       levels={options.levels}
       levelsActive={options.levelsActive}
       sounds={options.sounds ?? catalogue}
+      favourites={options.favourites}
+      onToggleFavourite={options.onToggleFavourite}
       {...handlers}
     />
   );
@@ -290,35 +295,42 @@ describe("Master volume", () => {
 });
 
 describe("Add sound", () => {
-  it("lists the sounds not in the mix, in Featured order, and focuses the first", () => {
+  const optionNames = () =>
+    within(screen.getByRole("listbox"))
+      .getAllByRole("option")
+      .map((o) => o.querySelector(".picker-name")?.textContent);
+
+  it("opens the sound picker in place of the mixer, with the search focused", () => {
     const { onAddOpenChange, update } = renderPanel({
       mix: mixOf("bravo", "alpha"),
       sounds: catalogue,
     });
     const button = screen.getByRole("button", { name: "Add sound" });
     expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.title).toBe("Add sound (/)");
     fireEvent.click(button);
     expect(onAddOpenChange).toHaveBeenCalledWith(true);
     update({ addOpen: true });
-    const list = screen.getByRole("list", { name: "Sounds to add" });
-    const names = [...list.querySelectorAll("button")].map((b) => b.textContent);
-    expect(names).toEqual([
-      "Test Tone",
-      "Charlie",
-      "Delta",
-      "Echo",
-      "Foxtrot",
-      "Golf",
-      "Hotel",
-      "India",
-    ]);
-    expect(document.activeElement?.textContent).toBe("Test Tone");
-    expect(list.querySelector(".layer-dot")).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Search sounds" }));
+    expect(screen.getByRole("button", { name: "Close sound list" })).toBeTruthy();
+    expect(optionNames()).toEqual(catalogue.map((s) => s.name));
+    // The mixer, master volume and footer are hidden while it's open.
+    expect(screen.queryByRole("heading", { name: "Alpha" })).toBeNull();
+    expect(screen.queryByLabelText("Master volume")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reset all" })).toBeNull();
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape and returns focus to Add sound", () => {
+    const { onAddOpenChange, update } = renderPanel({ sounds: catalogue, addOpen: true });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Search sounds" }), { key: "Escape" });
+    expect(onAddOpenChange).toHaveBeenCalledWith(false);
+    update({ addOpen: false });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add sound" }));
+  });
+
+  it("closes with the close button", () => {
     const { onAddOpenChange } = renderPanel({ sounds: catalogue, addOpen: true });
-    fireEvent.keyDown(window, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Close sound list" }));
     expect(onAddOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -330,7 +342,7 @@ describe("Add sound", () => {
       addOpen: true,
       preferences,
     });
-    fireEvent.click(screen.getByRole("button", { name: "Charlie" }));
+    fireEvent.click(screen.getByRole("option", { name: "Charlie" }));
     expect(onAddLayer).toHaveBeenCalledWith("charlie");
     expect(onAddOpenChange).toHaveBeenCalledWith(false);
     expect([...preferences.getSet("closedSections")].toSorted()).toEqual(["alpha", "bravo"]);
@@ -345,14 +357,60 @@ describe("Add sound", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Charlie" }));
   });
 
-  it(`is disabled with a hint once the mix holds ${String(MAX_LAYERS)} sounds`, () => {
+  it("keeps the picker open after Shift+Enter", () => {
+    const { onAddLayer, onAddOpenChange } = renderPanel({
+      mix: mixOf("alpha"),
+      sounds: catalogue,
+      addOpen: true,
+    });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Search sounds" }), {
+      key: "Enter",
+      shiftKey: true,
+    });
+    expect(onAddLayer).toHaveBeenCalledWith(TEST_TONE_ID);
+    expect(onAddOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("focuses a sound already in the mix instead of adding it", () => {
+    const { onAddLayer, onAddOpenChange, update } = renderPanel({
+      mix: mixOf("alpha", "bravo"),
+      sounds: catalogue,
+      addOpen: true,
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Bravo" }));
+    expect(onAddLayer).not.toHaveBeenCalled();
+    expect(onAddOpenChange).toHaveBeenCalledWith(false);
+    update({ addOpen: false });
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Bravo" }));
+  });
+
+  it(`still opens once the mix holds ${String(MAX_LAYERS)} sounds, with a hint`, () => {
     const ids = catalogue.slice(1, 1 + MAX_LAYERS).map((s) => s.id);
-    renderPanel({ mix: mixOf(...ids), sounds: catalogue, addOpen: true });
+    const { update } = renderPanel({ mix: mixOf(...ids), sounds: catalogue });
     const button = screen.getByRole<HTMLButtonElement>("button", { name: "Add sound" });
-    expect(button.disabled).toBe(true);
+    expect(button.disabled).toBe(false);
     expect(screen.getByText(FULL_MIX_HINT)).toBeTruthy();
     expect(FULL_MIX_HINT).toBe("8 sounds is the most a mix can hold");
-    expect(screen.queryByRole("list", { name: "Sounds to add" })).toBeNull();
+    update({ addOpen: true });
+    expect(screen.getByRole("note").textContent).toContain(FULL_MIX_HINT);
+  });
+
+  it("stars a sound from the picker and from an expanded row", () => {
+    const onToggleFavourite = vi.fn<(id: string) => void>();
+    const { update } = renderPanel({ mix: mixOf("alpha", "bravo"), sounds: catalogue });
+    update({ favourites: new Set(["alpha"]), onToggleFavourite });
+    const star = screen.getByRole("button", { name: "Star Alpha" });
+    expect(star.getAttribute("aria-pressed")).toBe("true");
+    expect(star.title).toBe("Unstar (S)");
+    fireEvent.click(screen.getByRole("button", { name: "Star Bravo" }));
+    expect(onToggleFavourite).toHaveBeenLastCalledWith("bravo");
+    // A collapsed row has no star.
+    fireEvent.click(screen.getByRole("button", { name: "Show Alpha settings" }));
+    expect(screen.queryByRole("button", { name: "Star Alpha" })).toBeNull();
+    update({ addOpen: true });
+    fireEvent.click(screen.getByRole("button", { name: "Star Charlie" }));
+    expect(onToggleFavourite).toHaveBeenLastCalledWith("charlie");
+    expect(screen.getByRole("group", { name: "Favourites" })).toBeTruthy();
   });
 
   it("shows the empty state with Add sound, and disables Play", () => {

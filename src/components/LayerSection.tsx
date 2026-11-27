@@ -4,7 +4,7 @@ import { VOLUME_PARAM, type Layer } from "../mixes/mix";
 import type { LayerState } from "../audio/engine";
 import type { SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
-import { ChevronIcon, CloseIcon } from "./icons";
+import { ChevronIcon, CloseIcon, StarIcon } from "./icons";
 import { ParamSections } from "./ParamSections";
 import { layerNameId } from "./mixer";
 import { countChanged } from "./sections";
@@ -46,6 +46,9 @@ interface LayerSectionProps {
   /** What the engine reports for this layer; undefined until it has looked at it. */
   status: LayerState | undefined;
   soloed: boolean;
+  /** Whether the sound is starred; the star shows while the row is expanded. */
+  starred: boolean;
+  onToggleStar: () => void;
   onRetry: () => void;
   onRemove: () => void;
   onToggleMute: () => void;
@@ -61,8 +64,8 @@ interface LayerSectionProps {
 
 /**
  * One row of the mixer: a tint dot that glows with the layer's level, the name,
- * Solo, Mute, a chevron that shows the sound's settings, Remove, and the volume,
- * which is always shown.
+ * a star while expanded, Solo, Mute, a chevron that shows the sound's settings,
+ * Remove, and the volume, which is always shown.
  */
 export function LayerSection({
   layer,
@@ -71,6 +74,8 @@ export function LayerSection({
   hover,
   status,
   soloed,
+  starred,
+  onToggleStar,
   onRetry,
   onRemove,
   onToggleMute,
@@ -95,6 +100,7 @@ export function LayerSection({
     <section
       className="panel-section layer"
       aria-labelledby={nameId}
+      data-layer-id={layer.id}
       data-muted={layer.muted}
       data-soloed={soloed}
     >
@@ -113,6 +119,18 @@ export function LayerSection({
           {sound.hint !== undefined && <p className="layer-hint">{sound.hint}</p>}
         </div>
         <div className="layer-actions">
+          {open && (
+            <button
+              type="button"
+              className="icon-button layer-star"
+              aria-label={`Star ${name}`}
+              aria-pressed={starred}
+              title={hover ? `${starred ? "Unstar" : "Star"} (S)` : starred ? "Unstar" : "Star"}
+              onClick={onToggleStar}
+            >
+              <StarIcon filled={starred} />
+            </button>
+          )}
           <button
             type="button"
             className="layer-toggle"

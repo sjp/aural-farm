@@ -959,29 +959,245 @@ kbd {
   padding: 6px 0 0;
 }
 
-.add-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
+/* Sound picker: it takes over the panel while open, and only its list scrolls. */
+
+.panel[data-picker="true"] {
+  height: 560px;
+  overflow: hidden;
 }
 
-.add-list[hidden] {
+.picker {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.picker-search-row {
+  gap: 6px;
+}
+
+.picker-search {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--text);
+  font: inherit;
+}
+
+.picker-search::placeholder {
+  color: var(--muted);
+}
+
+.picker-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.chips {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.chip-row {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip-row::-webkit-scrollbar {
   display: none;
 }
 
-.add-list button {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  border-color: transparent;
-  background: none;
-  text-align: left;
+.chips[data-fade-start="true"] .chip-row {
+  mask-image: linear-gradient(to right, transparent, #000 28px);
 }
 
-.add-list button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 8%);
+.chips[data-fade-end="true"] .chip-row {
+  mask-image: linear-gradient(to left, transparent, #000 28px);
+}
+
+.chips[data-fade-start="true"][data-fade-end="true"] .chip-row {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 28px,
+    #000 calc(100% - 28px),
+    transparent
+  );
+}
+
+.chip {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: rgb(91 140 255 / 25%);
+}
+
+.chip-scroll {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--panel-solid);
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.chip-scroll[hidden] {
+  display: none;
+}
+
+.chip-scroll-start {
+  left: -4px;
+}
+
+.chip-scroll-end {
+  right: -4px;
+}
+
+.picker-count-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.picker-count-row select {
+  padding: 3px 6px;
+  font-size: 12.5px;
+}
+
+.picker-body {
+  flex: 1;
+  min-height: 0;
+  margin-right: calc(-1 * var(--pad-right));
+  margin-left: calc(-1 * var(--pad-left));
+  padding: 4px 8px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.picker-banner {
+  margin: 4px 8px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 6%);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.picker-hint {
+  padding: 4px 8px 6px;
+}
+
+.picker-group-title {
+  padding: 10px 8px 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.picker-row:hover {
+  background: rgb(255 255 255 / 6%);
+}
+
+.picker-option {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.picker-option[aria-selected="true"] {
+  background: rgb(91 140 255 / 18%);
+  box-shadow: inset 0 0 0 1px rgb(91 140 255 / 45%);
+}
+
+.picker-option[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.picker-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.picker-name,
+.picker-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-name {
+  font-weight: 600;
+}
+
+.picker-description {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.picker-cost,
+.picker-in-mix {
+  flex: none;
+  font-size: 11px;
+}
+
+.picker-cost {
+  padding: 1px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.picker-in-mix {
+  color: var(--accent);
+}
+
+.picker-star {
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+
+.picker-star[aria-pressed="true"],
+.layer-star[aria-pressed="true"] {
+  color: #f2c14e;
 }

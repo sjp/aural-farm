@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen, within } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, HASH_DEBOUNCE_MS, IDLE_MS, TOAST_MS, UNDO_TOAST_MS, type EngineFactory } from "./App";
 import type { AudioEngine, EngineState } from "./audio/engine";
+import { createFavourites } from "./lib/favourites";
 import { createPreferences } from "./lib/preferences";
 import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
 import { createSoundLoader } from "./sounds/loader";
@@ -68,6 +69,7 @@ function renderApp(hash = "", fake = fakeEngine(), sounds: SoundEntry[] = catalo
       initial={parseHash(window.location.hash, sounds, TEST_TONE_ID)}
       loader={loader}
       preferences={createPreferences(() => undefined)}
+      favourites={createFavourites(() => undefined)}
       createEngine={fake.factory}
       sounds={sounds}
       defaultSoundId={TEST_TONE_ID}
@@ -400,14 +402,14 @@ describe("App mixer", () => {
   it("adds a sound at volume 70 at the end of the mix", () => {
     const { engine } = renderMixer("#layers=alpha");
     fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
-    fireEvent.click(screen.getByRole("button", { name: "Charlie" }));
+    fireEvent.click(screen.getByRole("option", { name: "Charlie" }));
     expect(rowNames()).toEqual(["Alpha", "Charlie"]);
     expect(engine.setMix.mock.lastCall?.[0].layers.at(-1)).toMatchObject({
       id: "charlie",
       volume: 70,
       muted: false,
     });
-    expect(screen.queryByRole("list", { name: "Sounds to add" })).toBeNull();
+    expect(screen.queryByRole("listbox", { name: "Sounds" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Charlie" }));
     expect(writtenHash()).toBe("#layers=alpha,charlie");
   });
@@ -431,7 +433,7 @@ describe("App mixer", () => {
     renderMixer("#layers=alpha,bravo");
     fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
     fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delta" }));
+    fireEvent.click(screen.getByRole("option", { name: "Delta" }));
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(rowNames()).toEqual(["Alpha", "Bravo", "Delta"]);
   });
@@ -452,22 +454,25 @@ describe("App mixer", () => {
   it(`holds at most ${String(MAX_LAYERS)} layers`, () => {
     renderMixer("#layers=alpha,bravo,charlie,delta,echo,foxtrot,golf");
     fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
-    fireEvent.click(screen.getByRole("button", { name: "Hotel" }));
+    fireEvent.click(screen.getByRole("option", { name: "Hotel" }));
     expect(rowNames()).toHaveLength(MAX_LAYERS);
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Add sound" }).disabled).toBe(
-      true,
-    );
     expect(screen.getByText("8 sounds is the most a mix can hold")).toBeTruthy();
-    // `/` says why instead of opening the list.
+    // `/` still opens the picker, where the sounds not in the mix can't be picked.
     fireEvent.keyDown(window, { key: "/", code: "Slash" });
-    expect(screen.getByRole("status").textContent).toBe("8 sounds is the most a mix can hold");
+    expect(screen.getByRole("note").textContent).toContain("8 sounds is the most a mix can hold");
+    const india = screen.getByRole("option", { name: "India" });
+    expect(india.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(india);
+    expect(screen.getByRole("option", { name: "Alpha" }).getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close sound list" }));
+    expect(rowNames()).not.toContain("India");
   });
 
   it("doesn't restore a layer into a full mix", () => {
     renderMixer("#layers=alpha,bravo,charlie,delta,echo,foxtrot,golf,hotel");
     fireEvent.click(screen.getByRole("button", { name: "Remove Alpha" }));
     fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
-    fireEvent.click(screen.getByRole("button", { name: "India" }));
+    fireEvent.click(screen.getByRole("option", { name: "India" }));
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(rowNames()).not.toContain("Alpha");
     expect(rowNames()).toHaveLength(MAX_LAYERS);
@@ -512,7 +517,7 @@ describe("App mixer", () => {
     fireEvent.keyDown(window, { key: " " });
     expect(engine.play).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Add sound" }));
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    fireEvent.click(screen.getByRole("option", { name: "Alpha" }));
     fireEvent.click(screen.getByRole("button", { name: "Play" }));
     expect(engine.play).toHaveBeenCalledTimes(1);
   });
@@ -540,12 +545,51 @@ describe("App mixer shortcuts", () => {
   const pressed = (label: string) =>
     screen.getByRole("button", { name: label }).getAttribute("aria-pressed");
 
-  it("opens the Add sound list with /, focused", () => {
+  it("opens the sound picker with /, its search focused", () => {
     renderMixer("#layers=alpha&panel=hidden");
     press("/", "Slash");
     expect(panelWrap()?.getAttribute("data-visible")).toBe("true");
-    expect(screen.getByRole("list", { name: "Sounds to add" })).toBeTruthy();
-    expect(document.activeElement?.textContent).toBe("Test Tone");
+    expect(screen.getByRole("listbox", { name: "Sounds" })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Search sounds" }));
+    // Typing in the search doesn't trigger shortcuts.
+    fireEvent.keyDown(document.activeElement ?? window, { key: "m", code: "KeyM" });
+    expect(screen.queryByRole("button", { name: "Mute everything" })).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? window, { key: "Escape" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add sound" }));
+    expect(pressed("Mute everything")).toBe("false");
+  });
+
+  it("stars the focused layer with S, saying so", () => {
+    renderMixer("#layers=alpha,bravo");
+    // Nothing focused: nothing to star.
+    press("s", "KeyS");
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mute Bravo" }), {
+      key: "s",
+      code: "KeyS",
+    });
+    expect(screen.getByRole("status").textContent).toBe("Starred Bravo");
+    // Also on a slider, which can't take letters.
+    const volume = screen.getAllByLabelText("Volume").at(1);
+    fireEvent.keyDown(volume ?? window, { key: "S", code: "KeyS", shiftKey: true });
+    expect(screen.getByRole("status").textContent).toBe("Unstarred Bravo");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mute Alpha" }), {
+      key: "s",
+      code: "KeyS",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Show Alpha settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show Alpha settings" }));
+    expect(screen.getByRole("button", { name: "Star Alpha" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    // The picker lists it under Favourites.
+    press("/", "Slash");
+    const favourites = screen.getByRole("group", { name: "Favourites" });
+    expect(
+      within(favourites)
+        .getAllByRole("option")
+        .map((o) => o.id.endsWith("alpha")),
+    ).toEqual([true]);
   });
 
   it("mutes layer N with 1–8 and solos it with Shift", () => {
@@ -595,13 +639,13 @@ describe("App mixer shortcuts", () => {
     fireEvent.keyDown(volume, { key: "/", code: "Slash" });
     expect(pressed("Mute Alpha")).toBe("false");
     expect(pressed("Mute everything")).toBe("false");
-    expect(screen.queryByRole("list", { name: "Sounds to add" })).toBeNull();
+    expect(screen.queryByRole("listbox", { name: "Sounds" })).toBeNull();
   });
 
   it("lists every shortcut in the popover", () => {
     renderMixer("#layers=alpha");
     const keys = [...document.querySelectorAll(".shortcuts-popover kbd")].map((k) => k.textContent);
-    expect(keys).toEqual(["Space", "/", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "D", "?"]);
+    expect(keys).toEqual(["Space", "/", "S", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "D", "?"]);
   });
 
   it("cycles the backdrop Glow → Night → Off with D, saving it and saying so", () => {

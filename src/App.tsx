@@ -16,7 +16,7 @@ import {
   type DisplaySettings,
 } from "./backdrop/settings";
 import { Backdrop, type MasterMeter } from "./components/Backdrop";
-import { ControlPanel, FULL_MIX_HINT, type LevelMeter } from "./components/ControlPanel";
+import { ControlPanel, type LevelMeter } from "./components/ControlPanel";
 import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
@@ -24,6 +24,7 @@ import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { copyText } from "./lib/clipboard";
+import { createFavourites, type Favourites } from "./lib/favourites";
 import { createPreferences, type Preferences } from "./lib/preferences";
 import { createStore } from "./lib/store";
 import {
@@ -70,6 +71,23 @@ function isTyping(target: EventTarget | null): boolean {
     target instanceof HTMLSelectElement ||
     target instanceof HTMLTextAreaElement
   );
+}
+
+/** Input types a key press can't type into, so letter shortcuts still apply on them. */
+const KEYLESS_INPUTS: ReadonlySet<string> = new Set(["range", "checkbox", "radio", "button"]);
+
+/** Whether a key press types text (or picks a select's option) where it lands. */
+function typesText(target: EventTarget | null): boolean {
+  return (
+    isTyping(target) && !(target instanceof HTMLInputElement && KEYLESS_INPUTS.has(target.type))
+  );
+}
+
+/** The sound id of the mixer row holding `target`, if any. */
+function layerOf(target: EventTarget | null): string | undefined {
+  return target instanceof Element
+    ? target.closest<HTMLElement>("[data-layer-id]")?.dataset.layerId
+    : undefined;
 }
 
 /** Whether a Space press on `target` already does something there (presses a button, types). */
@@ -138,6 +156,8 @@ interface AppProps {
   initial: HashState;
   loader: SoundLoader;
   preferences?: Preferences;
+  /** The starred sounds; tests pass one backed by memory. */
+  favourites?: Favourites;
   createEngine?: EngineFactory;
   /** Every sound, in Featured order: the registry, or a stand-in in tests. */
   sounds?: readonly SoundEntry[] | undefined;
@@ -149,6 +169,7 @@ export function App({
   initial,
   loader,
   preferences: givenPreferences,
+  favourites: givenFavourites,
   createEngine,
   sounds = registry,
   defaultSoundId = DEFAULT_SOUND_ID,
@@ -162,6 +183,8 @@ export function App({
     stateRef.current = state;
   });
   const [preferences] = useState(() => givenPreferences ?? createPreferences());
+  const [favourites] = useState(() => givenFavourites ?? createFavourites());
+  const starred = useExternalStore(favourites.subscribe, favourites.get);
   const [toast, setToast] = useState<Toast | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [overPanel, setOverPanel] = useState(false);
@@ -485,9 +508,31 @@ export function App({
     }));
   }, [sounds]);
 
+  const onPrefetch = useCallback(
+    (sound: SoundEntry) => {
+      loader.prefetch(sound);
+    },
+    [loader],
+  );
+
+  const toggleFavourite = useCallback(
+    (id: string) => {
+      const name = sounds.find((s) => s.id === id)?.name ?? id;
+      showToast(favourites.toggle(id) ? `Starred ${name}` : `Unstarred ${name}`);
+    },
+    [favourites, showToast, sounds],
+  );
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      if (event.key.toLowerCase() === "s" && !typesText(event.target)) {
+        const id = layerOf(event.target);
+        if (id !== undefined) {
+          toggleFavourite(id);
+        }
         return;
       }
       if (event.key === " ") {
@@ -512,11 +557,7 @@ export function App({
       } else if (event.key === "/") {
         event.preventDefault();
         setPanelHidden(false);
-        if (stateRef.current.mix.layers.length >= MAX_LAYERS) {
-          showToast(FULL_MIX_HINT);
-        } else {
-          setAddOpen(true);
-        }
+        setAddOpen(true);
       } else if (key === "m") {
         setMasterMuted((muted) => !muted);
       } else if (
@@ -556,6 +597,7 @@ export function App({
     onToggleSolo,
     setPanelHidden,
     showToast,
+    toggleFavourite,
     toggleFullscreen,
     toggleMute,
     togglePlay,
@@ -616,6 +658,9 @@ export function App({
             onShortcutsOpenChange={setShortcutsOpen}
             addOpen={addOpen}
             onAddOpenChange={setAddOpen}
+            favourites={starred}
+            onToggleFavourite={toggleFavourite}
+            onPrefetch={onPrefetch}
             levels={levels}
             levelsActive={!panelHidden && !fade && engineState === "playing"}
             sounds={sounds}

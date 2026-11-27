@@ -18,7 +18,8 @@ import { LayerSection } from "./LayerSection";
 import { ParamControl } from "./ParamControl";
 import { countChanged } from "./sections";
 import { Section } from "./Section";
-import { layerNameId, levelBrightness } from "./mixer";
+import { FULL_MIX_HINT, layerNameId, levelBrightness } from "./mixer";
+import { SoundList } from "./SoundList";
 import { PlayButton } from "./PlayButton";
 
 /** The preference holding collapsed sections: "<sound>" for a layer, "<sound>/<section>" inside one. */
@@ -36,6 +37,7 @@ const DISPLAY_KEYS = [
 const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
   ["Space", "Play or pause"],
   ["/", "Add a sound"],
+  ["S", "Star the focused sound"],
   ["1–8", "Mute or unmute layer N"],
   ["Shift+1–8", "Solo or unsolo layer N"],
   ["M", "Mute or unmute everything"],
@@ -46,11 +48,10 @@ const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
   ["?", "Show these shortcuts"],
 ];
 
-/** Says why Add sound is disabled in a full mix. */
-export const FULL_MIX_HINT = `${String(MAX_LAYERS)} sounds is the most a mix can hold`;
-
 /** How often the tint dots read the layers' levels, in Hz. */
 export const LEVEL_RATE_HZ = 15;
+
+const NO_FAVOURITES: ReadonlySet<string> = new Set();
 
 /** Where focus goes after the layers change: a layer's name, or Add sound. */
 type FocusTarget = { layer: string } | "add";
@@ -92,64 +93,28 @@ function useLevelDots(
   }, [panel, meter, active]);
 }
 
-/**
- * "Add sound" and the list it opens: every sound not already in the mix, in
- * Featured order. Escape or a click elsewhere closes the list.
- */
+/** "Add sound", which opens the sound picker, and a note once the mix is full. */
 function AddSound({
-  available,
   full,
   open,
   hover,
-  onOpenChange,
-  onAdd,
+  onOpen,
 }: {
-  available: readonly SoundEntry[];
   full: boolean;
   open: boolean;
   hover: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (id: string) => void;
+  onOpen: () => void;
 }): JSX.Element {
   const id = useId();
-  const ref = useRef<HTMLDivElement>(null);
-  const shown = open && !full;
-  useEffect(() => {
-    if (!shown) {
-      return undefined;
-    }
-    ref.current?.querySelector<HTMLElement>(".add-list button, .add-list .hint")?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onOpenChange(false);
-        ref.current?.querySelector<HTMLElement>(".add-button")?.focus();
-      }
-    };
-    const onPointer = (event: PointerEvent) => {
-      if (!(event.target instanceof Node) || ref.current?.contains(event.target) !== true) {
-        onOpenChange(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", onPointer);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", onPointer);
-    };
-  }, [shown, onOpenChange]);
   return (
-    <div ref={ref} className="add-sound">
+    <div className="add-sound">
       <button
         type="button"
         className="add-button"
-        aria-expanded={shown}
-        aria-controls={`${id}-list`}
+        aria-expanded={open}
         aria-describedby={full ? `${id}-full` : undefined}
-        disabled={full}
         title={hover ? "Add sound (/)" : "Add sound"}
-        onClick={() => {
-          onOpenChange(!shown);
-        }}
+        onClick={onOpen}
       >
         <PlusIcon />
         Add sound
@@ -159,26 +124,6 @@ function AddSound({
           {FULL_MIX_HINT}
         </p>
       )}
-      <ul id={`${id}-list`} className="add-list" aria-label="Sounds to add" hidden={!shown}>
-        {available.map((sound) => (
-          <li key={sound.id}>
-            <button
-              type="button"
-              onClick={() => {
-                onAdd(sound.id);
-              }}
-            >
-              <span className="layer-dot" style={{ "--tint": sound.tint }} aria-hidden="true" />
-              {sound.name}
-            </button>
-          </li>
-        ))}
-        {available.length === 0 && (
-          <li className="hint" tabIndex={-1}>
-            Every sound is already in the mix.
-          </li>
-        )}
-      </ul>
     </div>
   );
 }
@@ -329,8 +274,14 @@ interface ControlPanelProps {
   onHide: () => void;
   shortcutsOpen: boolean;
   onShortcutsOpenChange: (open: boolean) => void;
+  /** Whether the sound picker has taken over the panel. */
   addOpen: boolean;
   onAddOpenChange: (open: boolean) => void;
+  /** The starred sound ids. */
+  favourites?: ReadonlySet<string> | undefined;
+  onToggleFavourite?: ((id: string) => void) | undefined;
+  /** Starts loading a sound's code, when the picker expects it to be added. */
+  onPrefetch?: ((sound: SoundEntry) => void) | undefined;
   /** Reads the layers' levels for the tint dots. */
   levels?: LevelMeter | undefined;
   /** Whether the dots should follow the levels: only while the panel is seen and playing. */
@@ -420,14 +371,14 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
       element.focus();
       setFocusTarget(null);
     }
-  }, [focusTarget, mix.layers]);
+  }, [focusTarget, mix.layers, props.addOpen]);
 
   const inMix = new Set(mix.layers.map((l) => l.id));
-  const available = catalogue.filter((s) => !inMix.has(s.id));
   const full = mix.layers.length >= MAX_LAYERS;
   const soloActive = mix.layers.some((l) => solo.has(l.id));
 
-  const add = (id: string) => {
+  /** Adds a sound; unless `keepOpen`, the picker closes and focus moves to the new row. */
+  const add = (id: string, keepOpen = false) => {
     // The new layer starts open and the others close, so the new one is in view.
     const next = new Set(closed);
     for (const layer of mix.layers) {
@@ -435,9 +386,16 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
     }
     next.delete(id);
     saveClosed(next);
-    props.onAddOpenChange(false);
     props.onAddLayer(id);
-    setFocusTarget({ layer: id });
+    if (!keepOpen) {
+      props.onAddOpenChange(false);
+      setFocusTarget({ layer: id });
+    }
+  };
+
+  const closePicker = (target: FocusTarget) => {
+    props.onAddOpenChange(false);
+    setFocusTarget(target);
   };
 
   const remove = (id: string) => {
@@ -452,149 +410,177 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
   const playDisabled = empty && !isPlaying(props.engineState);
 
   return (
-    <div ref={panelRef} className="panel">
-      <header className="panel-header">
-        <div className="panel-header-row">
-          <PlayButton
-            state={props.engineState}
-            hover={hover}
-            disabled={playDisabled}
-            onToggle={props.onTogglePlay}
-          />
-          <h1 className="panel-title">Aural Farm</h1>
-          <div className="panel-toolbar">
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Copy link"
-              title="Copy link"
-              onClick={props.onCopyLink}
-            >
-              <LinkIcon />
-            </button>
-            {props.onFullscreen && (
+    <div ref={panelRef} className="panel" data-picker={props.addOpen}>
+      {props.addOpen ? (
+        <SoundList
+          sounds={catalogue}
+          inMix={inMix}
+          full={full}
+          favourites={props.favourites ?? NO_FAVOURITES}
+          onToggleFavourite={(id) => {
+            props.onToggleFavourite?.(id);
+          }}
+          preferences={preferences}
+          hover={hover}
+          onAdd={add}
+          onFocusLayer={(id) => {
+            closePicker({ layer: id });
+          }}
+          onClose={() => {
+            closePicker("add");
+          }}
+          onPrefetch={props.onPrefetch}
+        />
+      ) : (
+        <>
+          <header className="panel-header">
+            <div className="panel-header-row">
+              <PlayButton
+                state={props.engineState}
+                hover={hover}
+                disabled={playDisabled}
+                onToggle={props.onTogglePlay}
+              />
+              <h1 className="panel-title">Aural Farm</h1>
+              <div className="panel-toolbar">
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Copy link"
+                  title="Copy link"
+                  onClick={props.onCopyLink}
+                >
+                  <LinkIcon />
+                </button>
+                {props.onFullscreen && (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Fullscreen"
+                    title={hint("Fullscreen", "F")}
+                    onClick={props.onFullscreen}
+                  >
+                    <FullscreenIcon />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Hide controls"
+                  title={hint("Hide controls", "H")}
+                  onClick={props.onHide}
+                >
+                  <HideIcon />
+                </button>
+              </div>
+            </div>
+            <MasterVolume
+              value={mix.master}
+              muted={props.masterMuted}
+              hover={hover}
+              onChange={props.onMasterChange}
+              onMutedChange={props.onMasterMutedChange}
+            />
+            {soloActive && (
+              <div className="solo-bar">
+                <span>Solo</span>
+                <button type="button" className="text-button" onClick={props.onClearSolo}>
+                  Clear solo
+                </button>
+              </div>
+            )}
+            {props.engineState === "failed" && (
+              <p className="audio-error" role="alert">
+                Audio isn't available in this browser.
+              </p>
+            )}
+          </header>
+          <div className="panel-body">
+            {empty && <p className="hint">Add a sound to start</p>}
+            {mix.layers.flatMap((layer, index) => {
+              const sound = catalogue.find((s) => s.id === layer.id);
+              if (!sound) {
+                return [];
+              }
+              const prefix = `${layer.id}/`;
+              const closedSections = new Set(
+                [...closed].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length)),
+              );
+              return [
+                <LayerSection
+                  key={layer.id}
+                  layer={layer}
+                  sound={sound}
+                  index={index}
+                  hover={hover}
+                  status={props.layerStates[layer.id]}
+                  soloed={solo.has(layer.id)}
+                  starred={props.favourites?.has(layer.id) === true}
+                  onToggleStar={() => {
+                    props.onToggleFavourite?.(layer.id);
+                  }}
+                  onRetry={() => {
+                    props.onRetryLayer(layer.id);
+                  }}
+                  onRemove={() => {
+                    remove(layer.id);
+                  }}
+                  onToggleMute={() => {
+                    props.onLayerChange(layer.id, { muted: !layer.muted });
+                  }}
+                  onToggleSolo={() => {
+                    props.onToggleSolo(layer.id);
+                  }}
+                  open={!closed.has(layer.id)}
+                  onToggle={() => {
+                    toggle(layer.id);
+                  }}
+                  closedSections={closedSections}
+                  onToggleSection={(section) => {
+                    toggle(prefix + section);
+                  }}
+                  onVolumeChange={(volume) => {
+                    props.onLayerChange(layer.id, { volume });
+                  }}
+                  onParamChange={(key, value) => {
+                    props.onParamChange(layer.id, key, value);
+                  }}
+                />,
+              ];
+            })}
+            <AddSound
+              full={full}
+              open={props.addOpen}
+              hover={hover}
+              onOpen={() => {
+                props.onAddOpenChange(true);
+              }}
+            />
+            {props.display && props.onDisplayChange && (
+              <DisplaySection
+                settings={props.display}
+                preferences={preferences}
+                onChange={props.onDisplayChange}
+              />
+            )}
+          </div>
+          <footer className="panel-footer">
+            <div className="footer-actions">
               <button
                 type="button"
-                className="icon-button"
-                aria-label="Fullscreen"
-                title={hint("Fullscreen", "F")}
-                onClick={props.onFullscreen}
+                className="text-button"
+                title="Put every layer's settings and volume, and the master volume, back to their defaults"
+                onClick={props.onResetAll}
               >
-                <FullscreenIcon />
+                Reset all
               </button>
-            )}
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Hide controls"
-              title={hint("Hide controls", "H")}
-              onClick={props.onHide}
-            >
-              <HideIcon />
-            </button>
-          </div>
-        </div>
-        <MasterVolume
-          value={mix.master}
-          muted={props.masterMuted}
-          hover={hover}
-          onChange={props.onMasterChange}
-          onMutedChange={props.onMasterMutedChange}
-        />
-        {soloActive && (
-          <div className="solo-bar">
-            <span>Solo</span>
-            <button type="button" className="text-button" onClick={props.onClearSolo}>
-              Clear solo
-            </button>
-          </div>
-        )}
-        {props.engineState === "failed" && (
-          <p className="audio-error" role="alert">
-            Audio isn't available in this browser.
-          </p>
-        )}
-      </header>
-      <div className="panel-body">
-        {empty && <p className="hint">Add a sound to start</p>}
-        {mix.layers.flatMap((layer, index) => {
-          const sound = catalogue.find((s) => s.id === layer.id);
-          if (!sound) {
-            return [];
-          }
-          const prefix = `${layer.id}/`;
-          const closedSections = new Set(
-            [...closed].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length)),
-          );
-          return [
-            <LayerSection
-              key={layer.id}
-              layer={layer}
-              sound={sound}
-              index={index}
-              hover={hover}
-              status={props.layerStates[layer.id]}
-              soloed={solo.has(layer.id)}
-              onRetry={() => {
-                props.onRetryLayer(layer.id);
-              }}
-              onRemove={() => {
-                remove(layer.id);
-              }}
-              onToggleMute={() => {
-                props.onLayerChange(layer.id, { muted: !layer.muted });
-              }}
-              onToggleSolo={() => {
-                props.onToggleSolo(layer.id);
-              }}
-              open={!closed.has(layer.id)}
-              onToggle={() => {
-                toggle(layer.id);
-              }}
-              closedSections={closedSections}
-              onToggleSection={(section) => {
-                toggle(prefix + section);
-              }}
-              onVolumeChange={(volume) => {
-                props.onLayerChange(layer.id, { volume });
-              }}
-              onParamChange={(key, value) => {
-                props.onParamChange(layer.id, key, value);
-              }}
-            />,
-          ];
-        })}
-        <AddSound
-          available={available}
-          full={full}
-          open={props.addOpen}
-          hover={hover}
-          onOpenChange={props.onAddOpenChange}
-          onAdd={add}
-        />
-        {props.display && props.onDisplayChange && (
-          <DisplaySection
-            settings={props.display}
-            preferences={preferences}
-            onChange={props.onDisplayChange}
-          />
-        )}
-      </div>
-      <footer className="panel-footer">
-        <div className="footer-actions">
-          <button
-            type="button"
-            className="text-button"
-            title="Put every layer's settings and volume, and the master volume, back to their defaults"
-            onClick={props.onResetAll}
-          >
-            Reset all
-          </button>
-          {hover && (
-            <Shortcuts open={props.shortcutsOpen} onOpenChange={props.onShortcutsOpenChange} />
-          )}
-        </div>
-      </footer>
+              {hover && (
+                <Shortcuts open={props.shortcutsOpen} onOpenChange={props.onShortcutsOpenChange} />
+              )}
+            </div>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

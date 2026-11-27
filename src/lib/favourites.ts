@@ -10,7 +10,7 @@ import type { PreferenceStorage } from "./preferences";
 /** The localStorage key holding the starred ids. */
 export const FAVOURITES_KEY = "auralfarm.favourites";
 
-interface Favourites {
+export interface Favourites {
   /** The starred ids. The same set comes back until something changes. */
   get: () => ReadonlySet<string>;
   has: (id: string) => boolean;
