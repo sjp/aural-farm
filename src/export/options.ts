@@ -11,14 +11,14 @@ import { EXPORT_CHANNELS, EXPORT_RATE } from "./plan";
 import { wavBytes } from "./wav";
 
 export type ExportType = "clip" | "loop";
-type ExportFormat = "wav" | "compressed";
+export type ExportFormat = "wav" | "compressed";
 export type CompressedCodec = "opus" | "aac";
 
 /** Clip lengths, in minutes. */
-const CLIP_MINUTES = [1, 5, 10, 15, 30, 45, 60] as const;
+export const CLIP_MINUTES = [1, 5, 10, 15, 30, 45, 60] as const;
 const DEFAULT_CLIP_MINUTES = 10;
 /** Loop lengths, in seconds. */
-const LOOP_SECONDS = [30, 60, 120, 300, 600] as const;
+export const LOOP_SECONDS = [30, 60, 120, 300, 600] as const;
 const DEFAULT_LOOP_SECONDS = 120;
 
 /** A WAV larger than this gets a warning that suggests the compressed format. */
@@ -120,6 +120,26 @@ export function estimateBytes(seconds: number, format: "wav" | CompressedCodec):
     return wavBytes(Math.round(seconds * EXPORT_RATE), EXPORT_CHANNELS);
   }
   return Math.round(((CODECS[format].bitrate * seconds) / 8) * COMPRESSED_OVERHEAD);
+}
+
+/** The compressed format the browser can encode: undefined while checking, "none" for none. */
+export type CodecSupport = CompressedCodec | "none" | undefined;
+
+/** The format an export with these choices uses: WAV unless compressed is chosen and supported. */
+export function exportFormat(
+  settings: ExportSettings,
+  codec: CodecSupport,
+): "wav" | CompressedCodec {
+  return settings.format === "compressed" && codec !== undefined && codec !== "none"
+    ? codec
+    : "wav";
+}
+
+/** The time an export has left, roughly: "about 12 s left", "about 3 min left". */
+export function remainingText(seconds: number): string {
+  return seconds < 60
+    ? `about ${String(Math.max(1, Math.ceil(seconds)))} s left`
+    : `about ${String(Math.ceil(seconds / 60))} min left`;
 }
 
 /** A size as the panel shows it: "≈ 115 MB", "≈ 2.4 MB", "≈ 490 kB" (decimal units). */

@@ -6,11 +6,13 @@ import {
   detectCompressedCodec,
   estimateBytes,
   exportFileName,
+  exportFormat,
   exportSeconds,
   formatSize,
   isLargeWav,
   lengthLabel,
   loadExportSettings,
+  remainingText,
   saveExportSettings,
   wavAllowed,
   type ExportSettings,
@@ -202,5 +204,35 @@ describe("detectCompressedCodec", () => {
     await expect(detectCompressedCodec(encoder([]))).resolves.toBeUndefined();
     const throwing = { isConfigSupported: () => Promise.reject(new TypeError("bad config")) };
     await expect(detectCompressedCodec(throwing)).resolves.toBeUndefined();
+  });
+});
+
+describe("exportFormat", () => {
+  const settings: ExportSettings = {
+    type: "clip",
+    clipMinutes: 10,
+    loopSeconds: 120,
+    format: "compressed",
+  };
+
+  it("uses the supported compressed format when it is chosen", () => {
+    expect(exportFormat(settings, "aac")).toBe("aac");
+    expect(exportFormat({ ...settings, format: "wav" }, "opus")).toBe("wav");
+  });
+
+  it("falls back to WAV while checking, or with no compressed format", () => {
+    expect(exportFormat(settings, undefined)).toBe("wav");
+    expect(exportFormat(settings, "none")).toBe("wav");
+  });
+});
+
+describe("remainingText", () => {
+  it.each([
+    [0.2, "about 1 s left"],
+    [12.3, "about 13 s left"],
+    [60, "about 1 min left"],
+    [75, "about 2 min left"],
+  ])("reads %d s as %s", (seconds, text) => {
+    expect(remainingText(seconds)).toBe(text);
   });
 });

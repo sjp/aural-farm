@@ -406,6 +406,58 @@ body,
   line-height: 1.4;
 }
 
+/* Export: its choices, the file's size, and Export or a progress bar */
+
+.export-size {
+  display: flex;
+  margin: 0;
+  font-size: 13px;
+}
+
+.export-warning {
+  margin: 0;
+  color: #ffc46b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.export-button {
+  width: 100%;
+}
+
+.export-progress {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.export-bar {
+  position: relative;
+  flex: 1;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.export-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  opacity: 0.55;
+  transition: width 0.3s ease-out;
+}
+
+.export-bar-text {
+  position: relative;
+  display: block;
+  padding: 0 10px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 32px;
+  white-space: nowrap;
+}
+
 .layer .section-body > .controls + .controls,
 .layer .section-body > .controls + .panel-section {
   margin-top: 12px;
@@ -845,6 +897,7 @@ kbd {
   .show-panel,
   .show-panel[data-visible="false"],
   .section-chevron,
+  .export-bar-fill,
   input.switch {
     transition: none;
   }

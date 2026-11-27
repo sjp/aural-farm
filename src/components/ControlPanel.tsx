@@ -7,6 +7,7 @@ import type { Preferences } from "../lib/preferences";
 import { sounds as registry, type SoundEntry } from "../sounds/registry";
 import type { ParamValue } from "../sounds/types";
 import { BottomSheet } from "./BottomSheet";
+import { ExportSection, type ExportControls } from "./ExportSection";
 import {
   ChevronIcon,
   FullscreenIcon,
@@ -321,6 +322,8 @@ interface ControlPanelProps {
   sleep?: SleepTimerControls | undefined;
   /** The presets and saved mixes; the Mixes button shows only when they are given. */
   mixes?: MixesControls | undefined;
+  /** Exporting the mix as audio; the Export section shows only when it is given. */
+  audioExport?: ExportControls | undefined;
 }
 
 /** The Display section: how the backdrop looks on this device. Starts collapsed. */
@@ -699,6 +702,9 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
                 onChange={props.onDisplayChange}
                 wakeLock={props.wakeLock === true}
               />
+            )}
+            {props.audioExport && (
+              <ExportSection controls={props.audioExport} preferences={preferences} />
             )}
           </div>
           <footer className="panel-footer">

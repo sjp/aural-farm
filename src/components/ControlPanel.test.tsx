@@ -12,6 +12,7 @@ import { FULL_MIX_HINT } from "./mixer";
 import { LOADING_DELAY_MS } from "./LayerSection";
 import type { PanelLayout } from "./sheet";
 import type { MixesControls } from "./MixesView";
+import type { ExportControls } from "./ExportSection";
 import type { SleepTimerControls } from "./SleepTimer";
 
 type PanelOptions = {
@@ -34,6 +35,7 @@ type PanelOptions = {
   sheetOpen?: boolean;
   sleep?: SleepTimerControls;
   mixes?: MixesControls;
+  audioExport?: ExportControls;
 };
 
 function renderPanel(initial: PanelOptions = {}) {
@@ -79,6 +81,7 @@ function renderPanel(initial: PanelOptions = {}) {
       sheetOpen={options.sheetOpen}
       sleep={options.sleep}
       mixes={options.mixes}
+      audioExport={options.audioExport}
       {...handlers}
     />
   );
@@ -948,5 +951,27 @@ describe("Sleep timer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sleep timer" }));
     expect(onSheetOpenChange).toHaveBeenCalledWith(true);
     expect(screen.getByRole("dialog", { name: "Sleep timer" }).hidden).toBe(false);
+  });
+});
+
+describe("Export section", () => {
+  const controls: ExportControls = {
+    settings: { type: "clip", clipMinutes: 10, loopSeconds: 120, format: "wav" },
+    onSettingsChange: () => undefined,
+    codec: "opus",
+    coarse: false,
+    canExport: true,
+    progress: undefined,
+    onExport: () => undefined,
+    onCancel: () => undefined,
+  };
+
+  it("shows below the mixer only when export is given", () => {
+    const { update } = renderPanel();
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    update({ audioExport: controls });
+    expect(screen.getByRole("button", { name: "Export" }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
   });
 });
