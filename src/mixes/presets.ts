@@ -8,7 +8,6 @@
  * checks). Planned presets still waiting for their sounds, each to be added here
  * along with the last of its sounds:
  *
- *   Engine Room       Starship Engine Core, Life Support
  *   Rainy Cabin       Rain (on a roof), Fireplace, Ticking Clock
  *   Night Train       Train Carriage, Rain (on a window)
  *   Long-haul Flight  Airplane Cabin, Brown Noise
@@ -57,6 +56,19 @@ export const presets: readonly Preset[] = [
       "&engine-core.hiss=10&engine-core.seed=1" +
       "&bridge.volume=45&bridge.muted=0&bridge.activity=quiet&bridge.engine=25&bridge.air=40" +
       "&bridge.doors=off&bridge.alert=0&bridge.seed=1",
+  },
+  {
+    id: "engine-room",
+    name: "Engine Room",
+    description: "The engine core's deep throb over the quiet, steady work of life support.",
+    hash:
+      "#name=Engine%20Room&master=70&layers=engine-core,life-support" +
+      "&engine-core.volume=75&engine-core.muted=0&engine-core.power=60&engine-core.pitch=48" +
+      "&engine-core.pulseRate=0.82&engine-core.pulseDepth=45&engine-core.room=55" +
+      "&engine-core.hiss=30&engine-core.seed=1" +
+      "&life-support.volume=45&life-support.muted=0&life-support.flow=55&life-support.pump=40" +
+      "&life-support.pumpCycle=28&life-support.valves=rarely&life-support.hum=30" +
+      "&life-support.seed=1",
   },
   {
     id: "seaside",
