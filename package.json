@@ -11,7 +11,8 @@
     "fmt": "oxfmt",
     "test": "vitest run --passWithNoTests",
     "test:browser": "playwright test",
-    "test:perf": "vitest run --config vitest.perf.config.ts --passWithNoTests"
+    "test:perf": "vitest run --config vitest.perf.config.ts --passWithNoTests",
+    "render": "node scripts/render-sound.mjs"
   },
   "dependencies": {
     "preact": "^11.2.0"

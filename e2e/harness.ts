@@ -7,10 +7,11 @@
  */
 import * as analysis from "../src/audio/analysis";
 import { routeReverb, getReverb, type ReverbKind } from "../src/audio/reverb";
+import { seedOf, soundParams } from "../src/audio/mix-graph";
 import { buildMix } from "../src/audio/render";
 import { parseHash, type Mix } from "../src/mixes/mix";
 import { defaults } from "../src/sounds/params";
-import { getSound } from "../src/sounds/registry";
+import { getSound, sounds } from "../src/sounds/registry";
 import type { ParamValues } from "../src/sounds/types";
 
 /** A param change during a render: `params` are merged onto the current ones at `at` seconds. */
@@ -128,18 +129,20 @@ async function renderSound(spec: SoundSpec): Promise<Rendered> {
   const onError = (error: unknown) => {
     errors.push(describe(error));
   };
-  let params: ParamValues = { ...defaults(entry.params), ...spec.params };
-  if (spec.seed !== undefined) {
-    params.seed = spec.seed;
-  }
-  const seed = typeof params.seed === "number" ? params.seed : 0;
+  // Coerced against the schema, as the engine passes them.
+  let params = soundParams(entry, {
+    ...defaults(entry.params),
+    ...spec.params,
+    ...(spec.seed === undefined ? {} : { seed: spec.seed }),
+  });
+  const seed = seedOf(params);
 
   if (spec.master === true) {
-    const mix: Mix = { master: 100, layers: [{ id: spec.id, volume: 100, muted: false, params }] };
-    const graph = await buildMix(ctx, mix, { startAt: spec.startAt ?? 0, onError });
     if ((spec.updates?.length ?? 0) > 0) {
       throw new Error("Updates aren't supported through the master chain");
     }
+    const mix: Mix = { master: 100, layers: [{ id: spec.id, volume: 100, muted: false, params }] };
+    const graph = await buildMix(ctx, mix, { startAt: spec.startAt ?? 0, onError });
     const { buffer, cost } = await render(ctx, spec.seconds, []);
     graph.dispose();
     return { channels: channelsOf(buffer), sampleRate, cost, reduction: [], errors };
@@ -171,7 +174,7 @@ async function renderSound(spec: SoundSpec): Promise<Rendered> {
   const updates = (spec.updates ?? []).map((u) => ({
     at: u.at,
     apply: () => {
-      params = { ...params, ...u.params };
+      params = soundParams(entry, { ...params, ...u.params });
       instance.update(params, ctx.currentTime);
     },
   }));
@@ -327,7 +330,15 @@ async function pcm16(spec: { sound: SoundSpec } | { mix: MixSpec }): Promise<str
   return btoa(binary);
 }
 
+/** Every registered sound's id and default seed, for the render script. */
+const listSounds = () => sounds.map((s) => ({ id: s.id, seed: seedOf(defaults(s.params)) }));
+
+/** A mix hash's layers, as the app reads it, for naming a render. */
+const mixLayers = (hash: string) => parseHash(hash).mix.layers.map((l) => l.id);
+
 const harness = {
+  listSounds,
+  mixLayers,
   renderSound,
   renderMix,
   measureSound,
