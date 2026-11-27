@@ -6,8 +6,8 @@
  *   layer: sound → level (volume × mute) → solo → fade ─┤
  *   shared reverb (one convolver per kind) ──────────────┤
  *                                                        └→ master level
- *        → master mute → master fade → high-pass 25 Hz → limiter → trim −1 dB
- *        → output (→ destination, or → media stream → <audio> element)
+ *        → master mute → master fade → sleep timer → high-pass 25 Hz → limiter
+ *        → trim −1 dB → output (→ destination, or → media stream → <audio> element)
  *
  * A sound's reverb sends go to its layer's reverb bus: for each kind it uses, a
  * level, solo and fade gain chain that copies the layer's own automation, feeding

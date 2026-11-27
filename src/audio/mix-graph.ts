@@ -3,7 +3,7 @@
  * share, so both play a mix the same way: the volume curve, a layer's params as
  * its sound takes them, and the master chain.
  *
- *   master level → mute → fade → high-pass 25 Hz → limiter → trim −1 dB → output
+ *   master level → mute → fade → timer → high-pass 25 Hz → limiter → trim −1 dB → output
  */
 import type { Layer } from "../mixes/mix";
 import { coerce } from "../sounds/params";
@@ -38,6 +38,8 @@ export interface MasterChain {
   mute: GainNode;
   /** Play and pause fades. */
   fade: GainNode;
+  /** The sleep timer's fade-out, kept apart from play and pause. */
+  timer: GainNode;
   /** The safety limiter, for reading its gain reduction. */
   limiter: DynamicsCompressorNode;
   /** The chain's last node, to connect to the speakers or a render's destination. */
@@ -52,6 +54,7 @@ export function createMasterChain(ctx: BaseAudioContext): MasterChain {
   const level = ctx.createGain();
   const mute = ctx.createGain();
   const fade = ctx.createGain();
+  const timer = ctx.createGain();
   const highpass = ctx.createBiquadFilter();
   highpass.type = "highpass";
   highpass.frequency.value = HIGHPASS_HZ;
@@ -64,6 +67,12 @@ export function createMasterChain(ctx: BaseAudioContext): MasterChain {
   limiter.release.value = 0.25;
   const output = ctx.createGain();
   output.gain.value = 10 ** (TRIM_DB / 20);
-  level.connect(mute).connect(fade).connect(highpass).connect(limiter).connect(output);
-  return { level, mute, fade, limiter, output };
+  level
+    .connect(mute)
+    .connect(fade)
+    .connect(timer)
+    .connect(highpass)
+    .connect(limiter)
+    .connect(output);
+  return { level, mute, fade, timer, limiter, output };
 }

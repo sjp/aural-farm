@@ -165,10 +165,11 @@ function chain() {
   const trim = into(ctx.destination);
   const limiter = into(trim);
   const highpass = into(limiter);
-  const masterFade = into(highpass);
+  const timer = into(highpass);
+  const masterFade = into(timer);
   const masterMute = into(masterFade);
   const masterLevel = into(masterMute);
-  return { trim, limiter, highpass, masterFade, masterMute, masterLevel };
+  return { trim, limiter, highpass, timer, masterFade, masterMute, masterLevel };
 }
 
 function param(node: FakeNode | undefined, name: string): FakeParam {
