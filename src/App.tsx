@@ -27,6 +27,7 @@ import { PlayIcon, SlidersIcon } from "./components/icons";
 import { PanelErrorBoundary } from "./components/PanelErrorBoundary";
 import { PLAY_TOGGLE_ATTRIBUTE } from "./components/PlayButton";
 import { usePanelLayout } from "./components/sheet";
+import { useDocumentVisible } from "./hooks/useDocumentVisible";
 import { useExternalStore } from "./hooks/useExternalStore";
 import { useIdle, useTouchPointer } from "./hooks/useIdle";
 import { useKeyboardInset } from "./hooks/useKeyboardInset";
@@ -37,6 +38,14 @@ import { copyText } from "./lib/clipboard";
 import { createFavourites, type Favourites } from "./lib/favourites";
 import { mediaTitle, type MediaSessionLike, type MetadataFactory } from "./lib/media-session";
 import { createPreferences, type Preferences } from "./lib/preferences";
+import {
+  countdownDelay,
+  loadSleepSettings,
+  nextCycleMinutes,
+  saveSleepSettings,
+  timerLabel,
+  type SleepSettings,
+} from "./lib/sleep-timer";
 import { createStore } from "./lib/store";
 import { browserWakeLock, type WakeLockLike } from "./lib/wake-lock";
 import {
@@ -143,7 +152,15 @@ interface Playback {
   layers: Readonly<Record<string, LayerState>>;
 }
 
-type EngineCallbacks = Pick<Parameters<typeof createAudioEngine>[0], "onState" | "onLayerState">;
+type EngineCallbacks = Pick<
+  Parameters<typeof createAudioEngine>[0],
+  "onState" | "onLayerState" | "onSleepEnd"
+>;
+
+/** A running sleep timer's length. Each start makes a new one, so a restart reads the time afresh. */
+interface SleepRun {
+  minutes: number;
+}
 
 /** Makes the app's engine; tests pass a stand-in. */
 export type EngineFactory = (callbacks: EngineCallbacks) => AudioEngine;
@@ -225,6 +242,20 @@ export function App({
   const layout = usePanelLayout();
   useKeyboardInset();
 
+  // The sleep timer isn't in the hash and starts Off on every visit.
+  const [sleep, setSleep] = useState<SleepRun | undefined>(undefined);
+  const sleepRef = useRef(sleep);
+  useLayoutEffect(() => {
+    sleepRef.current = sleep;
+  });
+  const [sleepSettings, setSleepSettings] = useState(() => loadSleepSettings(preferences));
+  const sleepSettingsRef = useRef(sleepSettings);
+  useLayoutEffect(() => {
+    sleepSettingsRef.current = sleepSettings;
+  });
+  const visible = useDocumentVisible();
+  const [sleepRemaining, setSleepRemaining] = useState<number | undefined>(undefined);
+
   const [playback] = useState(() => createStore<Playback>({ state: "idle", layers: {} }));
   const [engine] = useState(() =>
     (createEngine ?? browserEngine(loader, preferences))({
@@ -234,6 +265,9 @@ export function App({
       onLayerState: (id, layerState) => {
         const current = playback.get();
         playback.set({ ...current, layers: { ...current.layers, [id]: layerState } });
+      },
+      onSleepEnd: () => {
+        setSleep(undefined);
       },
     }),
   );
@@ -260,6 +294,64 @@ export function App({
   useEffect(() => {
     engine.setMasterMuted(masterMuted);
   }, [engine, masterMuted]);
+
+  // Before the autoplay below, so the first play fades in as set.
+  useEffect(() => {
+    engine.setPlayFadeIn(sleepSettings.fadeIn);
+  }, [engine, sleepSettings.fadeIn]);
+
+  // The countdown reads the audio clock, which stands still while paused. It
+  // updates when its text would change: each minute, then each second in the last.
+  useEffect(() => {
+    if (!sleep) {
+      setSleepRemaining(undefined);
+      return undefined;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => {
+      const left = engine.sleepRemaining();
+      setSleepRemaining(left);
+      if (left !== undefined && visible && engineState === "playing") {
+        timer = setTimeout(update, countdownDelay(left));
+      }
+    };
+    update();
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [engine, sleep, engineState, visible]);
+
+  const changeSleepSettings = useCallback(
+    (next: SleepSettings) => {
+      const previous = sleepSettingsRef.current;
+      sleepSettingsRef.current = next;
+      setSleepSettings(next);
+      saveSleepSettings(preferences, next);
+      // A new fade-out applies to the running timer, which keeps its end.
+      if (next.fadeOut !== previous.fadeOut && sleepRef.current) {
+        engine.setSleepTimer(engine.sleepRemaining(), next.fadeOut);
+      }
+    },
+    [engine, preferences],
+  );
+
+  /** Starts a sleep timer of `minutes`, restarting any other, or turns it off. */
+  const chooseSleep = useCallback(
+    (minutes: number | undefined) => {
+      if (minutes === undefined) {
+        engine.setSleepTimer(undefined);
+        sleepRef.current = undefined;
+        setSleep(undefined);
+        return;
+      }
+      engine.setSleepTimer(minutes * 60, sleepSettingsRef.current.fadeOut);
+      const next = { minutes };
+      sleepRef.current = next;
+      setSleep(next);
+      changeSleepSettings({ ...sleepSettingsRef.current, lastMinutes: minutes });
+    },
+    [engine, changeSleepSettings],
+  );
 
   const levels = useMemo<LevelMeter>(
     () => ({ watch: engine.watchLevels, get: engine.getLevel }),
@@ -341,10 +433,11 @@ export function App({
         engine.pause();
       },
       stop: () => {
+        chooseSleep(undefined);
         engine.pause();
       },
     }),
-    [engine],
+    [engine, chooseSleep],
   );
   useMediaSession(sessionTitle, engineState, sessionActions, mediaSession, mediaMetadata);
   // Only while playing: a paused mix shouldn't keep the device awake.
@@ -641,6 +734,10 @@ export function App({
         const backdrop = nextBackdrop(displayRef.current.backdrop);
         changeDisplay({ ...displayRef.current, backdrop });
         showToast(`Backdrop: ${backdropLabel(backdrop)}`);
+      } else if (key === "t") {
+        const minutes = nextCycleMinutes(sleepRef.current?.minutes);
+        chooseSleep(minutes);
+        showToast(`Sleep timer: ${minutes === undefined ? "Off" : timerLabel(minutes)}`);
       } else if (event.key === "?" && hover) {
         setPanelHidden(false);
         setShortcutsOpen((open) => !open);
@@ -653,6 +750,7 @@ export function App({
   }, [
     canFullscreen,
     changeDisplay,
+    chooseSleep,
     hover,
     onToggleSolo,
     setPanelHidden,
@@ -738,6 +836,13 @@ export function App({
             layout={layout}
             sheetOpen={sheetOpen}
             onSheetOpenChange={setSheetOpen}
+            sleep={{
+              minutes: sleep?.minutes,
+              remaining: sleepRemaining,
+              settings: sleepSettings,
+              onChoose: chooseSleep,
+              onSettingsChange: changeSleepSettings,
+            }}
           />
         </div>
       </PanelErrorBoundary>

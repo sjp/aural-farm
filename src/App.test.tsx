@@ -471,6 +471,18 @@ describe("App media session and wake lock", () => {
     expect(engine.pause).toHaveBeenCalledTimes(2);
   });
 
+  it("cancels the sleep timer when stopped from the session", async () => {
+    const { handlers, engine } = renderWithSession("#layers=test-tone");
+    await settle();
+    fireEvent.keyDown(window, { key: "t" });
+    expect(engine.setSleepTimer).toHaveBeenLastCalledWith(15 * 60, 300);
+    act(() => {
+      handlers.get("stop")?.({ action: "stop" });
+    });
+    expect(engine.setSleepTimer).toHaveBeenLastCalledWith(undefined);
+    expect(screen.getByRole("button", { name: "Sleep timer" }).dataset.running).toBe("false");
+  });
+
   it("keeps the screen on with Keep screen on, only while playing", async () => {
     const preferences = createPreferences(() => undefined);
     preferences.set("display.keepAwake", "1");
@@ -738,7 +750,20 @@ describe("App mixer shortcuts", () => {
   it("lists every shortcut in the popover", () => {
     renderMixer("#layers=alpha");
     const keys = [...document.querySelectorAll(".shortcuts-popover kbd")].map((k) => k.textContent);
-    expect(keys).toEqual(["Space", "/", "S", "1–8", "Shift+1–8", "M", "↑ ↓", "H", "F", "D", "?"]);
+    expect(keys).toEqual([
+      "Space",
+      "/",
+      "S",
+      "1–8",
+      "Shift+1–8",
+      "M",
+      "↑ ↓",
+      "H",
+      "F",
+      "D",
+      "T",
+      "?",
+    ]);
   });
 
   it("cycles the backdrop Glow → Night → Off with D, saving it and saying so", () => {
@@ -753,6 +778,147 @@ describe("App mixer shortcuts", () => {
     expect(document.querySelector(".backdrop")?.getAttribute("data-backdrop")).toBe("off");
     fireEvent.keyDown(window, { key: "d" });
     expect(backdrop()).toBe("glow");
+  });
+});
+
+describe("App sleep timer", () => {
+  function renderTimer(preferences = createPreferences(() => undefined)) {
+    const fake = fakeEngine();
+    window.history.replaceState(null, "", "/#layers=alpha");
+    render(
+      <App
+        initial={parseHash(window.location.hash, catalogue, TEST_TONE_ID)}
+        loader={loader}
+        preferences={preferences}
+        favourites={createFavourites(() => undefined)}
+        createEngine={fake.factory}
+        sounds={catalogue}
+        defaultSoundId={TEST_TONE_ID}
+      />,
+    );
+    return { ...fake, preferences };
+  }
+  const clock = () => screen.getByRole("button", { name: /^Sleep timer/ });
+  const toast = () => screen.getByRole("status").textContent;
+
+  beforeEach(() => {
+    vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  });
+
+  it("cycles Off → 15 → 30 → 60 → 90 min → Off with T, saying so", async () => {
+    const { engine } = renderTimer();
+    await settle();
+    const steps: (string | null)[] = [];
+    for (let i = 0; i < 5; i++) {
+      fireEvent.keyDown(window, { key: i === 2 ? "T" : "t" });
+      steps.push(toast());
+    }
+    expect(steps).toEqual([
+      "Sleep timer: 15 min",
+      "Sleep timer: 30 min",
+      "Sleep timer: 1 h",
+      "Sleep timer: 1 h 30",
+      "Sleep timer: Off",
+    ]);
+    expect(engine.setSleepTimer.mock.calls).toEqual([
+      [15 * 60, 300],
+      [30 * 60, 300],
+      [60 * 60, 300],
+      [90 * 60, 300],
+      [undefined],
+    ]);
+  });
+
+  it("shows the time left from the engine, each minute and then each second", async () => {
+    const { engine } = renderTimer();
+    await settle();
+    let left = 61 * 60 + 30;
+    engine.sleepRemaining.mockImplementation(() => left);
+    fireEvent.keyDown(window, { key: "t" });
+    expect(clock().getAttribute("aria-label")).toBe("Sleep timer, 1:02:00 left");
+    const advance = async (seconds: number) => {
+      left -= seconds;
+      await act(async () => {
+        // A little over, as an update lands just after the text would change.
+        await vi.advanceTimersByTimeAsync(seconds * 1000 + 50);
+      });
+    };
+    await advance(29);
+    expect(clock().textContent).toBe("1:02:00");
+    await advance(1);
+    expect(clock().textContent).toBe("1:01:00");
+    left = 120;
+    await advance(60);
+    expect(clock().textContent).toBe("1:00");
+    await advance(1);
+    expect(clock().textContent).toBe("0:59");
+  });
+
+  it("resets to Off when the engine says the timer ran out", async () => {
+    const { callbacks } = renderTimer();
+    await settle();
+    fireEvent.keyDown(window, { key: "t" });
+    expect(clock().dataset.running).toBe("true");
+    act(() => {
+      callbacks()?.onSleepEnd?.();
+    });
+    expect(clock().dataset.running).toBe("false");
+    fireEvent.keyDown(window, { key: "t" });
+    expect(toast()).toBe("Sleep timer: 15 min");
+  });
+
+  it("starts a timer from the menu with the fade-out chosen, and remembers both", async () => {
+    const { engine, preferences } = renderTimer();
+    await settle();
+    fireEvent.click(clock());
+    const menu = screen.getByRole("dialog", { name: "Sleep timer" });
+    const fadeOut = within(menu).getByRole("group", { name: "Fade out over" });
+    fireEvent.click(within(fadeOut).getByRole("button", { name: "1 min" }));
+    const lengths = within(menu).getByRole("group", { name: "Sleep timer" });
+    fireEvent.click(within(lengths).getByRole("button", { name: "45 min" }));
+    expect(engine.setSleepTimer).toHaveBeenLastCalledWith(45 * 60, 60);
+    expect(preferences.get("sleep.lastMinutes")).toBe("45");
+    expect(preferences.get("sleep.fadeOut")).toBe("60");
+    // The timer isn't part of the link.
+    expect(writtenHash()).toBe("#layers=alpha");
+  });
+
+  it("gives a running timer a new fade-out without moving its end", async () => {
+    const { engine } = renderTimer();
+    await settle();
+    fireEvent.keyDown(window, { key: "t" });
+    engine.sleepRemaining.mockReturnValue(600);
+    fireEvent.click(clock());
+    const fadeOut = screen.getByRole("group", { name: "Fade out over" });
+    fireEvent.click(within(fadeOut).getByRole("button", { name: "15 min" }));
+    expect(engine.setSleepTimer).toHaveBeenLastCalledWith(600, 900);
+  });
+
+  it("starts Off on every visit, offering the last length first", async () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("sleep.lastMinutes", "90");
+    const { engine } = renderTimer(preferences);
+    await settle();
+    expect(clock().dataset.running).toBe("false");
+    expect(engine.setSleepTimer).not.toHaveBeenCalled();
+    fireEvent.click(clock());
+    expect(document.activeElement?.textContent).toBe("1 h 30");
+  });
+
+  it("sets the Play fade-in from the preference, and when it changes", async () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("fadeIn", "10");
+    const { engine } = renderTimer(preferences);
+    await settle();
+    expect(engine.setPlayFadeIn).toHaveBeenCalledWith(10);
+    expect(engine.setPlayFadeIn.mock.invocationCallOrder[0]).toBeLessThan(
+      engine.play.mock.invocationCallOrder[0] ?? 0,
+    );
+    fireEvent.click(clock());
+    const fadeIn = screen.getByRole("group", { name: "Fade in on Play" });
+    fireEvent.click(within(fadeIn).getByRole("button", { name: "Instant" }));
+    expect(engine.setPlayFadeIn).toHaveBeenLastCalledWith(0.1);
+    expect(preferences.get("fadeIn")).toBe("0.1");
   });
 });
 

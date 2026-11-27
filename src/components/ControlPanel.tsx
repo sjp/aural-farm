@@ -54,6 +54,7 @@ const SHORTCUTS: readonly (readonly [key: string, action: string])[] = [
   ["H", "Hide or show the panel"],
   ["F", "Toggle fullscreen"],
   ["D", "Backdrop: Glow, Night or Off"],
+  ["T", "Sleep timer: Off, 15, 30, 60 or 90 min"],
   ["?", "Show these shortcuts"],
 ];
 
