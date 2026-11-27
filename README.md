@@ -289,6 +289,15 @@ around it), **Wave size** goes from gentle lapping to big surf, **Distance** mov
 the water's edge to far up the beach, **Shore** sets what the backwash drains over (sand,
 or pebbles that rattle softly), and **Variation** crossfades to a different run of waves.
 
+**Stream** is running water over stones, heard from the bank: the liquid chatter of countless
+small bubbles, each ringing briefly with a rising pitch, in little bursts where the water
+tumbles over a stone, each from its own place along the stream, over a soft rush of the
+flow. **Flow** goes from a gentle trickle to fast-running water, which also surges and eases
+on its own, **Size** from a small brook (small, high bubbles over a faint rush) to a broad
+river (larger, lower bubbles almost lost in a deep, full rush), **Distance** moves you from
+the bank to further away, where the babble fades into the rush, and **Variation** crossfades
+to a different pattern of bubbles and surges.
+
 **Fireplace** is a wood fire in an open hearth, heard from an armchair across the room: the
 soft, flickering breath of the flames under little clusters of dry crackles, the odd
 louder pop, now and then a few seconds of sap hissing out of a log, and rarely a log
