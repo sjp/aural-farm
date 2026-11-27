@@ -13,6 +13,7 @@ import { brownNoiseMeta } from "./brown-noise/brown-noise.meta";
 import { chimesMeta } from "./chimes/chimes.meta";
 import { clockMeta } from "./clock/clock.meta";
 import { coffeeShopMeta } from "./coffee-shop/coffee-shop.meta";
+import { droneMeta } from "./drone/drone.meta";
 import { engineCoreMeta } from "./engine-core/engine-core.meta";
 import { fanMeta } from "./fan/fan.meta";
 import { fireplaceMeta } from "./fireplace/fireplace.meta";
@@ -70,6 +71,7 @@ export const sounds: readonly SoundEntry[] = [
   { ...windMeta, load: () => import("./wind/wind").then((m) => m.wind) },
   { ...chimesMeta, load: () => import("./chimes/chimes").then((m) => m.chimes) },
   { ...bowlsMeta, load: () => import("./bowls/bowls").then((m) => m.bowls) },
+  { ...droneMeta, load: () => import("./drone/drone").then((m) => m.drone) },
   { ...thunderMeta, load: () => import("./thunder/thunder").then((m) => m.thunder) },
   {
     ...brownNoiseMeta,

@@ -307,6 +307,13 @@ const EXCEPTIONS: Readonly<Record<string, SoundExceptions>> = {
       },
     },
   },
+  drone: {
+    // Open and quick at once, with the most space, in the deepest and the highest keys.
+    extraSets: (["c", "b"] as const).map((key) => ({
+      name: `${key}, brightest, most movement, most space`,
+      params: { key, brightness: 100, movement: 100, space: 100 },
+    })),
+  },
   thunder: {
     // The nearest, longest rumbles, as often as they come.
     extraSets: [
