@@ -272,6 +272,14 @@ and how strongly the throb swells; depth 0 is a steady hum), **Room** (metallic 
 and reverb), **Hiss** (faint ventilation air on top) and **Variation**, which crossfades to
 different slow drifts and room detail while the hum plays on.
 
+**Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
+top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
+sparse drizzle to a downpour, **Surface** sets what the rain lands on (open ground with
+puddles, leaves, a roof, a window or a tent; a change crossfades, with the same drops landing
+on the new surface), **Distance** moves it from a close, detailed patter to a soft, far wash,
+**Plinks** sets how many drops ring, and **Variation** crossfades to a different pattern of
+drops and swells.
+
 The noise colours (**Brown**, **Pink**, **White** and **Grey Noise**) are the plain, steady
 noises used for sleep, focus and masking. Each has **Tone** (darker to brighter), **Width**
 (mono to wide stereo, at a steady level), **Movement** (slow, subtle swells; 0 is perfectly
