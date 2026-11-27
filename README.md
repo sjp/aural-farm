@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Long-haul Flight**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Night Train**, **Long-haul Flight**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -329,6 +329,20 @@ at the **Rear** the roar is darker and the engines louder. **Engines** sets the 
 soft two-tone chime far up the cabin (Off, Rarely, about every 25 minutes, or Sometimes,
 about every 8). **Variation** crossfades to different engine speeds, chime notes and slow
 drifts. With Brown Noise under it, it makes the **Long-haul Flight** preset.
+
+**Train Carriage** is a seat in the middle of a carriage at night, the train running
+steadily: the deep rumble of the carriage's body and floor, the roar of the wheels on the
+rail above it, and at each rail joint a quick "da-dum" as the near bogie's two axles cross
+it, then the same, quieter and duller, from the bogie at the far end. The carriage sways
+gently, shifting the sound a little. **Speed** (40–160 km/h) sets the rhythm, and the
+roar's level and pitch; a change glides, the rhythm speeding up or slowing down without a
+beat out of place. **Track** picks **Jointed track** (the clackety rhythm) or **Welded
+track** (a smooth run with only a soft thump now and then), crossfading between them.
+**Clacks** sets the level of the clacks and thumps (0 is a smooth hum), and **Points** adds
+a short, irregular rattle as the train crosses points (Off, Rarely, about every 4 minutes,
+or Sometimes, about every 90 seconds). **Variation** crossfades to a different track, its
+joints a little differently spaced, and different sways. With rain on the window, it makes
+the **Night Train** preset.
 
 **Rain** is steady rain heard from under cover: an even hiss with single nearer drops on
 top, some of them ringing with the small rising "plip" of a bubble. **Intensity** goes from a
