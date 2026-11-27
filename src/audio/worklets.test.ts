@@ -29,4 +29,10 @@ describe("loadWorklet", () => {
     await loadWorklet(ctx.asContext(), "a.js");
     expect(ctx.audioWorklet.modules).toEqual(["a.js", "a.js"]);
   });
+
+  it("explains that an insecure page has no audio worklets", async () => {
+    const ctx = new FakeAudioContext();
+    Object.defineProperty(ctx, "audioWorklet", { value: undefined });
+    await expect(loadWorklet(ctx.asContext(), "a.js")).rejects.toThrow("secure pages");
+  });
 });

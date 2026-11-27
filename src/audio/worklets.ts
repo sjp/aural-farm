@@ -15,7 +15,8 @@ const loaded = new WeakMap<BaseAudioContext, Map<string, Promise<void>>>();
 
 /**
  * Adds the worklet module at `url` to `ctx`, once per context. A failed load is
- * forgotten, so the next call tries again.
+ * forgotten, so the next call tries again. Rejects with an explanation on an
+ * insecure page, where the browser leaves out `audioWorklet`.
  */
 export function loadWorklet(ctx: BaseAudioContext, url: string): Promise<void> {
   let modules = loaded.get(ctx);
@@ -26,6 +27,14 @@ export function loadWorklet(ctx: BaseAudioContext, url: string): Promise<void> {
   const cached = modules.get(url);
   if (cached) {
     return cached;
+  }
+  // Browsers only offer AudioWorklet on secure pages: https, or localhost.
+  if (!ctx.audioWorklet) {
+    return Promise.reject(
+      new Error(
+        "this browser only allows it on secure pages; open the app over https or localhost",
+      ),
+    );
   }
   const loading = ctx.audioWorklet.addModule(url).catch((error: unknown) => {
     modules.delete(url);
