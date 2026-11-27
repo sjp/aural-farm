@@ -161,8 +161,9 @@ function chain() {
   const limiter = into(trim);
   const highpass = into(limiter);
   const masterFade = into(highpass);
-  const masterLevel = into(masterFade);
-  return { trim, limiter, highpass, masterFade, masterLevel };
+  const masterMute = into(masterFade);
+  const masterLevel = into(masterMute);
+  return { trim, limiter, highpass, masterFade, masterMute, masterLevel };
 }
 
 function param(node: FakeNode | undefined, name: string): FakeParam {
@@ -173,13 +174,15 @@ function param(node: FakeNode | undefined, name: string): FakeParam {
   return found;
 }
 
-/** The level gain a sound's oscillator feeds (the nth oscillator made), and the fade after it. */
+/** The level gain a sound's oscillator feeds (the nth oscillator made), then its solo and fade. */
 function gainsOf(nth: number) {
   const osc = ctx.nodes.filter((n) => n.kind === "oscillator").at(nth);
   const level = osc?.connections.at(0) as FakeNode | undefined;
-  const fade = level?.connections.at(0) as FakeNode | undefined;
+  const solo = level?.connections.at(0) as FakeNode | undefined;
+  const fade = solo?.connections.at(0) as FakeNode | undefined;
   return {
     level: param(level, "gain"),
+    solo: param(solo, "gain"),
     fade: param(fade, "gain"),
     levelNode: level,
     fadeNode: fade,
@@ -590,9 +593,10 @@ describe("crash isolation", () => {
     expect(lastLayerState("b")).toBe("failed: b broke");
     expect(states.at(-1)).toBe("playing");
     expect(a.built[0]?.disposed).toBe(0);
-    // Its gains are gone too.
+    // Its gains are gone too: what's left is a's level, solo and fade, and the
+    // master's level, mute, fade and trim.
     const levels = ctx.nodes.filter((n) => n.kind === "gain" && n.connections.length > 0);
-    expect(levels).toHaveLength(2 + 3);
+    expect(levels).toHaveLength(3 + 4);
   });
 
   it("rebuilds a failed layer on retry", async () => {
@@ -636,5 +640,151 @@ describe("crash isolation", () => {
     // A second report from the same, already failed sound changes nothing.
     a.built[0]?.onError?.(new Error("again"));
     expect(lastLayerState("a")).toBe("failed: processor crashed");
+  });
+});
+
+describe("solo", () => {
+  it("silences the layers that aren't soloed, and clears", async () => {
+    engine.setMix(mixOf(layer("a"), layer("b")));
+    await engine.play();
+    await flush();
+    await tick(1);
+    engine.setSolo(new Set(["a"]));
+    // The soloed layer was already at full level, so it isn't touched.
+    expect(gainsOf(0).solo.calls).toHaveLength(0);
+    expect(gainsOf(1).solo.calls.at(-1)).toEqual({ method: "setTargetAtTime", args: [0, 1, 0.08] });
+    engine.setSolo(new Set());
+    expect(gainsOf(1).solo.calls.at(-1)).toEqual({ method: "setTargetAtTime", args: [1, 1, 0.08] });
+  });
+
+  it("combines with mute: a muted soloed layer stays silent, and mute keeps its own gain", async () => {
+    engine.setMix(mixOf(layer("a", { muted: true }), layer("b")));
+    await engine.play();
+    await flush();
+    engine.setSolo(new Set(["a"]));
+    const a0 = gainsOf(0);
+    const b0 = gainsOf(1);
+    expect(a0.level.value).toBe(0);
+    expect(a0.solo.value).toBe(1);
+    expect(b0.level.value).toBe(1);
+    expect(b0.solo.valueAt(1)).toBeCloseTo(0, 3);
+    // Unmuting the soloed layer brings it back; the other stays silent.
+    engine.setMix(mixOf(layer("a"), layer("b")));
+    expect(a0.level.calls.at(-1)).toEqual({ method: "setTargetAtTime", args: [1, 0, 0.08] });
+    expect(b0.solo.valueAt(1)).toBeCloseTo(0, 3);
+  });
+
+  it("ends when the soloed layer leaves the mix, and applies to layers added later", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    engine.setSolo(new Set(["b"]));
+    // "b" isn't in the mix, so nothing is soloed yet.
+    expect(gainsOf(0).solo.value).toBe(1);
+    engine.setMix(mixOf(layer("a"), layer("b")));
+    await flush();
+    expect(gainsOf(0).solo.valueAt(1)).toBeCloseTo(0, 3);
+    expect(gainsOf(1).solo.value).toBe(1);
+    engine.setMix(mixOf(layer("a")));
+    expect(gainsOf(0).solo.valueAt(2)).toBeCloseTo(1, 3);
+  });
+
+  it("silences a layer built while another is soloed from the start", async () => {
+    engine.setMix(mixOf(layer("a"), layer("b")));
+    engine.setSolo(new Set(["a"]));
+    await engine.play();
+    await flush();
+    expect(gainsOf(0).solo.value).toBe(1);
+    expect(gainsOf(1).solo.value).toBe(0);
+    expect(gainsOf(1).solo.calls).toEqual([]);
+  });
+});
+
+describe("master mute", () => {
+  it("glides the master mute without touching the master volume", async () => {
+    engine.setMix({ master: 50, layers: [layer("a")] });
+    await engine.play();
+    await flush();
+    const { masterMute, masterLevel } = chain();
+    engine.setMasterMuted(true);
+    expect(param(masterMute, "gain").calls.at(-1)).toEqual({
+      method: "setTargetAtTime",
+      args: [0, 0, 0.08],
+    });
+    engine.setMasterMuted(false);
+    expect(param(masterMute, "gain").calls.at(-1)).toEqual({
+      method: "setTargetAtTime",
+      args: [1, 0, 0.08],
+    });
+    expect(param(masterLevel, "gain").calls).toEqual([]);
+  });
+
+  it("starts muted when muted before the first play", async () => {
+    engine.setMasterMuted(true);
+    await engine.play();
+    await flush();
+    expect(param(chain().masterMute, "gain").value).toBe(0);
+  });
+});
+
+describe("levels", () => {
+  const analysers = () => ctx.nodes.filter((n) => n.kind === "analyser");
+
+  it("makes no analysers until something watches levels", async () => {
+    engine.setMix(mixOf(layer("a"), layer("b")));
+    await engine.play();
+    await flush();
+    expect(analysers()).toHaveLength(0);
+    expect(engine.getLevel("a")).toBe(0);
+    const stop = engine.watchLevels();
+    expect(analysers()).toHaveLength(2);
+    const { fadeNode } = gainsOf(0);
+    expect(fadeNode?.connections).toContain(analysers()[0]);
+    stop();
+    expect(fadeNode?.connections).not.toContain(analysers()[0]);
+    expect(engine.getLevel("a")).toBe(0);
+  });
+
+  it("reads a layer's RMS level from its analyser", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    engine.watchLevels();
+    const analyser = analysers()[0] as unknown as { fftSize: number; signal: number };
+    expect(analyser.fftSize).toBe(256);
+    analyser.signal = -0.25;
+    expect(engine.getLevel("a")).toBeCloseTo(0.25);
+    expect(engine.getLevel("missing")).toBe(0);
+  });
+
+  it("gives layers built while watching an analyser, and keeps them until the last watcher stops", async () => {
+    const first = engine.watchLevels();
+    const second = engine.watchLevels();
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    expect(analysers()).toHaveLength(1);
+    first();
+    first();
+    expect(gainsOf(0).fadeNode?.connections).toContain(analysers()[0]);
+    second();
+    expect(gainsOf(0).fadeNode?.connections).not.toContain(analysers()[0]);
+    // Watching again makes a fresh analyser.
+    engine.watchLevels();
+    expect(analysers()).toHaveLength(2);
+  });
+
+  it("disposes a layer's analyser with the layer", async () => {
+    engine.setMix(mixOf(layer("a")));
+    await engine.play();
+    await flush();
+    engine.watchLevels();
+    const analyser = analysers().at(0);
+    const { fadeNode } = gainsOf(0);
+    engine.pause();
+    await tick(1);
+    engine.setMix(mixOf());
+    expect(fadeNode?.connections).toEqual([]);
+    expect(analyser?.connections).toEqual([]);
   });
 });

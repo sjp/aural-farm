@@ -351,6 +351,20 @@ class FakeWaveShaper extends FakeNode {
   oversample: OverSampleType = "none";
 }
 
+class FakeAnalyser extends FakeNode {
+  fftSize = 2048;
+  /** What `getFloatTimeDomainData` reports; tests set it to simulate a signal. */
+  signal = 0;
+
+  get frequencyBinCount(): number {
+    return this.fftSize / 2;
+  }
+
+  getFloatTimeDomainData(array: Float32Array): void {
+    array.fill(this.signal);
+  }
+}
+
 class FakeWorkletNode extends FakeNode {
   readonly parameters = new Map<string, FakeParam>();
   readonly port = {
@@ -548,6 +562,7 @@ export class FakeAudioContext extends FakeEventTarget {
   createDelay = () => this.make(() => new FakeDelay(this, "delay"));
   createDynamicsCompressor = () => this.make(() => new FakeCompressor(this, "compressor"));
   createWaveShaper = () => this.make(() => new FakeWaveShaper(this, "waveshaper"));
+  createAnalyser = () => this.make(() => new FakeAnalyser(this, "analyser"));
   createChannelSplitter = (outputs = 6) =>
     this.make(() => new FakeNode(this, "splitter", 1, outputs));
   createChannelMerger = (inputs = 6) => this.make(() => new FakeNode(this, "merger", inputs, 1));

@@ -2,16 +2,23 @@
  * The audio engine: turns a `Mix` into a running Web Audio graph and keeps it in
  * step as the mix changes, without clicks.
  *
- *   layer: sound → level (volume × mute) → fade ─┐
- *   layer: sound → level (volume × mute) → fade ─┤
- *   shared reverb (one convolver per kind) ───────┤
- *                                                 └→ master level → master fade
- *        → high-pass 25 Hz → limiter → trim −1 dB → output (→ destination)
+ *   layer: sound → level (volume × mute) → solo → fade ─┐
+ *   layer: sound → level (volume × mute) → solo → fade ─┤
+ *   shared reverb (one convolver per kind) ──────────────┤
+ *                                                        └→ master level
+ *        → master mute → master fade → high-pass 25 Hz → limiter → trim −1 dB
+ *        → output (→ destination)
  *
  * A sound's reverb sends go to its layer's reverb bus: for each kind it uses, a
- * level and fade gain pair that copies the layer's own automation, feeding the
- * shared convolver. So a layer's volume, mute and fades apply to what it sends
- * to the reverb as well.
+ * level, solo and fade gain chain that copies the layer's own automation, feeding
+ * the shared convolver. So a layer's volume, mute, solo and fades apply to what
+ * it sends to the reverb as well.
+ *
+ * Solo and muting everything are listening aids that live outside the `Mix`: while
+ * any layer in the mix is soloed, the solo gains of the others glide to zero.
+ *
+ * Levels for a meter come from one small analyser per layer, tapped after its fade.
+ * The analysers exist only while something watches levels (`watchLevels`).
  *
  * Each sound is crash-isolated: a throw in `create` or `update`, or a crashed
  * worklet, fails that layer alone, and `retry` builds it again. The context is
@@ -67,6 +74,8 @@ export const PAUSE_FADE_OUT = 0.4;
 export const BLOCKED_AFTER_MS = 500;
 /** The shortest wait between checks of the audio clock. */
 const MIN_POLL_MS = 20;
+/** Samples a level analyser looks at: about 5 ms, enough for a meter. */
+const LEVEL_FFT_SIZE = 256;
 
 const HIGHPASS_HZ = 25;
 const HIGHPASS_Q = 0.7;
@@ -93,6 +102,20 @@ export interface AudioEngine {
   setMix: (mix: Mix) => void;
   /** Builds a failed layer again. */
   retry: (id: string) => void;
+  /**
+   * Solos these layers: while any of them is in the mix, every other layer is
+   * silent. An empty set clears the solo. It isn't part of the mix.
+   */
+  setSolo: (ids: ReadonlySet<string>) => void;
+  /** Silences (or restores) the master output without touching the master volume. */
+  setMasterMuted: (muted: boolean) => void;
+  /**
+   * Starts measuring layer levels for `getLevel`, and returns a function that stops.
+   * The analysers exist only while at least one watcher is active.
+   */
+  watchLevels: () => () => void;
+  /** A layer's current RMS level after its gains (0 = silent, 1 = full scale). */
+  getLevel: (id: string) => number;
   /** Stops everything and closes the context. */
   dispose: () => void;
   readonly state: EngineState;
@@ -151,20 +174,25 @@ const isRunning = (ctx: BaseAudioContext) => ctx.state === "running";
 
 const seedOf = (params: ParamValues) => (typeof params.seed === "number" ? params.seed : 0);
 
-/** One reverb kind's bus for a layer: gains that follow the layer's level and fade. */
+/** One reverb kind's bus for a layer: gains that follow the layer's level, solo and fade. */
 interface WetBus {
   level: GainNode;
+  solo: GainNode;
   fade: GainNode;
 }
 
 /** A built (or building) layer: its gain stages and the running sound. */
 interface Voice {
   level: GainNode;
+  solo: GainNode;
   fade: GainNode;
+  /** Present only while levels are watched. */
+  analyser: AnalyserNode | undefined;
   /** The layer's reverb buses, made when its sound first sends to each kind. */
   wet: Map<ReverbKind, WetBus>;
   fadeState: Fade;
   levelTarget: number;
+  soloTarget: number;
   /** Undefined while an async `create` is still running. */
   instance: SoundInstance | undefined;
   /** The params the sound was last given. */
@@ -183,6 +211,7 @@ interface LayerEntry {
 
 interface MasterChain {
   level: GainNode;
+  mute: GainNode;
   fade: GainNode;
 }
 
@@ -210,6 +239,12 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
   const layers = new Map<string, LayerEntry>();
   /** Removed layers still fading out. */
   const leaving = new Set<Voice>();
+  let solo: ReadonlySet<string> = new Set();
+  let masterMuted = false;
+  /** How many `watchLevels` callers are active. */
+  let levelWatchers = 0;
+  /** Scratch space for reading an analyser, shared by every layer. */
+  const levelSamples = new Float32Array(LEVEL_FFT_SIZE);
   const timers = new Set<ReturnType<typeof setTimeout>>();
 
   const setState = (next: EngineState) => {
@@ -283,11 +318,43 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       // The sound is going away either way; its gains are disconnected below.
     }
     voice.level.disconnect();
+    voice.solo.disconnect();
     voice.fade.disconnect();
+    voice.analyser?.disconnect();
+    voice.analyser = undefined;
     for (const bus of voice.wet.values()) {
       bus.level.disconnect();
+      bus.solo.disconnect();
       bus.fade.disconnect();
     }
+  };
+
+  /** Whether `id`'s layer should sound, given the solo: 1 if so, 0 if not. */
+  const soloGain = (id: string) => {
+    const active = [...solo].some((soloed) => layers.has(soloed));
+    return !active || solo.has(id) ? 1 : 0;
+  };
+
+  const attachAnalyser = (voice: Voice) => {
+    if (!context || voice.analyser || voice.released) {
+      return;
+    }
+    const analyser = context.createAnalyser();
+    analyser.fftSize = LEVEL_FFT_SIZE;
+    voice.fade.connect(analyser);
+    voice.analyser = analyser;
+  };
+
+  const detachAnalyser = (voice: Voice) => {
+    const { analyser } = voice;
+    if (!analyser) {
+      return;
+    }
+    voice.analyser = undefined;
+    if (!voice.released) {
+      voice.fade.disconnect(analyser);
+    }
+    analyser.disconnect();
   };
 
   /** Fades a voice (and its reverb buses) to `to` over `seconds`. */
@@ -317,6 +384,9 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     const level = ctx.createGain();
     level.gain.value = voice.level.gain.value;
     level.gain.setTargetAtTime(voice.levelTarget, now, GLIDE_TAU);
+    const soloStage = ctx.createGain();
+    soloStage.gain.value = voice.solo.gain.value;
+    soloStage.gain.setTargetAtTime(voice.soloTarget, now, GLIDE_TAU);
     const fade = ctx.createGain();
     fade.gain.value = fadeValue(voice.fadeState, now);
     if (voice.fadeState.end > now) {
@@ -328,8 +398,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       convolver.connect(master.level);
       reverbReturns.add(kind);
     }
-    level.connect(fade).connect(convolver);
-    voice.wet.set(kind, { level, fade });
+    level.connect(soloStage).connect(fade).connect(convolver);
+    voice.wet.set(kind, { level, solo: soloStage, fade });
     return level;
   };
 
@@ -371,6 +441,25 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     }
   };
 
+  const applySolo = (entry: LayerEntry) => {
+    const { voice } = entry;
+    const target = soloGain(entry.id);
+    if (!context || !voice || voice.soloTarget === target) {
+      return;
+    }
+    voice.soloTarget = target;
+    voice.solo.gain.setTargetAtTime(target, context.currentTime, GLIDE_TAU);
+    for (const bus of voice.wet.values()) {
+      bus.solo.gain.setTargetAtTime(target, context.currentTime, GLIDE_TAU);
+    }
+  };
+
+  const applySoloToAll = () => {
+    for (const entry of layers.values()) {
+      applySolo(entry);
+    }
+  };
+
   /** Takes a freshly created sound into the mix and fades it in. */
   const attach = (entry: LayerEntry, voice: Voice, instance: SoundInstance) => {
     if (disposed || !context || voice.released || entry.voice !== voice) {
@@ -398,21 +487,30 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     const level = ctx.createGain();
     const levelTarget = layerGain(entry.layer);
     level.gain.value = levelTarget;
+    const soloStage = ctx.createGain();
+    const soloTarget = soloGain(entry.id);
+    soloStage.gain.value = soloTarget;
     const fade = ctx.createGain();
     fade.gain.value = 0;
-    level.connect(fade).connect(master.level);
+    level.connect(soloStage).connect(fade).connect(master.level);
     const params = soundParams(definition, entry.layer.params);
     const voice: Voice = {
       level,
+      solo: soloStage,
       fade,
+      analyser: undefined,
       wet: new Map(),
       fadeState: still(0),
       levelTarget,
+      soloTarget,
       instance: undefined,
       params,
       released: false,
     };
     entry.voice = voice;
+    if (levelWatchers > 0) {
+      attachAnalyser(voice);
+    }
     routeReverb(level, (kind) => wetInput(voice, kind));
     const onError = (error: unknown) => {
       if (entry.voice === voice) {
@@ -529,6 +627,8 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       ctx = options.createContext();
       const level = ctx.createGain();
       level.gain.value = volumeGain(mix.master);
+      const mute = ctx.createGain();
+      mute.gain.value = masterMuted ? 0 : 1;
       const fade = ctx.createGain();
       fade.gain.value = 0;
       const highpass = ctx.createBiquadFilter();
@@ -544,9 +644,9 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
       limiter.release.value = 0.25;
       const trim = ctx.createGain();
       trim.gain.value = 10 ** (TRIM_DB / 20);
-      level.connect(fade).connect(highpass).connect(limiter).connect(trim);
+      level.connect(mute).connect(fade).connect(highpass).connect(limiter).connect(trim);
       connectOutput(ctx, trim);
-      master = { level, fade };
+      master = { level, mute, fade };
     } catch (error) {
       console.error("Couldn't start audio:", error);
       ctx?.close().catch(() => undefined);
@@ -706,6 +806,65 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
         }
       }
     }
+    // Adding or removing a soloed layer can start or end the solo.
+    applySoloToAll();
+  };
+
+  const setSolo = (ids: ReadonlySet<string>) => {
+    if (disposed) {
+      return;
+    }
+    solo = new Set(ids);
+    applySoloToAll();
+  };
+
+  const setMasterMuted = (muted: boolean) => {
+    if (disposed || muted === masterMuted) {
+      return;
+    }
+    masterMuted = muted;
+    if (context && master) {
+      master.mute.gain.setTargetAtTime(muted ? 0 : 1, context.currentTime, GLIDE_TAU);
+    }
+  };
+
+  const watchLevels = () => {
+    levelWatchers++;
+    if (levelWatchers === 1) {
+      for (const entry of layers.values()) {
+        if (entry.voice) {
+          attachAnalyser(entry.voice);
+        }
+      }
+    }
+    let stopped = false;
+    return () => {
+      if (stopped) {
+        return;
+      }
+      stopped = true;
+      levelWatchers--;
+      if (levelWatchers === 0) {
+        for (const entry of layers.values()) {
+          if (entry.voice) {
+            detachAnalyser(entry.voice);
+          }
+        }
+      }
+    };
+  };
+
+  const getLevel = (id: string) => {
+    const analyser = layers.get(id)?.voice?.analyser;
+    if (!analyser || disposed) {
+      return 0;
+    }
+    analyser.getFloatTimeDomainData(levelSamples);
+    let sum = 0;
+    for (const sample of levelSamples) {
+      sum += sample * sample;
+    }
+    return Math.sqrt(sum / levelSamples.length);
   };
 
   const retry = (id: string) => {
@@ -755,6 +914,10 @@ export function createAudioEngine(options: EngineOptions): AudioEngine {
     pause,
     setMix,
     retry,
+    setSolo,
+    setMasterMuted,
+    watchLevels,
+    getLevel,
     dispose,
     get state() {
       return state;

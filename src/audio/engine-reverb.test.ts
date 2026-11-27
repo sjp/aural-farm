@@ -84,14 +84,17 @@ async function tick(seconds: number) {
 const gain = (node: FakeNode | undefined): FakeParam =>
   (node as unknown as { gain: FakeParam }).gain;
 
-/** The reverb bus a layer's send feeds: the send's target and the fade after it. */
+/** The reverb bus a layer's send feeds: the send's target, the solo after it and the fade last. */
 function busOf(nth: number) {
   const sends = ctx.nodes.filter(
     (n) => n.kind === "gain" && n.connections.some((c) => c === convolver()),
   );
   const fade = sends.at(nth);
-  const level = ctx.nodes.find((n) => fade !== undefined && n.connections.includes(fade));
-  return { level, fade };
+  const into = (target: FakeNode | undefined) =>
+    ctx.nodes.find((n) => target !== undefined && n.connections.includes(target));
+  const solo = into(fade);
+  const level = into(solo);
+  return { level, solo, fade };
 }
 
 const convolver = () => getReverb(ctx.asContext(), "hall") as unknown as FakeNode;
