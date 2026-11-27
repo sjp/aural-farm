@@ -61,7 +61,9 @@ worker.addEventListener("message", (event) => {
 worker.addEventListener("fetch", (event) => {
   const response = respond(event.request, scope(), {
     fetch: (request) => fetch(request),
-    match: (request) => caches.match(request, { cacheName: CACHE }),
+    // Ignoring Vary: a server may vary on Origin, which a page's module scripts
+    // send and the precache's requests don't, and a cached file is the same either way.
+    match: (request) => caches.match(request, { cacheName: CACHE, ignoreVary: true }),
     indexUrl: new URL("index.html", scope()).href,
     setTimeout: (callback, ms) => setTimeout(callback, ms),
   });
