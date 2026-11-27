@@ -120,7 +120,7 @@ cursor hidden.
 **Mixes** in the header (or `P`) opens the Mixes view in place of the mixer, with two lists:
 
 - **Presets:** built-in mixes that show what the app can do, such as **Engine Hum**,
-  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Meditation**, **Deep Focus**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
+  **Night Shift**, **Engine Room**, **Seaside**, **Stormy Night**, **Dawn Chorus**, **Summer Night**, **Rainy Cabin**, **Night Train**, **City Night**, **Café Study**, **Meditation**, **Deep Focus**, **Baby Sleep**, **Long-haul Flight**, **Server Hall**, **Deep Brown**,
   **Soft Pink** and **Masking Blend**. More arrive as more sounds are added.
 - **My mixes:** the mixes you've saved, newest first, each with **Rename** and **Delete**
   (which offers **Undo** for a few seconds).
@@ -443,6 +443,17 @@ when the app first started playing, paused time aside, or from an exported file'
 follow the wall clock). **Variation** crossfades to a
 clock with a different beat error and detail. With rain on the roof and a fire, it makes the
 **Rainy Cabin** preset.
+
+**Heartbeat** is a resting heart heard from inside, as in the womb, through warm water: a slow,
+soft "lub-dub", each beat two low, muffled thumps, the second a little softer and higher,
+over the whoosh of blood flow, which swells with each beat and eases between them but never
+stops. The rhythm drifts and sways a little with the breath, as a real resting heart does, so
+it never sounds like a metronome. Nothing is panned: it sits in the middle of your head.
+**Rate** sets the heart rate (50 to 90 beats a minute), taking effect from the next beat, so
+the beat that follows a change may come a little early or late, as when a heart speeds up or
+slows down. **Muffle** goes from closer and clearer to deep and warm, **Flow** sets how much of
+the whoosh you hear (0 is the beats alone), and **Variation** crossfades to a heart with a
+different rhythm and detail. With brown noise and a fan, it makes the **Baby Sleep** preset.
 
 **Wind** is moving air: a broad rush that grows louder and brighter as it picks up, with
 irregular gusts that surge and die away between lulls, and now and then a soft, hollow
