@@ -29,11 +29,17 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "browser", testIgnore: /sound-cost\.spec\.ts$/ },
+    { name: "browser", testIgnore: /(sound-cost|mobile)\.spec\.ts$/ },
+    {
+      // A phone-sized touch screen, for the bottom sheet and touch controls.
+      name: "mobile",
+      testMatch: /mobile\.spec\.ts$/,
+      use: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
+    },
     {
       name: "cost",
       testMatch: /sound-cost\.spec\.ts$/,
-      dependencies: ["browser"],
+      dependencies: ["browser", "mobile"],
       workers: 1,
     },
   ],
