@@ -539,7 +539,11 @@ describe("Display section", () => {
     audioOutput: "auto",
   } as const;
 
-  function renderDisplay(preferences = createPreferences(() => undefined), wakeLock = false) {
+  function renderDisplay(
+    preferences = createPreferences(() => undefined),
+    wakeLock = false,
+    onInstall?: () => void,
+  ) {
     const onDisplayChange = vi.fn<(settings: object) => void>();
     const handler = () => undefined;
     render(
@@ -558,6 +562,7 @@ describe("Display section", () => {
         display={display}
         onDisplayChange={onDisplayChange}
         wakeLock={wakeLock}
+        onInstall={onInstall}
         onLayerChange={handler}
         onParamChange={handler}
         onResetAll={handler}
@@ -621,6 +626,22 @@ describe("Display section", () => {
     preferences.set("displayOpen", "1");
     renderDisplay(preferences, false);
     expect(screen.queryByRole("switch", { name: "Keep screen on" })).toBeNull();
+  });
+
+  it("offers Install app where the browser can install it", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    const onInstall = vi.fn<() => void>();
+    renderDisplay(preferences, false, onInstall);
+    fireEvent.click(screen.getByRole("button", { name: "Install app" }));
+    expect(onInstall).toHaveBeenCalledOnce();
+  });
+
+  it("leaves Install app out where the browser can't install it", () => {
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    renderDisplay(preferences);
+    expect(screen.queryByRole("button", { name: "Install app" })).toBeNull();
   });
 
   it("keeps the audio output under a collapsed Advanced", () => {

@@ -313,6 +313,8 @@ interface ControlPanelProps {
   onDisplayChange?: ((settings: DisplaySettings) => void) | undefined;
   /** Whether the browser can keep the screen on (the Screen Wake Lock API). */
   wakeLock?: boolean | undefined;
+  /** Installs the app; Install app shows in the Display section only when it is given. */
+  onInstall?: (() => void) | undefined;
   /** How the panel is laid out for the screen; a floating card by default. */
   layout?: PanelLayout | undefined;
   /** Whether the bottom sheet is expanded. The sound picker expands it too. */
@@ -332,12 +334,15 @@ function DisplaySection({
   preferences,
   onChange,
   wakeLock,
+  onInstall,
 }: {
   settings: DisplaySettings;
   preferences: Preferences;
   onChange: (settings: DisplaySettings) => void;
   /** Whether the browser can keep the screen on; Keep screen on shows only where it can. */
   wakeLock: boolean;
+  /** Installs the app, where the browser has offered to. */
+  onInstall: (() => void) | undefined;
 }): JSX.Element {
   const [open, setOpen] = useState(() => preferences.get(DISPLAY_OPEN_KEY) === "1");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -370,6 +375,16 @@ function DisplaySection({
       changed={countChanged(DISPLAY_PARAMS, settings)}
     >
       {DISPLAY_KEYS.filter((key) => key !== "keepAwake" || wakeLock).map((key) => control(key))}
+      {onInstall && (
+        <button
+          type="button"
+          className="display-install"
+          title="Add Aural Farm to your home screen or desktop, to open it in its own window, offline too"
+          onClick={onInstall}
+        >
+          Install app
+        </button>
+      )}
       <Section
         title="Advanced"
         className="display-advanced"
@@ -701,6 +716,7 @@ export function ControlPanel(props: ControlPanelProps): JSX.Element {
                 preferences={preferences}
                 onChange={props.onDisplayChange}
                 wakeLock={props.wakeLock === true}
+                onInstall={props.onInstall}
               />
             )}
             {props.audioExport && (

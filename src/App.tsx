@@ -43,6 +43,7 @@ import { createFavourites, type Favourites } from "./lib/favourites";
 import { mediaTitle, type MediaSessionLike, type MetadataFactory } from "./lib/media-session";
 import { createPreferences, type Preferences } from "./lib/preferences";
 import type { AppUpdates } from "./lib/service-worker";
+import type { InstallPrompt } from "./lib/install-prompt";
 import {
   countdownDelay,
   loadSleepSettings,
@@ -229,12 +230,20 @@ interface AppProps {
   presets?: readonly Preset[] | undefined;
   /** New versions of the app, from its service worker; absent in development. */
   updates?: AppUpdates | undefined;
+  /** The browser's offer to install the app; absent in tests. */
+  install?: InstallPrompt | undefined;
 }
 
 /** Stands in for `updates` where there is no service worker: never a new version. */
 const NO_UPDATES: Pick<AppUpdates, "subscribe" | "ready"> = {
   subscribe: () => () => undefined,
   ready: () => false,
+};
+
+/** Stands in for `install` where the browser can't install from the page. */
+const NO_INSTALL: Pick<InstallPrompt, "subscribe" | "available"> = {
+  subscribe: () => () => undefined,
+  available: () => false,
 };
 
 /** A row for a mix in the Mixes view. */
@@ -281,6 +290,7 @@ export function App({
   savedMixes: givenSavedMixes,
   presets = builtInPresets,
   updates,
+  install,
 }: AppProps): JSX.Element {
   const [state, setState] = useState(initial);
   const [solo, setSolo] = useState<ReadonlySet<string>>(() => new Set());
@@ -343,6 +353,12 @@ export function App({
     sleepSettingsRef.current = sleepSettings;
   });
   const visible = useDocumentVisible();
+  // Install app shows while the browser offers it, and never in the installed app.
+  const canInstall = useExternalStore(
+    (install ?? NO_INSTALL).subscribe,
+    (install ?? NO_INSTALL).available,
+  );
+  const standalone = useMediaQuery("(display-mode: standalone)");
   const updateReady = useExternalStore(
     (updates ?? NO_UPDATES).subscribe,
     (updates ?? NO_UPDATES).ready,
@@ -1169,6 +1185,7 @@ export function App({
             display={display}
             onDisplayChange={changeDisplay}
             wakeLock={wakeLock !== undefined}
+            onInstall={install && canInstall && !standalone ? install.prompt : undefined}
             layout={layout}
             sheetOpen={sheetOpen}
             onSheetOpenChange={setSheetOpen}

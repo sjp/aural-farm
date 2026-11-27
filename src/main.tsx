@@ -1,5 +1,6 @@
 import { render } from "preact";
 import { App } from "./App";
+import { createInstallPrompt } from "./lib/install-prompt";
 import { createPreferences } from "./lib/preferences";
 import { registerServiceWorker, type AppUpdates } from "./lib/service-worker";
 import { parseHash } from "./mixes/mix";
@@ -47,10 +48,19 @@ const updates: AppUpdates | undefined =
       })
     : undefined;
 
+// Listening from the start, so an early offer to install isn't missed.
+const install = createInstallPrompt(window);
+
 const root = document.getElementById("root");
 if (root) {
   render(
-    <App initial={initial} loader={loader} preferences={createPreferences()} updates={updates} />,
+    <App
+      initial={initial}
+      loader={loader}
+      preferences={createPreferences()}
+      updates={updates}
+      install={install}
+    />,
     root,
   );
 }

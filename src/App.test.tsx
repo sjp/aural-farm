@@ -13,6 +13,7 @@ import {
 import type { AudioEngine, EngineState } from "./audio/engine";
 import { createFavourites } from "./lib/favourites";
 import { createPreferences } from "./lib/preferences";
+import { createInstallPrompt } from "./lib/install-prompt";
 import type { AppUpdates } from "./lib/service-worker";
 import { createStore } from "./lib/store";
 import { MAX_LAYERS, parseHash, type Mix } from "./mixes/mix";
@@ -1528,5 +1529,68 @@ describe("App updates", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(updates.check).toHaveBeenCalledOnce();
+  });
+});
+
+describe("App install", () => {
+  function renderWithInstall(standalone: boolean) {
+    vi.mocked(window.matchMedia).mockImplementation(
+      (query) =>
+        ({
+          matches:
+            query === "(hover: hover)" || (standalone && query === "(display-mode: standalone)"),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    );
+    const target = new EventTarget();
+    const install = createInstallPrompt(target);
+    const preferences = createPreferences(() => undefined);
+    preferences.set("displayOpen", "1");
+    window.history.replaceState(null, "", "/");
+    render(
+      <App
+        initial={parseHash("", catalogue, TEST_TONE_ID)}
+        loader={loader}
+        preferences={preferences}
+        favourites={createFavourites(() => undefined)}
+        createEngine={fakeEngine().factory}
+        sounds={catalogue}
+        defaultSoundId={TEST_TONE_ID}
+        install={install}
+      />,
+    );
+    const prompt = vi.fn<() => Promise<unknown>>(() => Promise.resolve(undefined));
+    const offer = () => {
+      act(() => {
+        target.dispatchEvent(
+          Object.assign(new Event("beforeinstallprompt", { cancelable: true }), { prompt }),
+        );
+      });
+    };
+    return { offer, prompt };
+  }
+
+  const installButton = () => screen.queryByRole("button", { name: "Install app" });
+
+  it("offers Install app once the browser does, and shows its dialog", async () => {
+    const { offer, prompt } = renderWithInstall(false);
+    await settle();
+    expect(installButton()).toBeNull();
+    offer();
+    const button = installButton();
+    if (!button) {
+      throw new Error("No Install app button");
+    }
+    fireEvent.click(button);
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(installButton()).toBeNull();
+  });
+
+  it("never offers it in the installed app", async () => {
+    const { offer } = renderWithInstall(true);
+    await settle();
+    offer();
+    expect(installButton()).toBeNull();
   });
 });
