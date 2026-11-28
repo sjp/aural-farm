@@ -104,7 +104,9 @@ export function createCrossfader(
 
   const fadeOut = (slot: Slot, now: number) => {
     const from = levelAt(slot, now);
-    slot.gain.gain.cancelScheduledValues(now);
+    // From 0, not `now`: Firefox keeps a fade-in curve that began before the
+    // cancel time, then refuses a new curve over it.
+    slot.gain.gain.cancelScheduledValues(0);
     slot.gain.gain.setValueCurveAtTime(curve("out", from), now, seconds);
     slot.fade = "out";
     slot.from = from;

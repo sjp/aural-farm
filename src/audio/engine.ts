@@ -224,7 +224,9 @@ function fadeValue(fade: Fade, t: number): number {
 /** Ramps `param` from its current point on `fade` to `to` over `seconds`. */
 function fadeParam(param: AudioParam, fade: Fade, to: number, seconds: number, now: number): Fade {
   const from = fadeValue(fade, now);
-  param.cancelScheduledValues(now);
+  // From 0, not `now`: Firefox keeps a value curve that began before the cancel
+  // time (the sleep fade), then refuses any event inside it.
+  param.cancelScheduledValues(0);
   param.setValueAtTime(from, now);
   param.linearRampToValueAtTime(to, now + seconds);
   return { from, to, start: now, end: now + seconds };

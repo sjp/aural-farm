@@ -96,10 +96,9 @@ export class FakeParam {
 
   cancelScheduledValues(time: number): this {
     this.record("cancelScheduledValues", [time]);
-    // As in browsers, a value curve still running at `time` goes too.
-    this.events = this.events.filter(
-      (e) => e.time < time && !(e.type === "curve" && e.time + e.duration > time),
-    );
+    // As in Firefox, the strictest: a value curve that began before `time` stays,
+    // even while still running (Chrome removes it, as the spec now says).
+    this.events = this.events.filter((e) => e.time < time);
     return this;
   }
 
@@ -167,6 +166,16 @@ export class FakeParam {
   }
 
   private insert(event: Automation): void {
+    // As in browsers: no event may start inside a value curve, nor a curve over one.
+    const end = event.type === "curve" ? event.time + event.duration : event.time;
+    const overlaps = this.events.some((e) =>
+      e.type === "curve"
+        ? event.time < e.time + e.duration && end >= e.time
+        : event.type === "curve" && e.time >= event.time && e.time < end,
+    );
+    if (overlaps) {
+      throw new Error("NotSupportedError: Can't add events during a curve event");
+    }
     const index = this.events.findIndex((e) => e.time > event.time);
     if (index === -1) {
       this.events.push(event);
