@@ -75,6 +75,8 @@ test("exports a 1-minute WAV clip of the default mix", async ({ page }) => {
   await expect(page.locator(".export-size")).toHaveText("Size≈ 12 MB");
 
   const file = await exportFile(page);
+  // Before the checks of the file, which can outlast the toast on a busy machine.
+  await expect(page.getByRole("status")).toHaveText("Exported aural-farm-engine-core-1min.wav");
   test.info().annotations.push({
     type: "export time",
     description: `1-minute WAV clip exported in ${file.seconds.toFixed(1)} s`,
@@ -89,7 +91,6 @@ test("exports a 1-minute WAV clip of the default mix", async ({ page }) => {
   for (const channel of wav.samples) {
     expect(clickScore(channel, RATE, 30)).toBeLessThan(6);
   }
-  await expect(page.getByRole("status")).toHaveText("Exported aural-farm-engine-core-1min.wav");
   await expect(page.locator(".export-button")).toBeVisible();
   expect(errors).toEqual([]);
 });
