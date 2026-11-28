@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("shows the panel with the default layer and keeps the hash in sync", async ({ page }) => {
   const errors: string[] = [];
