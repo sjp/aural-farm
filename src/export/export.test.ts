@@ -238,6 +238,27 @@ describe("exportAudio", () => {
     expect(aborted).toEqual(["abort"]);
   });
 
+  it("stops at a cancel during a chunk, without waiting for its render", async () => {
+    const controller = new AbortController();
+    const promise = exportAudio(
+      request({
+        signal: controller.signal,
+        createContext: (length, sampleRate) => {
+          const ctx = createContext(length, sampleRate);
+          // A render that never finishes, cancelled while it runs.
+          ctx.startRendering = () => {
+            controller.abort();
+            return new Promise<AudioBuffer>(() => {
+              // Never settles.
+            });
+          };
+          return ctx;
+        },
+      }),
+    );
+    await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   it("fails when a sound reports a failure while rendering", async () => {
     await expect(exportAudio(request({ mix: mix("crash") }))).rejects.toThrow("processor crashed");
   });

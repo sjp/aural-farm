@@ -3,8 +3,8 @@
  * contexts (see `plan.ts`), joins the chunks, makes a loop's head, and streams
  * the result through a WAV or compressed writer into a sink. Only one chunk's
  * audio is in memory at a time. Between chunks it yields to the event loop,
- * so the page stays responsive, and checks for a cancel, so a cancel costs at
- * most the chunk being rendered.
+ * so the page stays responsive. A cancel stops it at once: the chunk being
+ * rendered can't be stopped, but its result is dropped.
  *
  * The mix is exported as it is (layer volumes, mutes and params) with the
  * master at 100, through the real master chain (high-pass and limiter). Solo
@@ -60,6 +60,30 @@ const yieldToPage = () =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, 0);
   });
+
+/**
+ * Settles as `promise` does, or rejects with the abort reason as soon as
+ * `signal` aborts, without waiting for `promise`.
+ */
+function unlessAborted<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      const reason: unknown = signal.reason;
+      reject(reason instanceof Error ? reason : new DOMException("Aborted", "AbortError"));
+    };
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+    void promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", onAbort);
+    });
+  });
+}
 
 /** Writes blocks as 16-bit WAV: the header for the known length first, then the samples. */
 async function createWavWriter(sink: ExportSink, frames: number): Promise<AudioWriter> {
@@ -141,8 +165,9 @@ export async function exportAudio(request: ExportRequest): Promise<ExportResult>
     let rendered = 0;
     const renderNext = async (chunk: Chunk) => {
       signal?.throwIfAborted();
-      const channels = await render(mix, chunk, plan);
-      signal?.throwIfAborted();
+      // A chunk takes a while to render on a slow or busy machine: don't make a
+      // cancel wait for it.
+      const channels = await unlessAborted(render(mix, chunk, plan), signal);
       rendered += chunk.preroll + chunk.frames;
       request.onProgress?.(rendered / total);
       await pause();
