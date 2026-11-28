@@ -1,6 +1,6 @@
-import { test as base } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
-export { expect } from "@playwright/test";
+export { expect };
 
 /**
  * Playwright's `test`, with a page whose panel never fades for an idle pointer.
@@ -18,3 +18,20 @@ export const test = base.extend({
     await provide(page);
   },
 });
+
+/**
+ * Starts playback. Headless Chromium autoplays, but on a busy machine the start
+ * can take long enough that the app offers Tap to play, then starts by itself
+ * after all. So where it offers one, this clicks the backdrop, which starts
+ * playback while it's blocked and does nothing once it plays: a click on Tap to
+ * play could land after it had turned to Pause.
+ */
+export async function startPlaying(page: Page): Promise<void> {
+  const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
+  const tap = page.getByRole("button", { name: "Tap to play" });
+  await expect(playing.or(tap)).toBeVisible();
+  if (await tap.isVisible()) {
+    await page.mouse.click(5, 5);
+  }
+  await expect(playing).toBeVisible();
+}

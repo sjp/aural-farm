@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, startPlaying, test } from "./fixtures";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
@@ -119,17 +119,6 @@ async function openControlled(page: Page, hash = "") {
       timeout: 20_000,
     })
     .toBe(true);
-}
-
-/** Starts playback, clicking Tap to play where the browser blocks autoplay. */
-async function startPlaying(page: Page) {
-  const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
-  const tap = page.getByRole("button", { name: "Tap to play" });
-  await expect(playing.or(tap)).toBeVisible();
-  if (await tap.isVisible()) {
-    await tap.click();
-  }
-  await expect(playing).toBeVisible();
 }
 
 /** The worker's caches, and the paths each holds relative to the site. */

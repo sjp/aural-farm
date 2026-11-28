@@ -1,16 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
-
-/** Starts playback, clicking Tap to play where the browser blocks autoplay. */
-async function startPlaying(page: Page) {
-  const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
-  const tap = page.getByRole("button", { name: "Tap to play" });
-  await expect(playing.or(tap)).toBeVisible();
-  if (await tap.isVisible()) {
-    await tap.click();
-  }
-  await expect(playing).toBeVisible();
-}
+import { expect, startPlaying, test } from "./fixtures";
 
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];

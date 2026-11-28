@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, startPlaying, test } from "./fixtures";
 
 declare global {
   interface Window {
@@ -42,19 +42,11 @@ test("plays, pauses with the button and Space, and follows layer changes in the 
     page.evaluate(() => (window.madeContexts ?? []).map((ctx) => ctx.state));
   await page.goto("/#layers=engine-core");
 
-  // Autoplay, or a click where the browser asks for one (headless Chromium does).
-  const pause = page.getByRole("button", { name: "Pause" });
-  const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
-  const tap = page.getByRole("button", { name: "Tap to play" });
-  await expect(playing.or(tap)).toBeVisible();
-  if (await tap.isVisible()) {
-    expect(await contextStates()).toEqual(["suspended"]);
-    await tap.click();
-  }
-  await expect(playing).toBeVisible();
+  await startPlaying(page);
   await expect.poll(contextStates).toEqual(["running"]);
 
   // Pausing fades out, then suspends the context.
+  const pause = page.getByRole("button", { name: "Pause" });
   await pause.click();
   const play = page.getByRole("button", { name: "Play", exact: true });
   await expect(play).toBeVisible();

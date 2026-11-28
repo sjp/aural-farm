@@ -59,9 +59,10 @@ test("draws a soft glow that takes the mix's tint once playing", async ({ page }
   expect(neutral.max).toBeLessThan(64);
 
   // Playing: Starship Engine Core's blue, once the two-second ease is over.
-  const tap = page.getByRole("button", { name: "Tap to play" });
-  if (await tap.isVisible()) {
-    await tap.click();
+  // Where the app offers Tap to play, a click anywhere starts playback; one on the
+  // prompt itself could land after a slow autoplay had started, and pause it.
+  if (await page.getByRole("button", { name: "Tap to play" }).isVisible()) {
+    await page.mouse.click(5, 5);
   }
   await expect
     .poll(async () => {

@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { expect, startPlaying, test } from "./fixtures";
 
 test("mutes, solos, removes with undo, and lights the activity dot while playing", async ({
   page,
@@ -14,14 +14,7 @@ test("mutes, solos, removes with undo, and lights the activity dot while playing
   });
   await page.goto("/#layers=engine-core");
 
-  // Start playing: autoplay, or a click where the browser asks for one.
-  const playing = page.locator('button[aria-label="Pause"]:not([aria-busy="true"])');
-  const tap = page.getByRole("button", { name: "Tap to play" });
-  await expect(playing.or(tap)).toBeVisible();
-  if (await tap.isVisible()) {
-    await tap.click();
-  }
-  await expect(playing).toBeVisible();
+  await startPlaying(page);
 
   // The tint dot follows the layer's level while the panel is seen.
   const dot = page.locator(".layer .layer-dot");
