@@ -796,6 +796,21 @@ describe("App playback", () => {
     expect(engine.play).toHaveBeenCalledTimes(2);
   });
 
+  it("plays on the first input anywhere when playback is blocked after play() returned", async () => {
+    const fake = fakeEngine();
+    const { engine, callbacks } = renderApp("", fake);
+    await settle();
+    expect(engine.play).toHaveBeenCalledTimes(1);
+    // The media element refused to play only after play() had stopped waiting for it.
+    act(() => {
+      callbacks()?.onState("blocked");
+    });
+    expect(screen.getByRole("button", { name: "Tap to play" })).toBeTruthy();
+    fireEvent.pointerDown(document.body);
+    await settle();
+    expect(engine.play).toHaveBeenCalledTimes(2);
+  });
+
   it("shows a Tap to play prompt over the page when the panel is hidden", async () => {
     const fake = fakeEngine();
     fake.controls.playResult = "blocked";

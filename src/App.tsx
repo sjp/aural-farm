@@ -496,9 +496,10 @@ export function App({
   );
 
   // A fresh visit or a shared link starts playing. If the browser blocks that, the
-  // first tap, click or key press anywhere starts it instead.
+  // first tap, click or key press anywhere starts it instead. That holds whenever
+  // playback is blocked, not only when play() says so: a media element can refuse
+  // to play after play() has given up waiting for it.
   useEffect(() => {
-    let active = true;
     const onGesture = (event: Event) => {
       if (playback.get().state !== "blocked") {
         stopListening();
@@ -511,21 +512,20 @@ export function App({
         window.removeEventListener(type, onGesture, true);
       }
     };
-    const autoplay = async () => {
-      // An empty mix has nothing to play: wait for the Play button instead.
-      if (stateRef.current.mix.layers.length === 0) {
-        return;
-      }
-      const result = await engine.play();
-      if (active && result === "blocked") {
+    const unsubscribe = playback.subscribe(() => {
+      if (playback.get().state === "blocked") {
+        // Adding a listener that's already there does nothing.
         for (const type of GESTURES) {
           window.addEventListener(type, onGesture, true);
         }
       }
-    };
-    void autoplay();
+    });
+    // An empty mix has nothing to play: wait for the Play button instead.
+    if (stateRef.current.mix.layers.length > 0) {
+      void engine.play();
+    }
     return () => {
-      active = false;
+      unsubscribe();
       stopListening();
     };
   }, [engine, playback]);
